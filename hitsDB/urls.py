@@ -20,12 +20,12 @@ from django.contrib import admin
 # Add this import
 from django.contrib.auth import views as authviews
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
-from log import views
+from log import views, forms
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     re_path(r'', include('log.urls')),
-    re_path(r'^login/$', authviews.LoginView.as_view(template_name= 'login.html', authentication_form= AuthenticationForm)),
-    re_path(r'^logout/$', authviews.LogoutView.as_view(next_page= '/login')), 
     re_path(r'^register/$', views.register, name='register'),
+    re_path(r'^login/$', authviews.LoginView.as_view(template_name= 'login.html', authentication_form= forms.LoginForm)),
+    re_path(r'^logout/$', authviews.LogoutView.as_view(next_page= '/login')), 
 ]
