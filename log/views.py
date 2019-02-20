@@ -94,7 +94,6 @@ def manage_user(request):
     return render(request, "manage_user.html", context)
 
 def register(request):
-    # NEED TO ADD TOKENIZED URL EMAIL VERFICATION!!!
     # https://medium.com/@frfahim/django-registration-with-confirmation-email-bb5da011e4ef 
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
@@ -103,7 +102,7 @@ def register(request):
             user.is_active = False
             user.save()
             current_site = get_current_site(request)
-            mail_subject = 'Activate your blog account.'
+            mail_subject = '[hitsDB] Activate your hitsDB account.'
             message = render_to_string('acc_active_email.html', {
                 'user': user,
                 'domain': current_site.domain,
@@ -135,29 +134,57 @@ def activate(request, uidb64, token):
         update_session_auth_hash(request, user)
         login(request, user)
         # return redirect('home')
-        messages.success(request, 'Your account has been successfully activated.')
+        messages.success(request, '[hitsDB] Account has been successfully activated.')
         return redirect('user_home')
     else:
         return HttpResponse('Activation link is invalid!')
 
-# this is sort of bad since any non authenticated user can change someone else's password
-def user_recover(request):
+def reset_password(request, uidb64, token):
+    tempPass = 'User.objects.make_random_password()'
+    try:
+        uid = force_text(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+        
+    except(TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    if user is not None and account_activation_token.check_token(user, token):
+        user.set_password(tempPass)
+        user.save()
+        update_session_auth_hash(request, user)
+        login(request, user)
+        # return redirect('home')
+        return redirect('manage_user')
+    else:
+        return HttpResponse('Activation link is invalid!')
 
+
+def user_recover(request):
     if request.method == 'POST':
         usernameInput = request.POST['username']
         
         f = RecoverUserForm(request.POST)
         if f.is_valid():
             # f.save()
-            password = User.objects.make_random_password()
+            
             user = User.objects.get(username=usernameInput)
-            user.set_password(password)
-            user.save()
-            messages.success(request, 'New password sent to ' + user.email + 
-                user.password)
-            return redirect(reverse('user_home'))
-        else:
-            messages.info(request, 'No matching username found.')
+
+            current_site = get_current_site(request)
+            mail_subject = '[hitsDB] Password reset.'
+            message = render_to_string('resetpw_email.html', {
+                'user': user,
+                'domain': current_site.domain,
+                'uid':urlsafe_base64_encode(force_bytes(user.pk)).decode(),
+                'token':account_activation_token.make_token(user),
+            })
+            to_email = user.email
+            email = EmailMessage(
+                        mail_subject, message, to=[to_email]
+            )
+            messages.success(request, 'Activation email sent to ' + to_email)
+            email.send()
+            return redirect(reverse('user_recover'))
+        # else:
+        #     messages.info(request, 'No matching username found.')
 
     else:
         f = RecoverUserForm()

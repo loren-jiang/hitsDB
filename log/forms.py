@@ -40,13 +40,31 @@ class RecoverUserForm(forms.ModelForm):
     username = forms.CharField(label='Username')
     # password = forms.CharField(label='Password') #is CharField right?
     
-    def is_valid(self):
-        users = User.objects.all()
-        for user in users:
-            if self.username == user.username:
-                return True
+    # def is_valid(self):
+    #     users = User.objects.all()
+    #     for user in users:
+    #         if self.username == user.username:
+    #             return True
+    #     return False
 
-        return False
+    def clean(self):
+        # users = User.objects.all()
+        form_data = self.cleaned_data
+        try:
+            user = User.objects.get(username__exact=form_data['username'])
+        except(User.DoesNotExist):
+            user = None
+
+        if not user:
+            self._errors["username"] = ["No matching username found."]
+            del form_data['username']
+        # for user in users:
+        #     if form_data['username'] == user.username:
+        #         return form_data
+        
+        # del form_data['username']
+        return form_data
+
     class Meta:
         model = User
         fields = ("username",)
