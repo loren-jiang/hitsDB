@@ -2,11 +2,18 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.utils.encoding import force_bytes, force_text
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.template.loader import render_to_string
+from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, update_session_auth_hash
 from .forms import RegistrationForm, EditUserForm, RecoverUserForm
-from django.http import HttpResponseRedirect
+from .tokens import account_activation_token
+from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
+from django.core.mail import EmailMessage
+
 
 # Create your views here.
 # this login required decorator is to not allow to any  
@@ -87,18 +94,52 @@ def manage_user(request):
     return render(request, "manage_user.html", context)
 
 def register(request):
+    # NEED TO ADD TOKENIZED URL EMAIL VERFICATION!!!
+    # https://medium.com/@frfahim/django-registration-with-confirmation-email-bb5da011e4ef 
     if request.method == 'POST':
-        f = RegistrationForm(request.POST)
-        if f.is_valid():
-            f.save()
-            messages.success(request, 'Account created successfully')
+        form = RegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.is_active = False
+            user.save()
+            current_site = get_current_site(request)
+            mail_subject = 'Activate your blog account.'
+            message = render_to_string('acc_active_email.html', {
+                'user': user,
+                'domain': current_site.domain,
+                'uid':urlsafe_base64_encode(force_bytes(user.pk)).decode(),
+                'token':account_activation_token.make_token(user),
+            })
+            to_email = form.cleaned_data.get('email')
+            email = EmailMessage(
+                        mail_subject, message, to=[to_email]
+            )
+            email.send()
+            messages.success(request, 'Account created. You will receive \
+                a confirmation email to activate your account.')
             return redirect('register')
  
     else:
-        f = RegistrationForm()
- 
-    return render(request, '../templates/register.html', {'form': f})    
-    
+        form = RegistrationForm()
+    return render(request, '../templates/register.html', {'form': form})    
+
+def activate(request, uidb64, token):
+    try:
+        uid = force_text(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except(TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    if user is not None and account_activation_token.check_token(user, token):
+        user.is_active = True
+        user.save()
+        update_session_auth_hash(request, user)
+        login(request, user)
+        # return redirect('home')
+        messages.success(request, 'Your account has been successfully activated.')
+        return redirect('user_home')
+    else:
+        return HttpResponse('Activation link is invalid!')
+
 # this is sort of bad since any non authenticated user can change someone else's password
 def user_recover(request):
 
@@ -114,7 +155,7 @@ def user_recover(request):
             user.save()
             messages.success(request, 'New password sent to ' + user.email + 
                 user.password)
-            return redirect('user_recover')
+            return redirect(reverse('user_home'))
         else:
             messages.info(request, 'No matching username found.')
 

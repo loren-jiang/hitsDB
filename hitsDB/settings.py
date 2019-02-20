@@ -132,3 +132,9 @@ STATICFILES_DIRS = [
 ]
 
 LOGIN_REDIRECT_URL = '/' # It means home view
+
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'xray@msg.ucsf.edu'
+EMAIL_HOST_PASSWORD = 'i64tbtwl'
+EMAIL_PORT = 587
