@@ -22,7 +22,7 @@
             <!-- <button type="button" class="navbar-toggler collapsed" data-toggle="collapse"
             data-target="#bs-example-navbar-collapse-1"> <span class="sr-only">Toggle navigation</span>
             </button> --> 
-            
+
             <a class="navbar-brand" href="/">hitsDB</a>
             <!-- <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1"> -->
                 <ul class="nav navbar-nav ml-auto">
@@ -36,7 +36,7 @@
                         role="menu">
                             <li class="dropdown-item"> <a href="{% url 'user_home' %}">Home</a>
                             </li>
-                            <li class="dropdown-item"> <a href="{% url 'manage_user' %}">Account</a>
+                            <li class="dropdown-item"> <a href="{% url 'manage_user' %}">User</a>
                             </li>
                             <li class="dropdown-item"> <a href="/">Something else here</a>
                             </li>
@@ -56,6 +56,13 @@
     $(".dropdown-toggle.nav-link").addClass('d-none');
 </script>
 {% endif %}
+{% if messages %}
+    <ul>
+        {% for message in messages %}
+        <li>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
         {% block content %} 
         {% endblock %}
 
