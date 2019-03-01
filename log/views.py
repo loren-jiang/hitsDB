@@ -20,32 +20,26 @@ from django.core.mail import EmailMessage
 # view without authenticating
 @login_required(login_url="login/")
 def user_home(request):
-    return render(request,"user_home.html")
+    user = request.user
+    return render(request,"user_home.html",{'user':user})
 
-# @login_required(login_url="login/")
-# def view_user(request):
-#     user = request.user
-#     form = EditUserForm(initial={'username':user.username, 'email':user.email})
-#     context = {
-#         "form": form
-#     }
-#     return render(request, 'view_user.html', context)
 
 @login_required(login_url="login/")
-def del_user(request, username):
+def deactivate_user(request):
     try:
-        u = User.objects.get(username = username)
-        u.delete()
-        messages.success(request, "The user is deleted")            
+        u = request.user
+        u.is_active = False; #deactivate user
+        u.save()
+        messages.success(request, "The user account has been deactivated.")            
 
     except User.DoesNotExist:
-        messages.error(request, "User doesnot exist")    
-        return render(request, '/')
+        messages.error(request, "User does not exist")    
+        return redirect('user_recover')
 
     except Exception as e: 
-        return render(request, '/',{'err':e.message})
+        return redirect('user_recover',{'err':e.message})
 
-    return render(request, '/') 
+    return redirect('user_recover') 
 
 def isValidEmail( email ):
     from django.core.validators import validate_email
@@ -84,14 +78,12 @@ def manage_user(request):
         #         user.save()
         #         return HttpResponseRedirect('%s'%(reverse('user_home'))) #change this to view_user.html
 
-    context = {
+    data = {
         "form": form,
-        "username": user.username,
-        "email": user.email,
-        "password": user.password,
+        "user": user,
     }
 
-    return render(request, "manage_user.html", context)
+    return render(request, "manage_user.html", data)
 
 def register(request):
     # https://medium.com/@frfahim/django-registration-with-confirmation-email-bb5da011e4ef 
@@ -148,6 +140,7 @@ def reset_password(request, uidb64, token):
     except(TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
     if user is not None and account_activation_token.check_token(user, token):
+        user.is_active = True
         user.set_password(tempPass)
         user.save()
         update_session_auth_hash(request, user)
@@ -167,9 +160,8 @@ def user_recover(request):
             # f.save()
             
             user = User.objects.get(username=usernameInput)
-
             current_site = get_current_site(request)
-            mail_subject = '[hitsDB] Password reset.'
+            mail_subject = '[hitsDB] Password reset'  
             message = render_to_string('resetpw_email.html', {
                 'user': user,
                 'domain': current_site.domain,

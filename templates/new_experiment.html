@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %} New experiment - {{ block.super }} {% endblock %}
+
+{% block content %}
+
+            
+    <div class="container-fluid">
+
+        <div class="col-lg-12 ">
+        	<br>
+            <h1 >New experiment</h1>
+            <br>
+            <div class="row">
+  <div class="col-3">
+    <div class="list-group" id="list-tab" role="tablist">
+      <a class="list-group-item list-group-item-action active" id="list-home-list" data-toggle="list" href="#list-home" role="tab" aria-controls="home">Create experiment</a>
+      <a class="list-group-item list-group-item-action" id="list-profile-list" data-toggle="list" href="#list-profile" role="tab" aria-controls="profile">Select library</a>
+      <a class="list-group-item list-group-item-action" id="list-messages-list" data-toggle="list" href="#list-messages" role="tab" aria-controls="messages">Soak crystals</a>
+      <a class="list-group-item list-group-item-action" id="list-settings-list" data-toggle="list" href="#list-settings" role="tab" aria-controls="settings">Collect data</a>
+    </div>
+  </div>
+  <div class="col-9">
+    <div class="tab-content" id="nav-tabContent">
+      <div class="tab-pane fade show active" id="list-home" role="tabpanel" aria-labelledby="list-home-list"> 
+      	<form method="post" >
+                {% csrf_token %}
+                {% include 'bs4_form.html' with form=form %}
+                <button type="submit" class="btn btn-primary">Create</button>
+            </form>
+       </div>
+      <div class="tab-pane fade" id="list-profile" role="tabpanel" aria-labelledby="list-profile-list">
+					<div class="dropdown">
+		  <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+		    Pick library
+		  </button>
+		  <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+		  	<li class="dropdown-header">Shared libraries</li>
+		  	
+		  	{% for lib in Libraries %}
+		  
+		    	<a class="dropdown-item" onclick='show_lib({{ lib.1|safe }}, "{{lib.0.description}}" )'> 
+		    	{{ lib.0 }} </a>
+		    {% endfor %}
+
+		    
+		  </div>
+			
+			<div id="lib_desc">
+		  	
+		  </div>
+
+		  <div id="lib_content" style="overflow: auto; height: 500px !important;">
+		  	
+		  </div>
+
+		</div>
+
+    
+      </div>
+      <div class="tab-pane fade" id="list-messages" role="tabpanel" aria-labelledby="list-messages-list"> dsksfdms </div>
+      <div class="tab-pane fade" id="list-settings" role="tabpanel" aria-labelledby="list-settings-list">ksdfds </div>
+    </div>
+  </div>
+</div>
+            
+
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascript %} 
+<script>
+
+
+	function show_lib(content, desc) {
+		txt = "<table border='1'>"
+		txt += "<tr> <th>Code</th> <th>Smiles</th> <th>MW</th> </tr>"
+	    for (x in content) {
+	      txt += "<tr>" + "<td>" + content[x].fields.nameInternal + "</td>" 
+	      + "<td>" + "<a target='_blank' href='http://zinc.docking.org/results/structure?structure.smiles=" + encodeURIComponent(content[x].fields.smiles) + "&structure.similarity=.90"
+	      +"'>" + content[x].fields.smiles +"</a>" + "</td>" 
+	      + "<td>" + content[x].fields.molWeight + "</td>" +"</tr>";
+	    }
+	    txt += "</table>" 
+		document.getElementById("lib_content").innerHTML = txt;
+		document.getElementById("lib_desc").innerHTML = desc;
+	}
+
+
+</script>
+{% endblock %}

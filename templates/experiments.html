@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+	<table class="table">
+    <thead class="thead-inverse">
+      <tr>
+        <th>Experiment name</th>
+        <th>Date created</th>
+        <th>Protein</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in experiments %}
+        <tr>
+          <td><a href={% url 'exp' e.pk%}>{{ e.name }}</a></td>
+          <td>{{ e.dateTime }}</td>
+          <td>{{ e.protein }}</td>
+          <td>{{ e.description }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+{% endblock %}

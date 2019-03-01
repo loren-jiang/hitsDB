@@ -1,2 +1,36 @@
 {% extends 'base.html' %}
+{% block content %}
 
+<!-- might change this to check for same GROUP -->
+{% if pkOwner == pkUser %}
+	<table class="table">
+    <thead class="thead-inverse">
+      <tr>
+        <th>Experiment name</th>
+        <th>Date created</th>
+        <th>Protein</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td>{{ experiment.name }}</td>
+          <td>{{ experiment.dateTime }}</td>
+          <td>{{ experiment.protein }}</td>
+          <td>{{ experiment.description }}</td>
+        </tr>
+    </tbody>
+  </table>
+  <p>dksjkkfd</p>
+{% else %}
+  <div class=container-fluid>
+    <div class="col-lg-4 offset-md-4">
+      <div class="jumbotron"
+            <p> You don't have permission to view this experiment...</p>
+      </div>
+    </div>
+      
+  </div>
+
+{% endif %}
+{% endblock %}

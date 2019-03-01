@@ -5,10 +5,14 @@
     <div class="row">
         <div class="col-lg-4 offset-md-4">
             <div class="jumbotron">
-                <h1>Hello!!!</h1>
+                <h1>Hello {{user.username}}</h1>
                 <p>You are on your Dashboard</p>
+                <a href={% url 'new_experiment' %}>new experiment!</a>
+                <a href={% url 'experiments' %}>view experiments!</a>
             </div>
         </div>
     </div>
+
+    
 </div>
 {% endblock %}
