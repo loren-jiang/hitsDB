@@ -1,24 +1,43 @@
 {% extends 'base.html' %}
 {% block content %}
-	<table class="table">
-    <thead class="thead-inverse">
-      <tr>
-        <th>Experiment name</th>
-        <th>Date created</th>
-        <th>Protein</th>
-        <th>Description</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for e in experiments %}
-        <tr>
-          <td><a href={% url 'exp' e.pk%}>{{ e.name }}</a></td>
-          <td>{{ e.dateTime }}</td>
-          <td>{{ e.protein }}</td>
-          <td>{{ e.description }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+<div class='container-fluid'>
+  <div class='row justify-content-center'>
+    {% load django_tables2 %} 
+    {% render_table experimentsTable %}
+  </div>
+</div>
+<a id="delete-exps" href={% url 'delete_exps' '1/' %}> delete exps </a>
+
+<script>
+  $(document).ready(function() {
+       
+    function getSelected() {
+      var selected = [];
+                $.each($("td input[type='checkbox']:checked"), function(){
+                    var exp = $(this).val();     
+                    if (exp.length > 0)  {selected.push(exp);}   
+                });
+      return selected;
+    }
+
+    $("#delete-exps").click(function(){
+      
+      selected = getSelected();
+      var newurl = '/experiments/delete_exps/' + selected.join("/");
+      if (selected.length > 0) {
+        if (confirm("Are you sure you want to delete these experiments?")) {
+          $("#delete-exps").attr("href", newurl);
+        } 
+        else {
+          $("#delete-exps").attr("href", '/experiments/');
+        }
+      } 
+      
+    });
+            
+  });
+
+</script>
 
 {% endblock %}

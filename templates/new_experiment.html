@@ -1,9 +1,8 @@
 {% extends 'base.html' %}
 {% block title %} New experiment - {{ block.super }} {% endblock %}
 
-{% block content %}
 
-            
+{% block content %}           
     <div class="container-fluid">
 
         <div class="col-lg-12 ">
@@ -11,25 +10,36 @@
             <h1 >New experiment</h1>
             <br>
             <div class="row">
-  <div class="col-3">
+  <div class="col-2">
     <div class="list-group" id="list-tab" role="tablist">
-      <a class="list-group-item list-group-item-action active" id="list-home-list" data-toggle="list" href="#list-home" role="tab" aria-controls="home">Create experiment</a>
-      <a class="list-group-item list-group-item-action" id="list-profile-list" data-toggle="list" href="#list-profile" role="tab" aria-controls="profile">Select library</a>
-      <a class="list-group-item list-group-item-action" id="list-messages-list" data-toggle="list" href="#list-messages" role="tab" aria-controls="messages">Soak crystals</a>
-      <a class="list-group-item list-group-item-action" id="list-settings-list" data-toggle="list" href="#list-settings" role="tab" aria-controls="settings">Collect data</a>
+      <a class="list-group-item list-group-item-action active" id="list-experiment-list" data-toggle="list" href="#list-experiment" role="tab" aria-controls="experiment">Create experiment</a>
+      <!--<a class="list-group-item list-group-item-action" id="list-library-list" data-toggle="list" href="#list-library" role="tab" aria-controls="library">Select library</a>-->
+      <a class="list-group-item list-group-item-action" id="list-plates-list" data-toggle="list" href="#list-plates" role="tab" aria-controls="plates">Plate set-up</a>
+      <a class="list-group-item list-group-item-action" id="list-crystals-list" data-toggle="list" href="#list-crystals" role="tab" aria-controls="crystals">Soak crystals</a>
+      <a class="list-group-item list-group-item-action" id="list-data-list" data-toggle="list" href="#list-data" role="tab" aria-controls="data">Collect data</a>
     </div>
   </div>
-  <div class="col-9">
+  <div class="col-10">
     <div class="tab-content" id="nav-tabContent">
-      <div class="tab-pane fade show active" id="list-home" role="tabpanel" aria-labelledby="list-home-list"> 
-      	<form method="post" >
-                {% csrf_token %}
-                {% include 'bs4_form.html' with form=form %}
-                <button type="submit" class="btn btn-primary">Create</button>
-            </form>
-       </div>
-      <div class="tab-pane fade" id="list-profile" role="tabpanel" aria-labelledby="list-profile-list">
-					<div class="dropdown">
+    	
+      <div class="tab-pane fade show active" id="list-experiment" role="tabpanel" aria-labelledby="list-experiment-list"> 
+      	<div class="row">
+	      	<div class="col-sm-6">
+	      		<form method="post" >
+	      			<!-- implemented library viewer in this part of the form; will have to reformat form to allow for more space (maybe have a popout window?)-->
+	                {% csrf_token %}
+	                {% include 'bs4_form.html' with form=aform %}
+	                {# {{ aform.as_p}} #}
+	                <input type="submit" name="{{aform.prefix}}" value="Create" />
+	            </form>
+	        </div>
+	        <div class="col-sm-6" id="lib_description" style="overflow: auto; height: 500px !important;">
+	        	{{Libs.test_library.compounds.all}}
+	        </div>
+	    </div>
+      </div>
+      <!--<div class="tab-pane fade" id="list-library" role="tabpanel" aria-labelledby="list-library-list">
+					 <div class="dropdown">
 		  <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 		    Pick library
 		  </button>
@@ -53,12 +63,26 @@
 		  	
 		  </div>
 
-		</div>
-
-    
+		</div> 
+	
+    	
+      </div> -->
+      <div class="tab-pane fade" id="list-plates" role="tabpanel" aria-labelledby="list-plates-list"> Plate setup 
+      <form method="post" >
+                {% csrf_token %}
+                {% include 'bs4_form.html' with form=bform %}
+                <input type="submit" name="{{bform.prefix}}" value="Submit" />
+            </form>
       </div>
-      <div class="tab-pane fade" id="list-messages" role="tabpanel" aria-labelledby="list-messages-list"> dsksfdms </div>
-      <div class="tab-pane fade" id="list-settings" role="tabpanel" aria-labelledby="list-settings-list">ksdfds </div>
+      <div class="tab-pane fade" id="list-crystals" role="tabpanel" aria-labelledby="list-crystals-list">ksdfds 
+      <form method="post" >
+                {% csrf_token %}
+                {% include 'bs4_form.html' with form=cform %}
+                <input type="submit" name="{{cform.prefix}}" value="Submit" />
+                {# <button type="submit" class="btn btn-primary">Create</button> #}
+            </form>
+        </div>
+      <div class="tab-pane fade" id="list-data-list" role="tabpanel" aria-labelledby="list-data-list">ksdfds </div>
     </div>
   </div>
 </div>
@@ -66,26 +90,50 @@
 
         </div>
     </div>
+
+{% if go_to_div %}
+	<script> 
+		$('#list-tab a[href="#{{go_to_div}}"]').tab('show'); // Select tab by name
+	</script>
+{% endif %} 
+
 {% endblock %}
 
 {% block javascript %} 
+
 <script>
 
+	function show_lib(lib) {
+      	var libs_dict = {{libs_dict|safe}};
+      	var compounds = JSON.parse(libs_dict[lib]);
 
-	function show_lib(content, desc) {
-		txt = "<table border='1'>"
+      	txt = "<table border='1'>"
 		txt += "<tr> <th>Code</th> <th>Smiles</th> <th>MW</th> </tr>"
-	    for (x in content) {
-	      txt += "<tr>" + "<td>" + content[x].fields.nameInternal + "</td>" 
-	      + "<td>" + "<a target='_blank' href='http://zinc.docking.org/results/structure?structure.smiles=" + encodeURIComponent(content[x].fields.smiles) + "&structure.similarity=.90"
-	      +"'>" + content[x].fields.smiles +"</a>" + "</td>" 
-	      + "<td>" + content[x].fields.molWeight + "</td>" +"</tr>";
+	    for (c in compounds) {
+	      txt += "<tr>" + "<td>" + compounds[c].fields.nameInternal + "</td>" 
+	      + "<td>" + "<a target='_blank' href='http://zinc.docking.org/results/structure?structure.smiles=" + encodeURIComponent(compounds[c].fields.smiles) + "&structure.similarity=.90"
+	      +"'>" + compounds[c].fields.smiles +"</a>" + "</td>" 
+	      + "<td>" + compounds[c].fields.molWeight + "</td>" +"</tr>";
 	    }
 	    txt += "</table>" 
-		document.getElementById("lib_content").innerHTML = txt;
-		document.getElementById("lib_desc").innerHTML = desc;
+		// document.getElementById("lib_content").innerHTML = txt;
+		document.getElementById("lib_description").innerHTML = txt;
 	}
 
+	$(document).ready(function(){
+   //    var lib_choice = $("#id_aform_pre-library")[0];
+	  // var lib = lib_choice.options[lib_choice.selectedIndex].text;
+	  // show_lib(lib);
 
+      $("#id_aform_pre-library").on("change", function(event) { 
+      	var lib = this.options[this.selectedIndex].text;
+      	console.log(lib);
+      	show_lib(lib);
+	} );   
+    });
+
+	
 </script>
+
+
 {% endblock %}

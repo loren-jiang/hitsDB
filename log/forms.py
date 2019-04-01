@@ -1,7 +1,7 @@
 #log/forms.py
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django import forms
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 
 
 # If you don't do this you cannot use Bootstrap CSS
@@ -14,9 +14,11 @@ class LoginForm(AuthenticationForm):
 
 class RegistrationForm(UserCreationForm):
     email = forms.EmailField(max_length=200, help_text='Required')
+    _groups = forms.ModelMultipleChoiceField(queryset = Group.objects.all().exclude(name='Admin'),
+        label="Groups")
     class Meta:
         model = User
-        fields = ("username", "email", "password1", "password2")
+        fields = ("username", "_groups","email", "password1", "password2")
 
 class EditUserForm(forms.ModelForm):
     password1 = forms.CharField(widget=forms.PasswordInput, label ="New password:")

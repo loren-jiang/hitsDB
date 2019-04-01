@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class='container-fluid'>
+  <div class='row justify-content-center'>
+    <div class='col-md-6'>
+      {% load django_tables2 %} 
+      {% render_table projectsTable %}
+    </div>
+
+    <div class='col-md-3'>
+      <h3>New Project</h1>
+      <form method="post" >
+        {% csrf_token %}
+        {% include 'bs4_form.html' with form=form %}
+        <input type="submit" value="Create" />
+        {# <button type="submit" class="btn btn-primary">Create</button> #}
+      </form>
+    </div>
+    
+  </div>
+</div>
+<a id="delete-projs" href={% url 'delete_projs' '0/' %}> delete projs </a>
+
+<script>
+  $(document).ready(function() {
+       
+    function getSelected() {
+      var selected = [];
+                $.each($("td input[type='checkbox']:checked"), function(){
+                    var exp = $(this).val();     
+                    if (exp.length > 0)  {selected.push(exp);}   
+                });
+      return selected;
+    }
+
+    $("#delete-projs").click(function(){
+      
+      selected = getSelected();
+      var newurl = '/projects/delete_projs/' + selected.join("/");
+      if (selected.length > 0) {
+        if (confirm("Are you sure you want to delete these projects?")) {
+          $("#delete-projs").attr("href", newurl);
+        } 
+        else {
+          $("#delete-projs").attr("href", '/projects/');
+        }
+      } 
+      
+    });
+            
+  });
+
+</script>
+
+{% endblock %}

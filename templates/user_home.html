@@ -1,11 +1,30 @@
 {% extends 'base.html' %} 
+{% load static %}
 {% block title %} Home {% endblock %}
 {% block content %}
 <div class="container-fluid">
     <div class="row">
-        <div class="col-lg-4 offset-md-4">
+        <div class="col-md-4">
             <div class="jumbotron">
-                <h1>Hello {{user.username}}</h1>
+                <h3>Projects <img src={% static 'icons/folder-1.png' %} height="10%" width="10%"> </h3>
+                Latest projects: <br>
+                {% for proj in recent_projs %}
+                    - <a href={% url 'proj' proj.pk %}>{{proj.name}} </a> <br>
+                  
+                {% endfor %}
+                {# <a href={% url 'proj' recent_proj.pk %}> Latest project: {{recent_proj.name}} </a> <br> #}
+                - <a href={% url 'projects' %}>View all</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="jumbotron">
+                <h3>Libraries <img src={% static 'icons/book.png' %} height="10%" width="10%"></h3>
+                <a href={% url 'projects' %}>View all libraries</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="jumbotron">
+                <h3>Hello {{user.username}}</h3>
                 <p>You are on your Dashboard</p>
                 <a href={% url 'new_experiment' %}>new experiment!</a>
                 <a href={% url 'experiments' %}>view experiments!</a>

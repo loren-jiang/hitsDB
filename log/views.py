@@ -13,6 +13,7 @@ from .tokens import account_activation_token
 from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
 from django.core.mail import EmailMessage
+from experiment.models import Project
 
 
 # Create your views here.
@@ -21,7 +22,13 @@ from django.core.mail import EmailMessage
 @login_required(login_url="login/")
 def user_home(request):
     user = request.user
-    return render(request,"user_home.html",{'user':user})
+    recent_projs = Project.objects.filter(owner=user)[:3]
+    data = {
+        'user':user,
+        'recent_projs':recent_projs,
+    }
+
+    return render(request,"user_home.html", data)
 
 
 @login_required(login_url="login/")
@@ -93,10 +100,14 @@ def register(request):
             user = form.save(commit=False)
             user.is_active = False
             user.save()
+            for grp in form.cleaned_data['_groups']:
+                user.groups.add(grp)
+            groups = user.groups.all()
             current_site = get_current_site(request)
             mail_subject = '[hitsDB] Activate your hitsDB account.'
             message = render_to_string('acc_active_email.html', {
                 'user': user,
+                'groups':groups,
                 'domain': current_site.domain,
                 'uid':urlsafe_base64_encode(force_bytes(user.pk)).decode(),
                 'token':account_activation_token.make_token(user),
@@ -182,3 +193,4 @@ def user_recover(request):
         f = RecoverUserForm()
     data  ={'form': f}
     return render(request,"user_recover.html", data)
+
