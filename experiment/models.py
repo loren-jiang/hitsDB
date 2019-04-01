@@ -9,7 +9,8 @@ class Library(models.Model):
     # name = models.CharField(max_length=30, )
     description = models.CharField(max_length=300, default='')
     groups = models.ManyToManyField(Group, related_name='libraries',)
-
+    isTemplate = models.BooleanField(default=False)
+    
     def __str__(self):
         return self.name
 

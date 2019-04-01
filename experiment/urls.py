@@ -5,6 +5,8 @@ from . import views
 from django.contrib.auth.models import User
 
 urlpatterns = [
+    re_path(r'^libraries/$', views.libraries, name='libs'),
+    re_path(r'^proj_libraries/(?P<pk_proj>\d+)$', views.proj_libraries, name='proj_libs'),
     re_path(r'^projects/$', views.projects, name='projects'),
     re_path(r'^projects/delete_projs/(?P<pks>(?:\d+/)+)$', views.delete_projects,
         name='delete_projs'),

@@ -9,13 +9,36 @@ from django.core.serializers import serialize
 from django.views.generic.base import TemplateView
 from django.db import transaction
 from .helper_fxns import ceiling_div, chunk_list, split_list, formatSoaks
-from .tables import SoaksTable, ExperimentsTable, ProjectsTable
+from .tables import SoaksTable, ExperimentsTable, ProjectsTable, LibrariesTable
 from django_tables2 import RequestConfig
 from djqscsv import render_to_csv_response
 from copy import deepcopy
 
 
 # Create your views here.
+login_required(login_url="login/")
+def libraries(request):
+    libs_qs = Library.objects.filter(groups__in=request.user.groups.all()).union(
+        Library.objects.filter(isTemplate=True))
+    table=LibrariesTable(libs_qs)
+    RequestConfig(request, paginate={'per_page': 5}).configure(table)
+    data = {
+        'LibrariesTable': table,
+    }
+    return render(request,'libraries.html', data)
+
+@login_required(login_url="login/")
+def proj_libraries(request, pk_proj):
+    exps = Experiment.objects.filter(project_id=pk_proj)
+    libs_qs = Library.objects.filter(experiments__in=exps).union(
+        Library.objects.filter(isTemplate=True))
+    table=LibrariesTable(libs_qs)
+    RequestConfig(request, paginate={'per_page': 5}).configure(table)
+    data = {
+        'LibrariesTable': table,
+    }
+    return render(request,'libraries.html', data)
+
 @login_required(login_url="login/")
 def experiment(request, pk):
     experiment = Experiment.objects.select_related( 
@@ -27,7 +50,7 @@ def experiment(request, pk):
     soaks_qs = Soak.objects.filter(experiment=experiment
         ).select_related('dest__parentWell__plate','src__plate','transferCompound__library').order_by('id')
     table=SoaksTable(soaks_qs)
-    RequestConfig(request, paginate={'per_page': 25}).configure(table)
+    RequestConfig(request, paginate={'per_page': 5}).configure(table)
 
     formattedSoaks = formatSoaks(soaks_qs,
         num_src_plates,num_dest_plates)
@@ -110,7 +133,7 @@ def get_user_projects(request):
 @login_required(login_url="login/")
 def projects(request):
     data = [get_user_projects(request)]
-    form = NewProjectForm()
+    form = NewProjectForm(user=request.user)
     data[0]['form'] = form 
     # if request.method == 'GET':
 

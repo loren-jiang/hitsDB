@@ -1,6 +1,6 @@
 #experiment/forms.py
 from django import forms
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from .models import Experiment, Plate, CrystalScreen, Library, Project
 from django.forms import ModelChoiceField
  
@@ -9,11 +9,10 @@ class NewProjectForm(forms.ModelForm):
         model = Project
         fields=('name','description','collaborators')
 
-class CreateExperimentForm(forms.Form):
-    name = forms.CharField(max_length=30)
-    description = forms.CharField(max_length=300)
-    protein = forms.CharField(max_length=30)
-    library = forms.ModelChoiceField(queryset=Library.objects.all(),initial=0)
+    def __init__(self, user, *args, **kwargs):
+        super(NewProjectForm, self).__init__(*args, **kwargs)
+        collaborators=User.objects.filter(groups__in=user.groups.all()).exclude(id=user.id)    
+        self.fields['collaborators'].queryset = collaborators
 
 
 class NewExperimentForm(forms.ModelForm):
@@ -47,11 +46,7 @@ class PlateSetupForm(forms.Form):
         .order_by('-dateTime'),
         initial=0
         )
-    # class Meta:
-    #   model = plate
-    #   fields = ("plateType","experiment")
 
-# class SoakCrystalForm(forms.Form):
     crystal_choices = (
         (1,'Subwell 1'),
         (2,'Subwell 2'),

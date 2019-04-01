@@ -1,7 +1,6 @@
 import django_tables2 as tables
 from django_tables2.utils import A  # alias for Accessor
-from .models import Soak, Compound, Experiment, Project
-
+from .models import Soak, Compound, Experiment, Project, Library
 
 class SoaksTable(tables.Table):
     # transferCompound = tables.Column()
@@ -33,3 +32,9 @@ class ProjectsTable(tables.Table):
         model = Project 
         template_name = 'django_tables2/bootstrap-responsive.html'
         fields = ('name','owner','dateTime','experiments','collaborators')
+
+class LibrariesTable(tables.Table):
+    class Meta:
+        model=Library
+        template_name = 'django_tables2/bootstrap-responsive.html'
+        
