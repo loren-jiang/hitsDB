@@ -9,13 +9,23 @@ from django.core.serializers import serialize
 from django.views.generic.base import TemplateView
 from django.db import transaction
 from .helper_fxns import ceiling_div, chunk_list, split_list, formatSoaks
-from .tables import SoaksTable, ExperimentsTable, ProjectsTable, LibrariesTable
+from .tables import SoaksTable, ExperimentsTable, ProjectsTable, LibrariesTable, CompoundsTable
 from django_tables2 import RequestConfig
 from djqscsv import render_to_csv_response
 from copy import deepcopy
 
-
 # Create your views here.
+login_required(login_url="login/")
+def lib_compounds(request, pk_lib):
+    lib = get_object_or_404(Library, pk=pk_lib)
+    compounds = lib.compounds.all()
+    table=CompoundsTable(compounds)
+    RequestConfig(request, paginate={'per_page': 25}).configure(table)
+    data = {
+        'CompoundsTable': table,
+    }
+    return render(request,'lib_compounds.html', data)
+
 login_required(login_url="login/")
 def libraries(request):
     libs_qs = Library.objects.filter(groups__in=request.user.groups.all()).union(
@@ -23,7 +33,7 @@ def libraries(request):
     table=LibrariesTable(libs_qs)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
     data = {
-        'LibrariesTable': table,
+        'librariesTable': table,
     }
     return render(request,'libraries.html', data)
 
@@ -35,7 +45,7 @@ def proj_libraries(request, pk_proj):
     table=LibrariesTable(libs_qs)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
     data = {
-        'LibrariesTable': table,
+        'librariesTable': table,
     }
     return render(request,'libraries.html', data)
 
@@ -71,13 +81,18 @@ def experiment(request, pk):
 
 @login_required(login_url="login/")
 def project(request, pk):
-    proj = Project.objects.prefetch_related( 
-        'experiments').get(pk=pk)
-    experimentsTable = ExperimentsTable(proj.experiments.all())
+    pk_proj = pk
+    exps = Experiment.objects.filter(project_id=pk_proj)
+    libs_qs = Library.objects.filter(experiments__in=exps).union(
+        Library.objects.filter(isTemplate=True))
+    experimentsTable = ExperimentsTable(exps)
+    libsTable = LibrariesTable(libs_qs)
     RequestConfig(request, paginate={'per_page': 5}).configure(experimentsTable)
+    RequestConfig(request, paginate={'per_page': 5}).configure(libsTable)
     data = {
         'experimentsTable': experimentsTable,
         'pk_proj':pk,
+        'librariesTable': libsTable,
     }
     return render(request,'project.html',data)#,{'experiments':})
 
@@ -110,7 +125,7 @@ def delete_experiment(request, pk):
     return redirect('experiments')
 
 @login_required(login_url="login/")
-def delete_experiments(request, pks):
+def delete_experiments(request, pks, pk_proj):
     pks = pks.split('/')
     print(pks)
     for pk in pks:
@@ -120,7 +135,7 @@ def delete_experiments(request, pks):
                 experiment.delete()
             except:
                 break
-    return redirect('experiments')
+    return redirect('proj',pk_proj)
 
 def get_user_projects(request):
     user_proj_qs = request.user.projects.all()

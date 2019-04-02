@@ -10,10 +10,10 @@ from django.contrib.auth.models import Group, User
 # default_dest_plate.save()
 
 default_group = Group.objects.get(id=1)
-test_library = default_group.libraries.create(name="test_library",)
+test_library = default_group.libraries.create(name="test_library2",)
 
 for i in range(384*2):
-	test_compound = Compound(nameInternal="test_compound"+str(i), smiles="DMSO"+str(i))
+	test_compound = Compound(nameInternal="test_compound"+str(i), smiles="DMSO")
 	test_compound.save()
 	test_library.compounds.add(test_compound)
 

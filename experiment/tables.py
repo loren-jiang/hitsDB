@@ -34,7 +34,17 @@ class ProjectsTable(tables.Table):
         fields = ('name','owner','dateTime','experiments','collaborators')
 
 class LibrariesTable(tables.Table):
+    name = tables.LinkColumn(viewname='lib_compounds', args=[A('pk')])
+
     class Meta:
         model=Library
         template_name = 'django_tables2/bootstrap-responsive.html'
+        fields=('name',)
+
+
+class CompoundsTable(tables.Table):
+    class Meta:
+        model=Compound
+        template_name = 'django_tables2/bootstrap-responsive.html'
+        fields=('nameInternal','smiles')
         

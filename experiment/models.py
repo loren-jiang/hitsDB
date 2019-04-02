@@ -59,7 +59,7 @@ class Compound(models.Model): #doesnt need to be unique?
     library = models.ForeignKey(Library, related_name='compounds', on_delete=models.CASCADE, null=True, blank=True)
     #not all smiles have unique zincID, or perhaps vice versa
     zinc_id = models.CharField(max_length=30, default='')
-    smiles = models.CharField(max_length=200, unique=True)
+    smiles = models.CharField(max_length=200,)
     molWeight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     concentration = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     chemName = models.CharField(max_length=1000, default='')
