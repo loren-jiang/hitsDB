@@ -13,6 +13,8 @@ from .tables import SoaksTable, ExperimentsTable, ProjectsTable, LibrariesTable,
 from django_tables2 import RequestConfig
 from djqscsv import render_to_csv_response
 from copy import deepcopy
+from django.forms.models import model_to_dict
+
 
 # Create your views here.
 login_required(login_url="login/")
@@ -125,17 +127,27 @@ def delete_experiment(request, pk):
     return redirect('experiments')
 
 @login_required(login_url="login/")
-def delete_experiments(request, pks, pk_proj):
-    pks = pks.split('/')
-    print(pks)
-    for pk in pks:
-        if pk: #check if pk is not empty
-            try:
-                experiment = get_object_or_404(Experiment, pk=pk)
-                experiment.delete()
-            except:
-                break
-    return redirect('proj',pk_proj)
+def delete_experiments(request, pks, pk_proj=None):
+    if pk_proj:
+        pks = pks.split('/')
+        for pk in pks:
+            if pk: #check if pk is not empty
+                try:
+                    experiment = get_object_or_404(Experiment, pk=pk)
+                    experiment.delete()
+                except:
+                    break
+        return redirect('proj',pk_proj)
+    else:
+        pks = pks.split('/')
+        for pk in pks:
+            if pk: #check if pk is not empty
+                try:
+                    experiment = get_object_or_404(Experiment, pk=pk)
+                    experiment.delete()
+                except:
+                    break
+        return redirect('experiments')
 
 def get_user_projects(request):
     user_proj_qs = request.user.projects.all()
@@ -186,6 +198,22 @@ def soaks_csv_view(request,pk):
     qs = Soak.objects.filter(experiment=exp).values()
     return render_to_csv_response(qs
         )
+def make_instance_from_dict(instance_model_a_as_dict,model_a):
+    try:
+        del instance_model_a_as_dict['id']
+    except KeyError:
+        pass
+    # instance_model_a_as_dict.pop('id') #pops id so we dont copy primary keys
+    # print(instance_model_a_as_dict)
+    return model_a(**instance_model_a_as_dict)
+
+def copy_instance(instance_of_model_a,instance_of_model_b):
+    for field in instance_of_model_a._meta.fields:
+        if field.primary_key == True:
+            continue  # don't want to clone the PK
+        setattr(instance_of_model_b, field.name, getattr(instance_of_model_a, field.name))
+            # instance_of_model_b.save()
+    return instance_of_model_b
 
 def _get_form(request, formcls, prefix):
 
@@ -244,75 +272,114 @@ class MyView(TemplateView):
                 exp_compounds = exp.library.compounds.order_by('id')
                 num_compounds = exp_compounds.count()
                 num_src_plates = ceiling_div(num_compounds,num_src_wells) 
-                list_src_wells = [None] * num_compounds
-                well_idx = 0
+                # list_src_plates = [Plate() for k in range(num_src_plates)]
+                # list_src_wells = [Well() for k in range(num_compounds)]
+                list_src_plates = [None for k in range(num_src_plates)]
+                list_src_wells = [None for k in range(num_compounds)]
+                # list_src_wells = [None] * num_compounds
+                
                 for i in range(num_src_plates):
-                    copy_plate = deepcopy(src_plate)
-                    wells = copy_plate.wells.prefetch_related('compounds')
-                    #creates copy of template source plate
-                    copy_plate.pk = None
+                    list_src_plates[i] = make_instance_from_dict(model_to_dict(src_plate),
+                        Plate)
+                    copy_plate = list_src_plates[i]
+                    copy_plate.experiment_id = exp.pk                    
                     copy_plate.isTemplate = False #dont want to pollute template plates
                     copy_plate.plateIdxExp = i+1
-                    copy_plate.save()
 
+                Plate.objects.bulk_create(list_src_plates) #creates pks
+                wells = src_plate.wells.values().order_by('id')
+                well_idx = 0
+                for p in list_src_plates:
                     #make new copies of wells as
-                    # new_wells = [None]*num_src_wells
-                    for well in wells:
-                        w = well
-                        w.pk = None
-                        w.plate_id = copy_plate.pk #relates new well with new plate
-                        w.save()
+                    new_wells = [None for k in range(num_src_wells)]
+                    j = 0
+                    for w in wells:
+                        new_wells[j] = make_instance_from_dict(w, Well)
+                        copy_well = new_wells[j]
+                        # copy_well = copy_instance(wells[j], new_wells[j])
+                        copy_well.plate_id = p.pk #relates new well with new plate
+                        j += 1
                         try:
-                            list_src_wells[well_idx] = w
+                            list_src_wells[well_idx] = copy_well
                             well_idx += 1
                         except: #breaks out of loop if index out of range exception
                             break
-                        
-                    # plate = Plate.create384SourcePlate(name=exp.name + "_source_" +str(i+1))
-                    exp.plates.add(copy_plate)
+                                            
+                Well.objects.bulk_create(list_src_wells)
 
+                #------- DEST PLATES ----------
                 dest_plate = form_data['dest_plate']
                 dest_plate_id = dest_plate.id
-                # dest_plate = form_data['dest_plate']
                 num_dest_wells = dest_plate.numCols * dest_plate.numRows
                 num_dest_plates = ceiling_div(num_compounds,num_dest_wells * len(crystal_locations)) #ceiling division, max num of plates, we can delete empty ones later
                 list_dest_subwells = [None] * num_compounds
-                subwell_idx = 0
+                list_dest_wells = [None]*num_dest_plates*num_dest_wells
+                list_dest_plates = [None] * num_dest_plates
+                
 
                 for j in range(num_dest_plates):
-                    copy_plate = deepcopy(dest_plate)
-                    wells = copy_plate.wells.prefetch_related('compounds','subwells')
-                    #creates copy of template source plate
-                    copy_plate.pk = None
+                    list_dest_plates[j] = make_instance_from_dict(model_to_dict(dest_plate),
+                        Plate)
+                    copy_plate = list_dest_plates[j]
+                    copy_plate.experiment_id = exp.pk                    
                     copy_plate.isTemplate = False #dont want to pollute template plates
                     copy_plate.plateIdxExp = j+1
-                    copy_plate.save()
-                    
-                    #make new copies of wells as
-                    for well in wells:
-                        w = well
-                        subwells = w.subwells.prefetch_related('compounds')
-                        w.pk = None
-                        w.plate_id = copy_plate.pk #relates new well with new plate
-                        w.crystal_screen_id = screen.pk
-                        w.save()
 
-                        #create subwell copies
-                        for sub in subwells:
-                            s = sub
-                            s.pk = None
-                            s.parentWell_id = w.pk
-                            s.save()
-                            try:
-                                if s.idx in crystal_locations:
-                                    list_dest_subwells[subwell_idx] = s
-                                    subwell_idx += 1
-                            except: #breaks out of loop if index out of range exception
-                                break   
-                    exp.plates.add(copy_plate)
-               
+                Plate.objects.bulk_create(list_dest_plates)
+                
+                wells = dest_plate.wells.values().order_by('id')
+                well_idx = 0
+                for i in range(num_dest_plates):
+                    #make new copies of wells as
+                    copy_plate = list_dest_plates[i]
+                    new_wells = [None for k in range(num_dest_wells)]
+                    j = 0
+                    for w in wells:
+                        new_wells[j] = make_instance_from_dict(w, Well)
+                        copy_well = new_wells[j]
+                        # copy_well = copy_instance(wells[j], new_wells[j])
+                        copy_well.plate_id = copy_plate.pk #relates new well with new plate
+                        j += 1
+                        try:
+                            list_dest_wells[well_idx] = copy_well
+                            well_idx += 1
+                        except: #breaks out of loop if index out of range exception
+                            break
+
+                Well.objects.bulk_create(list_dest_wells)
+
+                # template dest_plate subwells
+                subwells = dest_plate.wells.first().subwells.order_by('idx').values()
+                num_subwells = subwells.count()
+                subwell_idx = 0
+
+                for w in list_dest_wells:
+                    new_subwells = [None]*num_subwells
+                    k = 0
+                    for s in subwells:
+                        new_subwells[k] = make_instance_from_dict(s,SubWell)
+                        copy_subwell = new_subwells[k]
+                        copy_subwell.parentWell_id = w.pk
+                        k += 1
+                        try:
+                            if s['idx'] in crystal_locations:
+                 
+                                list_dest_subwells[subwell_idx] = copy_subwell
+                                subwell_idx += 1
+                        except:
+                            break
+                        
+                SubWell.objects.bulk_create(list_dest_subwells)
+                # src_wells_qs = Well.objects.filter(plate__experiment_id=exp.id
+                #     ).filter(plate__isSource=True).order_by('id').prefetch_related('compounds')
+                # dest_subwells_qs = SubWell.objects.filter(parentWell__plate__experiment_id=exp.id
+                #     ).filter(parentWell__plate__isSource=False).order_by('id').prefetch_related('compounds')
+
+                # zipped_lst= list(zip(exp_compounds, src_wells_qs,dest_subwells_qs))
                 ct = 0
+                list_soaks = [None]*num_compounds
                 for compound in exp_compounds:
+                # for compound, src_well, dest_subwell in zipped_lst:
                     src_well = list_src_wells[ct]
                     src_well.compounds.add(compound)
                     # src_well_plate_idx = src_well.plate.plateIdxExp
@@ -321,12 +388,12 @@ class MyView(TemplateView):
 
                     dest_subwell.compounds.add(compound)
                     dest_subwell.hasCrystal = True
-                    dest_subwell.save()
                     soak = Soak(experiment=exp,src=src_well,dest=dest_subwell,
                             transferCompound=compound)
-                    soak.save()
+                    # soak.save()
+                    list_soaks[ct] = soak
                     ct += 1
-
+                Soak.objects.bulk_create(list_soaks)
                 go_to_div = "list-crystals"
 
         # elif cform.is_bound and cform.is_valid():
@@ -460,7 +527,6 @@ class NewExp(TemplateView):
                     src_well = list_src_wells[ct]
                     src_well.compounds.add(compound)
                     # src_well_plate_idx = src_well.plate.plateIdxExp
-
                     dest_subwell = list_dest_subwells[ct]
 
                     dest_subwell.compounds.add(compound)
