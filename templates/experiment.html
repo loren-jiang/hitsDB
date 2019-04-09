@@ -21,12 +21,13 @@
     </tbody>
 </table>
 
-<p> <a href={% url 'delete_exp' experiment.pk %}> Delete experiment </a> </p>
+<a class='btn btn-info' role='button' href={% url 'delete_exp' experiment.pk %}> Delete experiment </a> 
 
-<p> <a href={% url 'delete_exp_plates' experiment.pk %}> Delete plates </a> </p>
+<a class='btn btn-info' role='button' href={% url 'delete_exp_plates' experiment.pk %}> Delete plates </a>
 
-<p> <a href={% url 'soaks_csv_view' experiment.pk %}> Download soaks as .csv </a> </p>
-
+<a class='btn btn-info' role='button' href={% url 'soaks_csv_view' experiment.pk %}> Download soaks as .csv </a> 
+<br>
+<br>
 
 {% else %}
 <div class=container-fluid>

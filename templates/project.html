@@ -3,6 +3,36 @@
 
 {% block content %}
 
+<!-- The Modal -->
+<div class="modal fade" id="newExp">
+  
+  <div class="modal-dialog">
+    <div class="modal-content">
+    
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <h4 class="modal-title">New Experiment</h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      
+      <!-- Modal body -->
+      <div class="modal-body">
+        <form method="post" >
+          {% csrf_token %}
+          {% include 'bs4_form.html' with form=form %}
+          <input type="submit" value="Create" />
+        </form>
+      </div>
+      
+      <!-- Modal footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-6">
@@ -11,7 +41,11 @@
 
                   {% load django_tables2 %} 
                   {% render_table experimentsTable %}
-                  <a class="btn btn-info" role="button" href={% url 'new_proj_experiment' pk_proj %}> New Experiment </a>
+                  <!-- Button to Open the Modal -->
+                  <button type="button" class="btn btn-info" data-toggle="modal" data-target="#newExp">
+                      New Experiment
+                  </button>
+                  <!--<a class="btn btn-info" role="button" href={% url 'new_proj_experiment' pk_proj %}> New Experiment </a>-->
                   <a class="btn btn-info" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a>
             </div>
         </div>
@@ -44,7 +78,7 @@
     $("#delete-exps").click(function(){
       
       selected = getSelected();
-      var newurl = '/proj/{{pk_proj}}/experiments/delete_exps/' + selected.join("/");
+      var newurl = '/proj/{{pk_proj}}/delete_exps/' + selected.join("/");
       if (selected.length > 0) {
         if (confirm("Are you sure you want to delete these experiments?")) {
           $("#delete-exps").attr("href", newurl);
