@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User, Group
-from django.http import HttpResponse 
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import NewExperimentForm, PlateSetupForm, NewProjectForm
 from .models import Experiment, Library, Compound, Plate, Well, SubWell, Soak, Project
@@ -53,7 +53,7 @@ def proj_libraries(request, pk_proj):
 
 @login_required(login_url="login/")
 def experiment(request, pk):
-    experiment = Experiment.objects.select_related( 
+    experiment = Experiment.objects.select_related(
         'owner').get(id=pk)
     source_plates = experiment.plates.filter(isSource=True)
     dest_plates = experiment.plates.filter(isSource=False)
@@ -97,13 +97,13 @@ def project(request, pk):
             'librariesTable': libsTable,
         }]
     data = page_data
-    
+
     form = NewProjectForm(user=request.user)
-    data[0]['form'] = form 
+    data[0]['form'] = form
 
     #     return render(request, "projects.html", data[0])
     if request.method == 'POST':
-        form = NewProjectForm(request.POST)
+        form = NewProjectForm(request.user, request.POST)
         if form.is_valid():
             proj = form.save(commit=False)
             form_data = form.cleaned_data
@@ -112,11 +112,11 @@ def project(request, pk):
             for c in form_data['collaborators']:
                 print(c)
                 proj.collaborators.add(c)
-            
-            # return something? 
+
+            # return something?
         data[0] = page_data
-        data[0]['form'] = form    
-        
+        data[0]['form'] = form
+
     return render(request,'project.html',data[0])#,{'experiments':})
 
 @login_required(login_url="login/")
@@ -182,12 +182,12 @@ def get_user_projects(request):
 def projects(request):
     data = [get_user_projects(request)]
     form = NewProjectForm(user=request.user)
-    data[0]['form'] = form 
+    data[0]['form'] = form
     # if request.method == 'GET':
 
     #     return render(request, "projects.html", data[0])
     if request.method == 'POST':
-        form = NewProjectForm(request.POST)
+        form = NewProjectForm(request.user,request.POST)
         if form.is_valid():
             proj = form.save(commit=False)
             form_data = form.cleaned_data
@@ -196,14 +196,14 @@ def projects(request):
             for c in form_data['collaborators']:
                 print(c)
                 proj.collaborators.add(c)
-            
-            # return something? 
+
+            # return something?
         data[0] = get_user_projects(request)
-        data[0]['form'] = form    
+        data[0]['form'] = form
 
     return render(request, 'projects.html', data[0])
 
-  
+
 
 @login_required(login_url="login/")
 def delete_exp_plates(request, pk):
@@ -243,7 +243,7 @@ def _get_form(request, formcls, prefix):
 
 class NewExp(TemplateView):
     template_name = 'new_experiment.html'
-    
+
     def get(self, request, *args, **kwargs):
         lstLibraries = []
         lstLibCompounds = []
@@ -254,13 +254,13 @@ class NewExp(TemplateView):
             libs_dict[lib.name] = serialize('json',lib.compounds.order_by('id'),
                 fields=('nameInternal','smiles','molWeight'),cls=DjangoJSONEncoder)
         return self.render_to_response({
-            'aform': NewExperimentForm(prefix='aform_pre'), 
-            'bform': PlateSetupForm(prefix='bform_pre'), 
+            'aform': NewExperimentForm(prefix='aform_pre'),
+            'bform': PlateSetupForm(prefix='bform_pre'),
             'libs_dict': libs_dict,
 
                 },)
 
-    
+
     def post(self, request, *args, **kwargs):
         pk_proj = kwargs['pk_proj']
         aform = _get_form(request, NewExperimentForm, 'aform_pre')
@@ -295,18 +295,18 @@ class NewExp(TemplateView):
                 exp = form_data['experiment']
                 exp_compounds = exp.library.compounds.order_by('id')
                 num_compounds = exp_compounds.count()
-                num_src_plates = ceiling_div(num_compounds,num_src_wells) 
+                num_src_plates = ceiling_div(num_compounds,num_src_wells)
                 # list_src_plates = [Plate() for k in range(num_src_plates)]
                 # list_src_wells = [Well() for k in range(num_compounds)]
                 list_src_plates = [None for k in range(num_src_plates)]
                 list_src_wells = [None for k in range(num_compounds)]
                 # list_src_wells = [None] * num_compounds
-                
+
                 for i in range(num_src_plates):
                     list_src_plates[i] = make_instance_from_dict(model_to_dict(src_plate),
                         Plate)
                     copy_plate = list_src_plates[i]
-                    copy_plate.experiment_id = exp.pk                    
+                    copy_plate.experiment_id = exp.pk
                     copy_plate.isTemplate = False #dont want to pollute template plates
                     copy_plate.plateIdxExp = i+1
 
@@ -328,7 +328,7 @@ class NewExp(TemplateView):
                             well_idx += 1
                         except: #breaks out of loop if index out of range exception
                             break
-                                            
+
                 Well.objects.bulk_create(list_src_wells)
 
                 #------- DEST PLATES ----------
@@ -339,18 +339,18 @@ class NewExp(TemplateView):
                 list_dest_subwells = [None] * num_compounds
                 list_dest_wells = [None]*num_dest_plates*num_dest_wells
                 list_dest_plates = [None] * num_dest_plates
-                
+
 
                 for j in range(num_dest_plates):
                     list_dest_plates[j] = make_instance_from_dict(model_to_dict(dest_plate),
                         Plate)
                     copy_plate = list_dest_plates[j]
-                    copy_plate.experiment_id = exp.pk                    
+                    copy_plate.experiment_id = exp.pk
                     copy_plate.isTemplate = False #dont want to pollute template plates
                     copy_plate.plateIdxExp = j+1
 
                 Plate.objects.bulk_create(list_dest_plates)
-                
+
                 wells = dest_plate.wells.values().order_by('id')
                 well_idx = 0
                 for i in range(num_dest_plates):
@@ -387,12 +387,12 @@ class NewExp(TemplateView):
                         k += 1
                         try:
                             if s['idx'] in crystal_locations:
-                 
+
                                 list_dest_subwells[subwell_idx] = copy_subwell
                                 subwell_idx += 1
                         except:
                             break
-                        
+
                 SubWell.objects.bulk_create(list_dest_subwells)
                 # src_wells_qs = Well.objects.filter(plate__experiment_id=exp.id
                 #     ).filter(plate__isSource=True).order_by('id').prefetch_related('compounds')
