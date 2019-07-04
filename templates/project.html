@@ -46,7 +46,8 @@
                       New Experiment
                   </button>
                   <!--<a class="btn btn-info" role="button" href={% url 'new_proj_experiment' pk_proj %}> New Experiment </a>-->
-                  <a class="btn btn-info" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a>
+                  <a  class="btn btn-info" role="button" id="delete-exps"> Delete Selected </a>
+                  {# <a  onclick="return deleteSelExps()" class="btn btn-info" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a> #}
             </div>
         </div>
         <div class="col-md-6">
@@ -75,16 +76,19 @@
       return selected;
     }
 
-    $("#delete-exps").click(function(){
+    $("#delete-exps").on("click",function(e){
       
       selected = getSelected();
+      e.preventDefault();
       var newurl = '/proj/{{pk_proj}}/delete_exps/' + selected.join("/");
       if (selected.length > 0) {
         if (confirm("Are you sure you want to delete these experiments?")) {
-          $("#delete-exps").attr("href", newurl);
+          // $("#delete-exps").prop("href", newurl);
+          console.log(newurl);
+          window.location.href = newurl;
         } 
         else {
-          $("#delete-exps").attr("href", '/proj/{{pk_proj}}');
+          // $("#delete-exps").prop("href", '/proj/{{pk_proj}}');
         }
       } 
       

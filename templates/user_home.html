@@ -2,10 +2,32 @@
 {% load static %}
 {% block title %} Home {% endblock %}
 {% block content %}
+<script src="/static/js/selectDeleteDj2Table.js"></script>
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-4">
             <div class="jumbotron">
+                <h3>Projects <img src={% static 'icons/folder-1.png' %} height="10%" width="10%"> </h3>
+                <div class='container-fluid'>
+                  <div class='row justify-content-center'>
+                    <div class='col-md-12'>
+                      {% load django_tables2 %} 
+                      {% render_table projectsTable %}
+                    </div>
+                    
+                  </div>
+                  <div class='row justify-content-center'>
+                    <div class='col-md-12'>
+                      <a class="btn btn-info" role="button" id="delete-projs" href={% url 'delete_projs' '0/' %}> Deleted selected </a>
+                      <!-- Button to Open the Modal -->
+                      <button type="button" class="btn btn-info" data-toggle="modal" data-target="#newProj">
+                          New Project
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!--
                 <h3>Projects <img src={% static 'icons/folder-1.png' %} height="10%" width="10%"> </h3>
                 Latest projects: <br>
                 {% for proj in recent_projs %}
@@ -14,6 +36,7 @@
                 {% endfor %}
                 {# <a href={% url 'proj' recent_proj.pk %}> Latest project: {{recent_proj.name}} </a> <br> #}
                 - <a href={% url 'projects' %}>View all</a>
+                -->
             </div>
         </div>
         <div class="col-md-4">

@@ -76,7 +76,7 @@ def manage_user(request):
             user.save()
             messages.success(request,'Account successfully updated.')
             update_session_auth_hash(request, user)
-            
+            # return HttpResponseRedirect('')
             return redirect(reverse('user_home')) #change this to view_user.html
         # else: # a bit hacky for changing just a user's email while keeping username...
         #     if (newUsername == user.username and 

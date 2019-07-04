@@ -1,18 +1,34 @@
 #experiment/forms.py
 from django import forms
 from django.contrib.auth.models import User, Group
-from .models import Experiment, Plate, CrystalScreen, Library, Project
+from .models import Experiment, Plate, CrystalScreen, Project
 from django.forms import ModelChoiceField
- 
-class NewProjectForm(forms.ModelForm):
+from django.contrib.admin.widgets import FilteredSelectMultiple
+
+class ProjectForm(forms.ModelForm):
+    class Media:
+        # Django also includes a few javascript files necessary
+        # for the operation of this form element. You need to
+        # include <script src="/static/admin/js/jsi18n.js"></script>
+        # in the template.
+        css = {
+            'all': ('/static/admin/css/widgets.css',)
+        }
+        js=('/static/admin/js/jsi18n.js',)
+
     class Meta:
         model = Project
         fields=('name','description','collaborators')
 
     def __init__(self, user, *args, **kwargs):
-        super(NewProjectForm, self).__init__(*args, **kwargs)
-        collaborators=User.objects.filter(groups__in=user.groups.all()).exclude(id=user.id)    
-        self.fields['collaborators'].queryset = collaborators
+        super(ProjectForm, self).__init__(*args, **kwargs)
+        collab_qs=User.objects.filter(groups__in=user.groups.all()).exclude(id=user.id)    
+        # self.fields['collaborators'].queryset = collab_qs
+        self.fields['collaborators'] = forms.ModelMultipleChoiceField(
+            queryset=collab_qs,
+            widget=FilteredSelectMultiple("User", 
+                is_stacked=False, attrs={'rows':'5'}),
+                required=False)
 
 
 class NewExperimentForm(forms.ModelForm):

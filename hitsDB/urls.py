@@ -27,6 +27,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     re_path(r'', include('log.urls')),
     re_path(r'', include('experiment.urls')),
+    re_path(r'', include('import_ZINC.urls')),
     re_path(r'^register/$', views.register, name='register'),
     url(r'^activate/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$',
         views.activate, name='activate'),
@@ -34,7 +35,7 @@ urlpatterns = [
         views.reset_password, name='reset_password'),
     re_path(r'^user_recover/$',views.user_recover, name='user_recover'),
     re_path(r'^login/$', authviews.LoginView.as_view(template_name= 'login.html', authentication_form= forms.LoginForm)),
-    re_path(r'^logout/$', authviews.LogoutView.as_view(next_page= '/login')), 
+    re_path(r'^logout/$', authviews.LogoutView.as_view(next_page= '/login')),
 ]
 
 if settings.DEBUG:

@@ -2,27 +2,28 @@ from django.db import models
 from datetime import date
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
+from import_ZINC.models import Library, Compound
 
 # Create your models here.
-class Library(models.Model):
-    name = models.CharField(max_length=30, unique=True)
-    # name = models.CharField(max_length=30, )
-    description = models.CharField(max_length=300, default='')
-    groups = models.ManyToManyField(Group, related_name='libraries',)
-    isTemplate = models.BooleanField(default=False)
-    
-    def __str__(self):
-        return self.name
 
 class Project(models.Model):
     name = models.CharField(max_length=30)
     owner = models.ForeignKey(User, related_name='projects',on_delete=models.CASCADE)
     dateTime = models.DateTimeField(auto_now_add=True)
     description = models.CharField(max_length=300)
-    collaborators = models.ManyToManyField(User, related_name='collab_projects',blank=True)
+    collaborators = models.ManyToManyField(User, related_name='collab_projects',blank=True) 
+    
+    # takes in exc list of column names to exclude
+    def getExperimentsTable(self, exc=[]):
+        from .tables import ExperimentsTable
+        # might want to implement try catch
+        return ExperimentsTable(self.experiments.all(), exclude=exc)
 
     class Meta:
         get_latest_by = "dateTime"
+
+    def get_absolute_url(self):
+        return "/proj/%i/" % self.id
         
 class Experiment(models.Model):
     name = models.CharField(max_length=30)
@@ -33,7 +34,19 @@ class Experiment(models.Model):
     dateTime = models.DateTimeField(auto_now_add=True)
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)
-    
+
+    # takes in exc list of column names to exclude
+    def getSoaksTable(self, exc=[]):
+        from .tables import SoaksTable
+        # might want to implement try catch
+        return SoaksTable(self.soaks.all(), exclude=exc)
+
+    # takes in exc list of column names to exclude
+    def getPlatesTable(self, exc=[]):
+        from .tables import PlatesTable
+        # might want to implement try catch
+        return getPlatesTable(self.soaks.all(), exclude=exc)
+
     def get_absolute_url(self):
         return "/exp/%i/" % self.id
 
@@ -51,20 +64,20 @@ class CrystalScreen(models.Model):
     def __str__(self):
         return self.name
 
-class Compound(models.Model): #doesnt need to be unique?
-    # nameInternal = models.CharField(max_length=100, unique=True) 
-    nameInternal = models.CharField(max_length=100,)
-    chemFormula = models.CharField(max_length=100, default='')
-    manufacturer = models.CharField(max_length=100, default='')
-    library = models.ForeignKey(Library, related_name='compounds', on_delete=models.CASCADE, null=True, blank=True)
-    #not all smiles have unique zincID, or perhaps vice versa
-    zinc_id = models.CharField(max_length=30, default='')
-    smiles = models.CharField(max_length=200,)
-    molWeight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    concentration = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    chemName = models.CharField(max_length=1000, default='')
-    def __str__(self):
-        return self.nameInternal
+# class Compound(models.Model): #doesnt need to be unique?
+#     # nameInternal = models.CharField(max_length=100, unique=True) 
+#     commonName = models.CharField(max_length=100, default='')
+#     chemFormula = models.CharField(max_length=100, default='')
+#     manufacturer = models.CharField(max_length=100, default='')
+#     library = models.ForeignKey(Library, related_name='compounds', on_delete=models.CASCADE, null=True, blank=True)
+#     #not all smiles have unique zincID, or perhaps vice versa
+#     zinc_id = models.CharField(max_length=30, null=True, blank=True)
+#     smiles = models.CharField(max_length=200,null=True, blank=True)
+#     molWeight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+#     concentration = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+#     # chemName = models.CharField(max_length=1000, default='')
+#     def __str__(self):
+#         return self.nameInternal
 
 
 class Plate(models.Model):
@@ -187,7 +200,7 @@ class Plate(models.Model):
 
 class Well(models.Model):
     name = models.CharField(max_length=3) #format should be A1, X10, etc.
-    compounds = models.ManyToManyField(Compound, related_name='wells', null=True, blank=True) #can a well have more than one compound???
+    compounds = models.ManyToManyField(Compound, related_name='wells', blank=True) #can a well have more than one compound???
     maxResVol = models.DecimalField(max_digits=10, decimal_places=0)
     minResVol = models.DecimalField(max_digits=10, decimal_places=0)
     plate = models.ForeignKey(Plate, on_delete=models.CASCADE, related_name='wells',null=True, blank=True)
@@ -207,7 +220,7 @@ class SubWell(models.Model):
     maxDropVol = models.DecimalField(max_digits=10, decimal_places=0,default=5.0) #in uL
     minDropVol = models.DecimalField(max_digits=10, decimal_places=0, default=0.5) #in uL
     parentWell = models.ForeignKey(Well,on_delete=models.CASCADE, related_name='subwells',null=True, blank=True)
-    compounds = models.ManyToManyField(Compound, related_name='subwells',null=True, blank=True)
+    compounds = models.ManyToManyField(Compound, related_name='subwells', blank=True)
     protein = models.CharField(max_length=100, default="")
     #src_plate_well = models.CharField(max_length=20,default="")
     #expSrcWell = models.ForeignKey(Well, on_delete=models.CASCADE, related_name='dest_subwells',null=True,blank=True) #experiment source well 

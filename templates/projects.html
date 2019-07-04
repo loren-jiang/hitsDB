@@ -1,33 +1,35 @@
 {% extends 'base.html' %}
+
+
 {% block content %}
+
+
 <!-- The Modal -->
 <div class="modal fade" id="newProj">
-  
+  <form method="post" >
   <div class="modal-dialog">
     <div class="modal-content">
-    
       <!-- Modal Header -->
       <div class="modal-header">
         <h4 class="modal-title">New Project</h4>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
-      
       <!-- Modal body -->
       <div class="modal-body">
-        <form method="post" >
+        
           {% csrf_token %}
           {% include 'bs4_form.html' with form=form %}
-          <input type="submit" value="Create" />
-        </form>
+          
+        
       </div>
-      
       <!-- Modal footer -->
       <div class="modal-footer">
+        <input type="submit" class="btn btn-primary" value="Create" />
         <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
       </div>
-      
     </div>
   </div>
+  </form>
 </div>
 
 <div class='container-fluid'>
@@ -49,6 +51,35 @@
   </div>
 </div>
 
+<div class="modal fade" id="projEditModal">
+</div>
+
+<script>
+    $(".project_edit").click(function(ev) { // for each edit contact url
+        ev.preventDefault(); // prevent navigation
+        var url = $(this).attr('href'); // get the project_edit form href
+        $("#projEditModal").load(url, function() { // load the url into the modal
+            $(this).modal('show'); // display the modal on url load
+        });
+
+        console.log($('.proj_edit-form'));
+        return false; // prevent the click propagation
+    });
+
+    $('.proj_edit-form').on('submit', function() {
+        console.log($(this));
+        $.ajax({ 
+            type: $(this).attr('method'), 
+            url: this.action, 
+            data: $(this).serialize(),
+            context: this,
+            success: function(data, status) {
+                $('#projEditModal').html(data);
+            }
+        });
+        return false;
+    });
+</script>
 
 <script>
   $(document).ready(function() {

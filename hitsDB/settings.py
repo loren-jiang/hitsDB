@@ -44,8 +44,10 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'log',
     'experiment',
+    'import_ZINC',
     'debug_toolbar',
     'django_tables2',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -60,6 +62,11 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'hitsDB.urls'
+
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
+    # '...
+}
 
 TEMPLATES = [
     {
@@ -89,8 +96,8 @@ WSGI_APPLICATION = 'hitsDB.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'hitsdb',
-        'USER': 'loren',
+        'NAME': 'hitsDB',
+        'USER': 'postgres', #default superuser name after installing PostgreSQL
         'PASSWORD': 'coygth14',
         'HOST': 'localhost',
         'PORT': '',

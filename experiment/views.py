@@ -1,8 +1,8 @@
 from django.contrib.auth.models import User, Group
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import NewExperimentForm, PlateSetupForm, NewProjectForm
-from .models import Experiment, Library, Compound, Plate, Well, SubWell, Soak, Project
+from .forms import NewExperimentForm, PlateSetupForm, ProjectForm
+from .models import Experiment, Plate, Well, SubWell, Soak, Project
 from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.serializers import serialize
@@ -12,12 +12,24 @@ from .helper_fxns import ceiling_div, chunk_list, split_list, formatSoaks
 from .tables import SoaksTable, ExperimentsTable, ProjectsTable, LibrariesTable, CompoundsTable
 from django_tables2 import RequestConfig
 from djqscsv import render_to_csv_response
-from copy import deepcopy
 from django.forms.models import model_to_dict
-
+from import_ZINC.models import Library, Compound
 
 # Create your views here.
-login_required(login_url="login/")
+@login_required(login_url="login/")
+def home(request):
+    user = request.user
+    projectsTable = get_user_projects(request, excludeCols=["owner","collaborators","id"]) #takes in request
+    # recent_projs = Project.objects.filter(owner=user)[:3]
+    data = {
+        'user':user,
+        'projectsTable':projectsTable,
+        # 'recent_projs':recent_projs,
+    }
+
+    return render(request,"user_home.html", data)
+
+@login_required(login_url="login/")
 def lib_compounds(request, pk_lib):
     lib = get_object_or_404(Library, pk=pk_lib)
     compounds = lib.compounds.all()
@@ -60,12 +72,12 @@ def experiment(request, pk):
     num_src_plates = len(source_plates)
     num_dest_plates = len(dest_plates)
     soaks_qs = Soak.objects.filter(experiment=experiment
-        ).select_related('dest__parentWell__plate','src__plate','transferCompound__library').order_by('id')
+        ).select_related('dest__parentWell__plate','src__plate',
+        ).prefetch_related('transferCompound__library',).order_by('id')
     table=SoaksTable(soaks_qs)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
 
-    formattedSoaks = formatSoaks(soaks_qs,
-        num_src_plates,num_dest_plates)
+    formattedSoaks = formatSoaks(soaks_qs,num_src_plates,num_dest_plates)
 
     data = {
         'pkUser': request.user.id,
@@ -80,10 +92,8 @@ def experiment(request, pk):
     }
     return render(request,'experiment.html', data)
 
-
-@login_required(login_url="login/")
-def project(request, pk):
-    pk_proj = pk
+# retrieves the libraries assoc with experiments in a certain proj
+def get_proj_exps_libs(request, pk_proj):
     exps = Experiment.objects.filter(project_id=pk_proj)
     libs_qs = Library.objects.filter(experiments__in=exps).union(
         Library.objects.filter(isTemplate=True))
@@ -91,43 +101,75 @@ def project(request, pk):
     libsTable = LibrariesTable(libs_qs)
     RequestConfig(request, paginate={'per_page': 5}).configure(experimentsTable)
     RequestConfig(request, paginate={'per_page': 5}).configure(libsTable)
-    page_data = [{
+    page_data = {
             'experimentsTable': experimentsTable,
-            'pk_proj':pk,
+            'pk_proj':pk_proj,
             'librariesTable': libsTable,
-        }]
-    data = page_data
+        }
+    return page_data
 
-    form = NewProjectForm(user=request.user)
+# edit project fields like name, description, and collaborators (any more?)
+@login_required(login_url="login/")
+def project_edit(request,pk):
+    pk_proj = pk
+    proj = Project.objects.get(pk=pk_proj)
+    init_form_data = {
+        "name":proj.name,
+        "description":proj.description,
+    }
+    form = ProjectForm(request.user,initial=init_form_data)
+    
+    if request.method == 'POST':
+        form = ProjectForm(request.user, request.POST, instance=proj)
+        if request.POST.get('cancel', None):
+            return redirect("projects")
+        if form.is_valid() and form.has_changed():
+            form.save()
+        return redirect("projects")
+
+    data = {
+        "arg":pk_proj,
+        "form":form,
+        "modal_title":"Edit Project",
+        "action":"/proj/edit/", #should be view w/o arg
+        "form_class":"proj_edit-form",
+    }
+    return render(request,'modal_form.html', data)#,{'experiments':})
+
+@login_required(login_url="login/")
+def project(request, pk):
+    pk_proj = pk
+
+    data = [get_proj_exps_libs(request, pk_proj)]
+
+    form = NewExperimentForm()
     data[0]['form'] = form
 
     #     return render(request, "projects.html", data[0])
     if request.method == 'POST':
-        form = NewProjectForm(request.user, request.POST)
+        form = NewExperimentForm(request.POST)
         if form.is_valid():
-            proj = form.save(commit=False)
+            exp = form.save(commit=False)
             form_data = form.cleaned_data
-            proj.owner = request.user
-            proj.save()
-            for c in form_data['collaborators']:
-                print(c)
-                proj.collaborators.add(c)
+            exp.project = Project.objects.get(id=pk_proj)
+            exp.owner = request.user
+            exp.save()
 
-            # return something?
-        data[0] = page_data
-        data[0]['form'] = form
+        data[0] = get_proj_exps_libs(request, pk_proj)
+        data[0]['form'] = NewExperimentForm()
 
     return render(request,'project.html',data[0])#,{'experiments':})
 
 @login_required(login_url="login/")
 def delete_projects(request, pks):
     pks = pks.split('/')
-    print(pks)
+
     for pk in pks:
         if pk: #check if pk is not empty
             try:
                 proj = get_object_or_404(Project, pk=pk)
-                proj.delete()
+                if (proj.owner.pk == request.user.pk):
+                    proj.delete()
             except:
                 break
     return redirect('projects')
@@ -154,8 +196,10 @@ def delete_experiments(request, pks, pk_proj=None):
         for pk in pks:
             if pk: #check if pk is not empty
                 try:
-                    experiment = get_object_or_404(Experiment, pk=pk)
-                    experiment.delete()
+                    exp = get_object_or_404(Experiment, pk=pk)
+                    if (exp.owner == request.user):
+                        # print(pk)
+                        exp.delete()
                 except:
                     break
         return redirect('proj',pk_proj)
@@ -164,42 +208,43 @@ def delete_experiments(request, pks, pk_proj=None):
         for pk in pks:
             if pk: #check if pk is not empty
                 try:
-                    experiment = get_object_or_404(Experiment, pk=pk)
-                    experiment.delete()
+                    exp = get_object_or_404(Experiment, pk=pk)
+                    if (exp.owner.pk == request.user.pk):
+                        exp.delete()
                 except:
                     break
         return redirect('experiments')
 
-def get_user_projects(request):
+# returns user projects as django tables 2
+# argument should be request for pagination to work properly
+def get_user_projects(request, excludeCols=[]):
     user_proj_qs = request.user.projects.all()
     user_collab_proj_qs = request.user.collab_projects.all()
-    projectsTable = ProjectsTable(user_proj_qs.union(user_collab_proj_qs))
+    projectsTable = ProjectsTable(data=user_proj_qs.union(user_collab_proj_qs),exclude=excludeCols)
     RequestConfig(request, paginate={'per_page': 5}).configure(projectsTable)
-    return {
-        'projectsTable': projectsTable,
-    }
+    # return {
+    #     'projectsTable': projectsTable,
+    # }
+    return projectsTable
+
 @login_required(login_url="login/")
 def projects(request):
-    data = [get_user_projects(request)]
-    form = NewProjectForm(user=request.user)
+    data = [{"projectsTable":get_user_projects(request)}]
+    form = ProjectForm(user=request.user)
     data[0]['form'] = form
     # if request.method == 'GET':
-
     #     return render(request, "projects.html", data[0])
     if request.method == 'POST':
-        form = NewProjectForm(request.user,request.POST)
+        form = ProjectForm(request.user,request.POST)
         if form.is_valid():
             proj = form.save(commit=False)
             form_data = form.cleaned_data
             proj.owner = request.user
             proj.save()
             for c in form_data['collaborators']:
-                print(c)
                 proj.collaborators.add(c)
-
-            # return something?
-        data[0] = get_user_projects(request)
-        data[0]['form'] = form
+        data[0] = {"projectsTable":get_user_projects(request)}
+        data[0]['form'] = ProjectForm(request.user)
 
     return render(request, 'projects.html', data[0])
 

@@ -54,23 +54,16 @@ def getSubwellIdx(plateIdx, wellIdx, subwellIdx=0, numWells=96, numSubwells=3):
 
 def formatSoaks(soaks,num_src_plates, num_dest_plates):
     soaks_lst = [soak for soak in soaks]
-    # first_dest_well = Well.objects.get(soaks_lst[0].dest.parentWell.id)
-    # soaks_json = serialize('json',soaks,cls=DjangoJSONEncoder)
-    # src_iter = iter(srcs)
-    # dest_iter = iter(dests)
-    # compound_iter = iter(compounds)
-
     src_wells = [0]*num_src_plates*384
     dest_subwells = [0]*num_dest_plates*96*3
     subwells = [0]*3 #three subwells locations
+
     for j in range(len(soaks_lst)):
-        # try:
         s = soaks_lst[j]
         src = s.src
         src_well_idx = src.wellIdx
         src_plate_idx = src.plate.plateIdxExp
         s_w_idx = getWellIdx(src_plate_idx,src_well_idx,384)
-
         dest = s.dest
         dest_subwell_idx = dest.idx
         dest_parentwell_idx = dest.parentWell.wellIdx
