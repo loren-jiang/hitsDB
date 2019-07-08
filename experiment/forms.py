@@ -5,6 +5,21 @@ from .models import Experiment, Plate, CrystalScreen, Project
 from django.forms import ModelChoiceField
 from django.contrib.admin.widgets import FilteredSelectMultiple
 
+# simple form to edit Project fields (name, description)
+class SimpleProjectForm(forms.ModelForm):
+    class Media:
+        # Django also includes a few javascript files necessary
+        # for the operation of this form element. You need to
+        # include <script src="/static/admin/js/jsi18n.js"></script>
+        # in the template.
+        css = {
+            'all': ('/static/admin/css/widgets.css',)
+        }
+        js=('/static/admin/js/jsi18n.js',)
+    class Meta:
+        model = Project
+        fields=("name","description",)
+
 class ProjectForm(forms.ModelForm):
     class Media:
         # Django also includes a few javascript files necessary
@@ -40,6 +55,11 @@ class NewExperimentForm(forms.ModelForm):
     class Meta:
         model = Experiment
         fields = ("name", "description", "protein", "library",)
+
+class SourcePlateForm(forms.ModelForm):
+    class Meta:
+        model = Plate
+        fields = ("formatType",)
 
 class PlateSetupForm(forms.Form):
     source_plate = forms.ModelChoiceField(queryset=Plate.objects

@@ -2,6 +2,7 @@
 
 
 {% block content %}
+<script src="/static/js/selectDeleteDj2Table.js"></script>
 
 
 <!-- The Modal -->
@@ -54,59 +55,34 @@
 <div class="modal fade" id="projEditModal">
 </div>
 
-<script>
-    $(".project_edit").click(function(ev) { // for each edit contact url
-        ev.preventDefault(); // prevent navigation
-        var url = $(this).attr('href'); // get the project_edit form href
-        $("#projEditModal").load(url, function() { // load the url into the modal
-            $(this).modal('show'); // display the modal on url load
-        });
-
-        console.log($('.proj_edit-form'));
-        return false; // prevent the click propagation
-    });
-
-    $('.proj_edit-form').on('submit', function() {
-        console.log($(this));
-        $.ajax({ 
-            type: $(this).attr('method'), 
-            url: this.action, 
-            data: $(this).serialize(),
-            context: this,
-            success: function(data, status) {
-                $('#projEditModal').html(data);
-            }
-        });
-        return false;
-    });
-</script>
+<script src="/static/js/editProjectModal.js"></script>
 
 <script>
   $(document).ready(function() {
        
-    function getSelected() {
-      var selected = [];
-                $.each($("td input[type='checkbox']:checked"), function(){
-                    var exp = $(this).val();     
-                    if (exp.length > 0)  {selected.push(exp);}   
-                });
-      return selected;
-    }
+    // function getSelected() {
+    //   var selected = [];
+    //             $.each($("td input[type='checkbox']:checked"), function(){
+    //                 var exp = $(this).val();     
+    //                 if (exp.length > 0)  {selected.push(exp);}   
+    //             });
+    //   return selected;
+    // }
 
-    $("#delete-projs").click(function(){
+    // $("#delete-projs").click(function(){
       
-      selected = getSelected();
-      var newurl = '/projects/delete_projs/' + selected.join("/");
-      if (selected.length > 0) {
-        if (confirm("Are you sure you want to delete these projects?")) {
-          $("#delete-projs").attr("href", newurl);
-        } 
-        else {
-          $("#delete-projs").attr("href", '/projects/');
-        }
-      } 
+    //   selected = getSelected();
+    //   var newurl = '/projects/delete_projs/' + selected.join("/");
+    //   if (selected.length > 0) {
+    //     if (confirm("Are you sure you want to delete these projects?")) {
+    //       $("#delete-projs").attr("href", newurl);
+    //     } 
+    //     else {
+    //       $("#delete-projs").attr("href", '/projects/');
+    //     }
+    //   } 
       
-    });
+    // });
             
   });
 

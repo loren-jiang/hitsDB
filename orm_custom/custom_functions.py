@@ -12,3 +12,9 @@ def bulk_add(throughRel, a_pks, b_pks, a_col_name, b_col_name):
     rels = throughRel.objects.bulk_create(relations, ignore_conflicts=True)
     return rels
 
+def make_instance_from_dict(instance_model_a_as_dict,model_a):
+    try:
+        del instance_model_a_as_dict['id'] #deletes id so we dont copy primary keys
+    except KeyError:
+        pass
+    return model_a(**instance_model_a_as_dict)

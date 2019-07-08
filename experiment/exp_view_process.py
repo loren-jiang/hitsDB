@@ -1,10 +1,3 @@
-from django.contrib.auth.models import User, Group
-from django.http import HttpResponse 
-from django.shortcuts import render, redirect, get_object_or_404
-from .models import Experiment, Library, Compound, Plate, Well, SubWell, Soak
-from django.core.serializers.json import DjangoJSONEncoder
-from django.core.serializers import serialize
-
 def ceiling_div(x,y):
     return -(-x // y)
 
@@ -23,6 +16,7 @@ def split_list(alist, wanted_parts=1):
     length = len(alist)
     return [ alist[i*length // wanted_parts: (i+1)*length // wanted_parts] 
              for i in range(wanted_parts) ]
+
 
 def parsePlate(p):
     qs = p.wells.select_related('plate','crystal_screen').prefetch_related('compounds',
@@ -52,24 +46,28 @@ def getSubwellIdx(plateIdx, wellIdx, subwellIdx=0, numWells=96, numSubwells=3):
     well_index = ((plateIdx-1)*numWells + wellIdx-1)
     return  well_index*numSubwells + (subwellIdx - 1)
 
-def formatSoaks(soaks,num_src_plates, num_dest_plates):
-    soaks_lst = [soak for soak in soaks]
+def formatSoaks(self, num_src_plates, s_num_wells=384,d_num_wells=96, d_num_subwells=3):
+    qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
+        ).prefetch_related('transferCompound__library',
+        ).order_by('id')
+
+    soaks_lst = [soak for soak in qs_soaks]
     src_wells = [0]*num_src_plates*384
     dest_subwells = [0]*num_dest_plates*96*3
     subwells = [0]*3 #three subwells locations
 
     for j in range(len(soaks_lst)):
         s = soaks_lst[j]
-        src = s.src
+        src = s.src # source Well
         src_well_idx = src.wellIdx
         src_plate_idx = src.plate.plateIdxExp
-        s_w_idx = getWellIdx(src_plate_idx,src_well_idx,384)
+        s_w_idx = getWellIdx(src_plate_idx,src_well_idx, s_num_wells)
         dest = s.dest
         dest_subwell_idx = dest.idx
         dest_parentwell_idx = dest.parentWell.wellIdx
         dest_plate_idx = dest.parentWell.plate.plateIdxExp
         d_sw_idx = getSubwellIdx(dest_plate_idx,dest_parentwell_idx,
-            dest_subwell_idx,96,3)
+            dest_subwell_idx, d_num_wells,d_num_subwells) # MAKE MODULAR
         compound = s.transferCompound
         src_wells[s_w_idx] = {
                             'well_id':src.id, 

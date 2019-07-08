@@ -10,6 +10,7 @@ urlpatterns = [
     re_path(r'^lib_compounds/(?P<pk_lib>\d+)$', views.lib_compounds, name='lib_compounds'),
     re_path(r'^libraries/$', views.libraries, name='libs'),
     re_path(r'^proj/edit/(?P<pk>\d+)$', views.project_edit, name='proj_edit'),
+    re_path(r'^proj/simple_edit/(?P<pk>\d+)$', views.project_edit_simple, name='proj_edit_simple'),
     re_path(r'^proj_libraries/(?P<pk_proj>\d+)$', views.proj_libraries, name='proj_libs'),
     re_path(r'^projects/$', views.projects, name='projects'),
     re_path(r'^projects/delete_projs/(?P<pks>(?:\d+/)+)$', views.delete_projects,

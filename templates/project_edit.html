@@ -1,22 +1,17 @@
-<div class="modal-dialog">
-  <form class="proj_edit-form" method="post" action="/proj/edit/{{pk_proj}}">
-    <div class="modal-content">
-      <!-- Modal Header -->
-      <div class="modal-header">
-        <h4 class="modal-title">Edit Project</h4>
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-      </div>
-      <div class="modal-body">
-        
-           {% csrf_token %}
-           {% include 'bs4_form.html' with form=form %}
-        
-      </div>
-      <!-- Modal Footer -->
-      <div class="modal-footer">
-           <input type="submit" value="Create" />
-           <input name="cancel" class="btn" type="submit" value="Cancel"/>
-      </div>
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  {{ form.media }}
+  <div class="container-fluid">
+        <div class="col-lg-8 offset-md-2">
+            <h1>Edit project</h1>
+            <form method="post" >
+                {% csrf_token %}
+                {% include 'bs4_form.html' with form=form %}
+                <button type="submit" class="btn btn-primary">Save</button>
+            </form>
+        </div>
     </div>
-  </form>
-</div>
+{% endblock %}
+

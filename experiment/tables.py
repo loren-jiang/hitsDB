@@ -2,6 +2,7 @@ import django_tables2 as tables
 from django_tables2.utils import A  # alias for Accessor
 from .models import Project, Experiment, Soak, Plate
 from import_ZINC.models import Compound, Library
+from django.contrib.auth.models import User, Group
 
 class PlatesTable(tables.Table):
 
@@ -17,6 +18,12 @@ class SoaksTable(tables.Table):
     class Meta:
         model = Soak 
         template_name = 'django_tables2/bootstrap-responsive.html'
+
+class CollaboratorsTable(tables.Table):
+    class Meta:
+        model = User
+        template_name = 'django_tables2/bootstrap-responsive.html'
+        fields = ("username",)
 
 class ExperimentsTable(tables.Table):
     name = tables.LinkColumn(viewname='exp', args=[A('pk')])
@@ -34,7 +41,7 @@ class ProjectsTable(tables.Table):
     collaborators = tables.ManyToManyColumn()
     experiments = tables.ManyToManyColumn(separator=', ',verbose_name="Experiments",linkify_item=True,)
     id = tables.LinkColumn(verbose_name='Modify',text="Edit", 
-        viewname='proj_edit', args=[A('pk')], 
+        viewname='proj_edit_simple', args=[A('pk')], 
         attrs={'a': {
                         "data-toggle":"modal", 
                         "data-target":"#projEditModal",

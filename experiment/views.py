@@ -1,22 +1,23 @@
 from django.contrib.auth.models import User, Group
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import NewExperimentForm, PlateSetupForm, ProjectForm
+from .forms import NewExperimentForm, PlateSetupForm, ProjectForm, SimpleProjectForm
 from .models import Experiment, Plate, Well, SubWell, Soak, Project
 from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.serializers import serialize
 from django.views.generic.base import TemplateView
 from django.db import transaction
-from .helper_fxns import ceiling_div, chunk_list, split_list, formatSoaks
+from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from .tables import SoaksTable, ExperimentsTable, ProjectsTable, LibrariesTable, CompoundsTable
 from django_tables2 import RequestConfig
 from djqscsv import render_to_csv_response
 from django.forms.models import model_to_dict
 from import_ZINC.models import Library, Compound
+from django.urls import reverse
 
 # Create your views here.
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def home(request):
     user = request.user
     projectsTable = get_user_projects(request, excludeCols=["owner","collaborators","id"]) #takes in request
@@ -29,7 +30,7 @@ def home(request):
 
     return render(request,"user_home.html", data)
 
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def lib_compounds(request, pk_lib):
     lib = get_object_or_404(Library, pk=pk_lib)
     compounds = lib.compounds.all()
@@ -40,7 +41,7 @@ def lib_compounds(request, pk_lib):
     }
     return render(request,'lib_compounds.html', data)
 
-login_required(login_url="login/")
+login_required(login_url="/login")
 def libraries(request):
     libs_qs = Library.objects.filter(groups__in=request.user.groups.all()).union(
         Library.objects.filter(isTemplate=True))
@@ -51,7 +52,7 @@ def libraries(request):
     }
     return render(request,'libraries.html', data)
 
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def proj_libraries(request, pk_proj):
     exps = Experiment.objects.filter(project_id=pk_proj)
     libs_qs = Library.objects.filter(experiments__in=exps).union(
@@ -63,7 +64,7 @@ def proj_libraries(request, pk_proj):
     }
     return render(request,'libraries.html', data)
 
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def experiment(request, pk):
     experiment = Experiment.objects.select_related(
         'owner').get(id=pk)
@@ -109,18 +110,42 @@ def get_proj_exps_libs(request, pk_proj):
     return page_data
 
 # edit project fields like name, description, and collaborators (any more?)
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def project_edit(request,pk):
     pk_proj = pk
     proj = Project.objects.get(pk=pk_proj)
     init_form_data = {
         "name":proj.name,
         "description":proj.description,
+
     }
-    form = ProjectForm(request.user,initial=init_form_data)
     
     if request.method == 'POST':
         form = ProjectForm(request.user, request.POST, instance=proj)
+        if form.is_valid() and form.has_changed():
+            form.save()
+            return redirect(reverse("proj",args=[pk_proj]))
+    else:
+        form = ProjectForm(request.user,initial=init_form_data,instance=proj)
+    data = {
+        "arg":pk_proj,
+        "form":form,
+    }
+    return render(request,'project_edit.html', data)#,{'experiments':})
+
+# edit simple project fields like name and description
+@login_required(login_url="/login")
+def project_edit_simple(request,pk):
+    pk_proj = pk
+    proj = Project.objects.get(pk=pk_proj)
+    init_form_data = {
+        "name":proj.name,
+        "description":proj.description,
+
+    }
+    form = SimpleProjectForm(initial=init_form_data)
+    if request.method == 'POST':
+        form = SimpleProjectForm( request.POST, instance=proj)
         if request.POST.get('cancel', None):
             return redirect("projects")
         if form.is_valid() and form.has_changed():
@@ -131,22 +156,31 @@ def project_edit(request,pk):
         "arg":pk_proj,
         "form":form,
         "modal_title":"Edit Project",
-        "action":"/proj/edit/", #should be view w/o arg
+        "action":"/proj/simple_edit/", #should be view w/o arg
         "form_class":"proj_edit-form",
     }
     return render(request,'modal_form.html', data)#,{'experiments':})
 
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def project(request, pk):
     pk_proj = pk
+    proj = Project.objects.get(pk=pk_proj)
 
-    data = [get_proj_exps_libs(request, pk_proj)]
-
+    # data = [get_proj_exps_libs(request, pk_proj)]
+    data = [
+            {
+                'experimentsTable': proj.getExperimentsTable(),
+                'pk_proj':pk_proj,
+                'librariesTable': proj.getLibrariesTable(),
+                'collaboratorsTable' :proj.getCollaboratorsTable(),
+            }
+        ]
     form = NewExperimentForm()
     data[0]['form'] = form
 
     #     return render(request, "projects.html", data[0])
     if request.method == 'POST':
+
         form = NewExperimentForm(request.POST)
         if form.is_valid():
             exp = form.save(commit=False)
@@ -154,13 +188,33 @@ def project(request, pk):
             exp.project = Project.objects.get(id=pk_proj)
             exp.owner = request.user
             exp.save()
-
-        data[0] = get_proj_exps_libs(request, pk_proj)
+        # data[0] = get_proj_exps_libs(request, pk_proj)
         data[0]['form'] = NewExperimentForm()
 
     return render(request,'project.html',data[0])#,{'experiments':})
 
-@login_required(login_url="login/")
+@login_required(login_url="/login")
+def projects(request):
+    data = [{"projectsTable":get_user_projects(request)}]
+    form = ProjectForm(user=request.user)
+    data[0]['form'] = form
+    # if request.method == 'GET':
+    #     return render(request, "projects.html", data[0])
+    if request.method == 'POST':
+        form = ProjectForm(request.user,request.POST)
+        if form.is_valid():
+            proj = form.save(commit=False)
+            form_data = form.cleaned_data
+            proj.owner = request.user
+            proj.save()
+            for c in form_data['collaborators']:
+                proj.collaborators.add(c)
+        data[0] = {"projectsTable":get_user_projects(request)}
+        data[0]['form'] = ProjectForm(request.user)
+
+    return render(request, 'projects.html', data[0])
+
+@login_required(login_url="/login")
 def delete_projects(request, pks):
     pks = pks.split('/')
 
@@ -174,7 +228,7 @@ def delete_projects(request, pks):
                 break
     return redirect('projects')
 
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def experiments(request):
     experimentsTable = ExperimentsTable(request.user.experiments.all())
     RequestConfig(request, paginate={'per_page': 5}).configure(experimentsTable)
@@ -183,13 +237,13 @@ def experiments(request):
     }
     return render(request,'experiments.html',data)#,{'experiments':})
 
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def delete_experiment(request, pk):
     experiment = get_object_or_404(Experiment, pk=pk)
     experiment.delete()
     return redirect('experiments')
 
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def delete_experiments(request, pks, pk_proj=None):
     if pk_proj:
         pks = pks.split('/')
@@ -227,30 +281,9 @@ def get_user_projects(request, excludeCols=[]):
     # }
     return projectsTable
 
-@login_required(login_url="login/")
-def projects(request):
-    data = [{"projectsTable":get_user_projects(request)}]
-    form = ProjectForm(user=request.user)
-    data[0]['form'] = form
-    # if request.method == 'GET':
-    #     return render(request, "projects.html", data[0])
-    if request.method == 'POST':
-        form = ProjectForm(request.user,request.POST)
-        if form.is_valid():
-            proj = form.save(commit=False)
-            form_data = form.cleaned_data
-            proj.owner = request.user
-            proj.save()
-            for c in form_data['collaborators']:
-                proj.collaborators.add(c)
-        data[0] = {"projectsTable":get_user_projects(request)}
-        data[0]['form'] = ProjectForm(request.user)
-
-    return render(request, 'projects.html', data[0])
 
 
-
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def delete_exp_plates(request, pk):
     exp = get_object_or_404(Experiment, pk=pk)
     for p in exp.plates.all():
@@ -285,6 +318,12 @@ def _get_form(request, formcls, prefix):
 
     data = request.POST if prefix in request.POST else None
     return formcls(data, prefix=prefix)
+
+# class ProjectView(MultiFormsView):
+#     template_name = 'public/my_login_signup_template.html'
+#     form_classes = {'new_experiment': NewExperimentForm,
+#                     'edit_project': ProjectForm, }
+#     success_url = 'my/success/url'
 
 class NewExp(TemplateView):
     template_name = 'new_experiment.html'
@@ -327,17 +366,19 @@ class NewExp(TemplateView):
             go_to_div = "list-plates"
 
         elif bform.is_bound and bform.is_valid():
-            with transaction.atomic(): #wont commit until block is successfully executed. 18 sec --> 12 sec performance boost
+            with transaction.atomic(): #wont commit until block is successfully executed. 
                 # Process bform and render response
                 form_data = bform.cleaned_data
                 crystal_locations = [int(idx) for idx in form_data['crystal_locations']]
                 screen = form_data['dest_plate_screen']
-
                 src_plate = form_data['source_plate']
                 src_plate_id = src_plate.id
                 # dest_plate = form_data['dest_plate']
                 num_src_wells = src_plate.numCols * src_plate.numRows
                 exp = form_data['experiment']
+
+                ##--------------------
+                
                 exp_compounds = exp.library.compounds.order_by('id')
                 num_compounds = exp_compounds.count()
                 num_src_plates = ceiling_div(num_compounds,num_src_wells)
@@ -467,5 +508,6 @@ class NewExp(TemplateView):
 
         # elif cform.is_bound and cform.is_valid():
         #     form_data = cform.cleaned_data
+
         data = {'aform': aform, 'bform': bform, 'go_to_div': go_to_div,}
         return self.render_to_response(data)
