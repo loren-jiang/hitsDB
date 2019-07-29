@@ -78,7 +78,7 @@ def experiment(request, pk):
     table=SoaksTable(soaks_qs)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
 
-    formattedSoaks = formatSoaks(soaks_qs,num_src_plates,num_dest_plates)
+    formattedSoaks = experiment.formatSoaks(num_src_plates,num_dest_plates)
 
     data = {
         'pkUser': request.user.id,
@@ -124,7 +124,7 @@ def project_edit(request,pk):
         form = ProjectForm(request.user, request.POST, instance=proj)
         if form.is_valid() and form.has_changed():
             form.save()
-            return redirect(reverse("proj",args=[pk_proj]))
+        return redirect(reverse("proj",args=[pk_proj]))
     else:
         form = ProjectForm(request.user,initial=init_form_data,instance=proj)
     data = {

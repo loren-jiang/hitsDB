@@ -56,7 +56,8 @@ class Experiment(models.Model):
     #                   'num_subwells':# of subwells/well
     #                   }
     # - dest_params: same thing as above but for destination plates
-    def formatSoaks(self, num_src_plates, s_num_wells=384,d_num_wells=96, d_num_subwells=3):
+    def formatSoaks(self, num_src_plates,
+        num_dest_plates, s_num_wells=384,d_num_wells=96, d_num_subwells=3):
        
 
         qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
@@ -64,8 +65,8 @@ class Experiment(models.Model):
             ).order_by('id')
 
         soaks_lst = [soak for soak in qs_soaks]
-        src_wells = [0]*num_src_plates*384
-        dest_subwells = [0]*num_dest_plates*96*3
+        src_wells = [0]*num_src_plates*s_num_wells
+        dest_subwells = [0]*num_dest_plates*d_num_wells*d_num_subwells
         subwells = [0]*3 #three subwells locations
 
         for j in range(len(soaks_lst)):
