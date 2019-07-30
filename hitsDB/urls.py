@@ -25,6 +25,7 @@ from log import views, forms
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    re_path(r'', include('s3.urls')),
     re_path(r'', include('log.urls')),
     re_path(r'', include('experiment.urls')),
     re_path(r'', include('import_ZINC.urls')),

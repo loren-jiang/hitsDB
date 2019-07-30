@@ -48,6 +48,9 @@ INSTALLED_APPS = [
     'debug_toolbar',
     'django_tables2',
     'rest_framework',
+    's3',
+    'xtal_img',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -149,6 +152,7 @@ STATICFILES_DIRS = [
 ]
 
 LOGIN_REDIRECT_URL = '/' # It means home view
+LOGIN_URL = '/login'
 
 # Send an email from xray@msg.ucsf.edu
 EMAIL_USE_TLS = True
@@ -159,15 +163,32 @@ EMAIL_PORT = 587
 
 # AWS S3 configuraiton
 
-# DEFAULT_FILE_STORAGE = 'hitsDB-ucsf.xtal_img.s3utils.MediaS3BotoStorage' 
-# STATICFILES_STORAGE = 'hitsDB-ucsf.xtal_img.s3utils.StaticS3BotoStorage'
+# DEFAULT_FILE_STORAGE = 's3.s3utils.MediaStorage' 
+# STATICFILES_STORAGE = 's3.s3utils.StaticS3BotoStorage'
 
-# AWS_ACCESS_KEY_ID = 'YOURACCESSKEY'
-# AWS_SECRET_ACCESS_KEY = 'YOURSECRETACCESSKEY'
-# AWS_STORAGE_BUCKET_NAME = 'your-bucket-name'
+AWS_DEFAULT_ACL = None
+AWS_ACCESS_KEY_ID = 'AKIAIZTKTTX7ICVDH3IQ'
+AWS_SECRET_ACCESS_KEY = 'UIRzaUxMvwHmQy8OXiL8X2lTgCZyPvip0Uru64Mo'
+AWS_STORAGE_BUCKET_NAME = 'hitsdb-bucket'
 
-# S3_URL = 'http://%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
+S3_URL = 'http://%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
 # STATIC_DIRECTORY = '/static/'
-# MEDIA_DIRECTORY = '/media/'
+MEDIA_DIRECTORY = '/media/'
 # STATIC_URL = S3_URL + STATIC_DIRECTORY
-# MEDIA_URL = S3_URL + MEDIA_DIRECTORY
+MEDIA_URL = S3_URL + MEDIA_DIRECTORY
+
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+# AWS_STATIC_LOCATION = 'static'
+# STATICFILES_STORAGE = 's3.s3utils.StaticStorage'
+# STATIC_URL = "https://%s/%s/" % (AWS_S3_CUSTOM_DOMAIN, AWS_STATIC_LOCATION)
+
+AWS_PUBLIC_MEDIA_LOCATION = 'media/public'
+DEFAULT_FILE_STORAGE = 's3.s3utils.PublicMediaStorage'
+
+AWS_PRIVATE_MEDIA_LOCATION = 'media/private'
+PRIVATE_FILE_STORAGE = 's3.s3utils.PrivateMediaStorage'
+
+# AWS_QUERYSTRING_EXPIRE = '157784630' # expiration time for signed urls in seconds
+
