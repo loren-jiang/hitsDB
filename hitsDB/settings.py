@@ -10,7 +10,7 @@ https://docs.djangoproject.com/en/2.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.1/ref/settings/
 """
-
+from decouple import config # used to retrieve sensitive credentials using python-decouple
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -99,10 +99,10 @@ WSGI_APPLICATION = 'hitsDB.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'hitsDB',
-        'USER': 'postgres', #default superuser name after installing PostgreSQL
-        'PASSWORD': 'coygth14',
-        'HOST': 'localhost',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'), 
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
         'PORT': '',
     }
 }
@@ -157,9 +157,9 @@ LOGIN_URL = '/login'
 # Send an email from xray@msg.ucsf.edu
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = 'xray@msg.ucsf.edu'
-EMAIL_HOST_PASSWORD = 'i64tbtwl'
-EMAIL_PORT = 587
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+EMAIL_PORT = config('EMAIL_PORT', cast=int)
 
 # AWS S3 configuraiton
 
@@ -167,9 +167,9 @@ EMAIL_PORT = 587
 # STATICFILES_STORAGE = 's3.s3utils.StaticS3BotoStorage'
 
 AWS_DEFAULT_ACL = None
-AWS_ACCESS_KEY_ID = 'AKIAIZTKTTX7ICVDH3IQ'
-AWS_SECRET_ACCESS_KEY = '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'
-AWS_STORAGE_BUCKET_NAME = 'hitsdb-bucket'
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
 
 S3_URL = 'http://%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
 # STATIC_DIRECTORY = '/static/'
@@ -190,5 +190,5 @@ DEFAULT_FILE_STORAGE = 's3.s3utils.PublicMediaStorage'
 AWS_PRIVATE_MEDIA_LOCATION = 'media/private'
 PRIVATE_FILE_STORAGE = 's3.s3utils.PrivateMediaStorage'
 
-# AWS_QUERYSTRING_EXPIRE = '157784630' # expiration time for signed urls in seconds
+AWS_QUERYSTRING_EXPIRE = '5000' # expiration time for signed urls in seconds
 

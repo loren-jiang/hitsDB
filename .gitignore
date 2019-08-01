@@ -7,3 +7,4 @@
 !.elasticbeanstalk/*.global.yml
 .vscode/
 requirements.txt
+.env

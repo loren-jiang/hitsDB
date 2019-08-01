@@ -139,21 +139,6 @@ class CrystalScreen(models.Model):
     def __str__(self):
         return self.name
 
-# class Compound(models.Model): #doesnt need to be unique?
-#     # nameInternal = models.CharField(max_length=100, unique=True) 
-#     commonName = models.CharField(max_length=100, default='')
-#     chemFormula = models.CharField(max_length=100, default='')
-#     manufacturer = models.CharField(max_length=100, default='')
-#     library = models.ForeignKey(Library, related_name='compounds', on_delete=models.CASCADE, null=True, blank=True)
-#     #not all smiles have unique zincID, or perhaps vice versa
-#     zinc_id = models.CharField(max_length=30, null=True, blank=True)
-#     smiles = models.CharField(max_length=200,null=True, blank=True)
-#     molWeight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-#     concentration = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-#     # chemName = models.CharField(max_length=1000, default='')
-#     def __str__(self):
-#         return self.nameInternal
-
 
 class Plate(models.Model):
     name = models.CharField(max_length=30, default="plate_name") #do I need unique?
@@ -398,57 +383,3 @@ def enum_well_location(s):
         return 
     else:
         return dic[l] + int(d)
-############# DEFAULT MODEL CLASS CREATION ########## 
-# #creates default source plate w/o compounds (can be added later)
-# def get_default_source_plate():
-#   plate384, created = Plate.objects.get_or_create(
-#       name="greiner 384 well microplate",
-#       numRows=16,
-#       numCols=24,
-#       maxResVol = 130,
-#       minResVol = 10,
-#       xPitch = 4.5,
-#       yPitch = 4.5,
-#       width = 127.76,
-#       height = 85.48,
-#       xPosA1 = 12.13,
-#       yPosA1 = 8.99,
-#       )
-
-#   # create/add wells to plate object using for loop (dont need to add compounds yet)
-#   return plate384.id
-
-# def get_default_dest_plate():
-#   subwell1 = SubWell.objects.get_or_create(
-#       idx = 0,
-#       xPos = 4.21, #in mm
-#       yPos = 1.55, #in mm
-#       maxDropVol = 5, #in uL
-#       minDropVol = 1, #in uL
-#       )
-
-#   subwell2 = SubWell.objects.get_or_create(
-#       idx = 1,
-#       xPos = 4.21, #in mm
-#       yPos = -1.55, #in mm
-#       maxDropVol = 5, #in uL
-#       minDropVol = 1, #in uL
-#       )
-#   plate96, created = Plate.objects.get_or_create(
-#       name="swiss mrc 2-well microplate",
-#       numRows=8,
-#       numCols=12,
-#       maxResVol = 100,
-#       minResVol = 50,
-#       xOffset = 9.03,
-#       yOffset = 9.03,
-#       xLength = 127.5,
-#       yLength = 85.3,
-#       xPosA1 = 14.1,
-#       yPosA1 = 11.04,
-#       )
-#   plate96.subWells.add(subwell1[0])
-#   plate96.subWells.add(subwell2[0])
-
-#   return plate96.id
-

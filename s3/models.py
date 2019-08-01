@@ -6,41 +6,24 @@ import logging
 from botocore.exceptions import ClientError
 from .s3utils import PrivateMediaStorage
 from django.contrib.auth.models import User
+from experiment.models import Plate
 
+def upload_path(instance, filename):
+    print(instance.bucket_key)
+    return instance.bucket_key
 
-# class PrivateFolder(models.Model):
-#     uploaded_at = models.DateTimeField(auto_now_add=True)
-#     folderpath = models.FilePathField(storage=PrivateMediaStorage())
-#     user = models.ForeignKey(User, related_name='files', on_delete=models.CASCADE)
-
+# contains images appropriately named '[well]_[subwell].jpg' (i.e. 'A01_1.jpg')
 class PrivateFile(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    upload = models.FileField(storage=PrivateMediaStorage())
+    bucket_key = models.CharField(max_length=1000)
     owner = models.ForeignKey(User, related_name='files', on_delete=models.CASCADE)
+    upload = models.FileField(upload_to=upload_path,storage=PrivateMediaStorage())
 
 class PublicFile(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     upload = models.FileField()
 
 
-
-# def sync_to_s3(target_dir, aws_region=AWS_REGION, bucket_name=BUCKET_NAME):
-#     if not os.path.isdir(target_dir):
-#         raise ValueError('target_dir %r not found.' % target_dir)
-
-#     s3 = boto3.resource('s3', region_name=aws_region)
-#     try:
-#         s3.create_bucket(Bucket=bucket_name,
-#                          CreateBucketConfiguration={'LocationConstraint': aws_region})
-#     except ClientError:
-#         pass
-
-#     for filename in os.listdir(target_dir):
-#         logger.warn('Uploading %s to Amazon S3 bucket %s' % (filename, bucket_name))
-#         s3.Object(bucket_name, filename).put(Body=open(os.path.join(target_dir, filename), 'rb'))
-
-#         logger.info('File uploaded to https://s3.%s.amazonaws.com/%s/%s' % (
-#             aws_region, bucket_name, filename))
 
 class S3PrivateFileField(models.FileField):
     """

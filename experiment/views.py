@@ -319,12 +319,6 @@ def _get_form(request, formcls, prefix):
     data = request.POST if prefix in request.POST else None
     return formcls(data, prefix=prefix)
 
-# class ProjectView(MultiFormsView):
-#     template_name = 'public/my_login_signup_template.html'
-#     form_classes = {'new_experiment': NewExperimentForm,
-#                     'edit_project': ProjectForm, }
-#     success_url = 'my/success/url'
-
 class NewExp(TemplateView):
     template_name = 'new_experiment.html'
 
