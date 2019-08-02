@@ -15,6 +15,7 @@ from djqscsv import render_to_csv_response
 from django.forms.models import model_to_dict
 from import_ZINC.models import Library, Compound
 from django.urls import reverse
+from .project_views import get_user_projects
 
 # Create your views here.
 @login_required(login_url="/login")

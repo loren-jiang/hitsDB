@@ -38,6 +38,19 @@ def experiment(request, pk):
     }
     return render(request,'experiment.html', data)
 
+#views experiment soaks as table
+@login_required(login_url="/login")
+def soaks(request, pk):
+    soaks_qs = Soak.objects.filter(experiment_id=pk
+        ).select_related('dest__parentWell__plate','src__plate',
+        ).prefetch_related('transferCompound',).order_by('id')
+    soaks_table=SoaksTable(soaks_qs)
+
+    data = {
+        'soaks_table': soaks_table,
+    }
+    return render(request, 'experiment/expTemplates/soaks_table.html', data)
+
 @login_required(login_url="/login")
 def experiments(request):
     experimentsTable = ExperimentsTable(request.user.experiments.all())
