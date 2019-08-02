@@ -56,10 +56,11 @@ class Experiment(models.Model):
     #                   'num_subwells':# of subwells/well
     #                   }
     # - dest_params: same thing as above but for destination plates
-    def formatSoaks(self, num_src_plates,
-        num_dest_plates, s_num_wells=384,d_num_wells=96, d_num_subwells=3):
-       
-
+    def formatSoaks(self, num_src_plates, num_dest_plates, 
+                    s_num_rows=16, s_num_cols = 24, 
+                    d_num_rows=8, d_num_cols=12, d_num_subwells=3):
+        s_num_wells = s_num_rows * s_num_cols
+        d_num_wells = d_num_rows * d_num_cols
         qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
             ).prefetch_related('transferCompound',
             ).order_by('id')
@@ -67,7 +68,6 @@ class Experiment(models.Model):
         soaks_lst = [soak for soak in qs_soaks]
         src_wells = [0]*num_src_plates*s_num_wells
         dest_subwells = [0]*num_dest_plates*d_num_wells*d_num_subwells
-        subwells = [0]*3 #three subwells locations
 
         for j in range(len(soaks_lst)):
             s = soaks_lst[j]
@@ -80,7 +80,7 @@ class Experiment(models.Model):
             dest_parentwell_idx = dest.parentWell.wellIdx
             dest_plate_idx = dest.parentWell.plate.plateIdxExp
             d_sw_idx = getSubwellIdx(dest_plate_idx,dest_parentwell_idx,
-                dest_subwell_idx, d_num_wells,d_num_subwells) # MAKE MODULAR
+                dest_subwell_idx, d_num_wells,d_num_subwells) 
             compound = s.transferCompound
             src_wells[s_w_idx] = {
                                 'well_id':src.id, 
@@ -90,7 +90,6 @@ class Experiment(models.Model):
                                 'soak_id':s.id
                                 }
 
-
             dest_subwells[d_sw_idx] = {
                                 'src_well_id': src.id,
                                 'parentWell_id': dest.parentWell.id,
@@ -99,12 +98,10 @@ class Experiment(models.Model):
                                 'subwell_idx':dest.idx,
                                 'compound':compound.nameInternal,
                                 }
-            # except:
-            #     break
 
-        src_wells = chunk_list(src_wells,24)
-        dest_subwells = chunk_list(dest_subwells,3) #group subwells 1-3 into well
-        dest_subwells = chunk_list(dest_subwells,12) #group columns into row
+        src_wells = chunk_list(src_wells,s_num_cols)
+        dest_subwells = chunk_list(dest_subwells,d_num_cols) #group subwells 1-3 into well
+        dest_subwells = chunk_list(dest_subwells,d_num_cols) #group columns into row
 
         return {'src_plates':split_list(src_wells,num_src_plates), 
                 'dest_plates':split_list(dest_subwells,num_dest_plates),
@@ -113,14 +110,15 @@ class Experiment(models.Model):
     # takes in exc list of column names to exclude
     def getSoaksTable(self, exc=[]):
         from .tables import SoaksTable
-        # might want to implement try catch
-        return SoaksTable(self.soaks.all(), exclude=exc)
+        qs = self.soaks.select_related('dest__parentWell__plate','src__plate',
+            ).prefetch_related('transferCompound',).order_by('id')
+        return SoaksTable(qs, exclude=exc)
 
     # takes in exc list of column names to exclude
     def getPlatesTable(self, exc=[]):
         from .tables import PlatesTable
         # might want to implement try catch
-        return getPlatesTable(self.soaks.all(), exclude=exc)
+        return PlatesTable(self.plates.all(), exclude=exc)
 
     def get_absolute_url(self):
         return "/exp/%i/" % self.id
@@ -268,7 +266,7 @@ def createPlateWells(sender, instance, created, **kwargs):
     return 
 
 class Well(models.Model):
-    name = models.CharField(max_length=3) #format should be A1, X10, etc.
+    name = models.CharField(max_length=3) #format should be A01, X10, etc.
     compounds = models.ManyToManyField(Compound, related_name='wells', blank=True) #can a well have more than one compound???
     maxResVol = models.DecimalField(max_digits=10, decimal_places=0)
     minResVol = models.DecimalField(max_digits=10, decimal_places=0)
@@ -276,7 +274,7 @@ class Well(models.Model):
     crystal_screen = models.ForeignKey(CrystalScreen, on_delete=models.CASCADE,related_name='wells',null=True, blank=True)
     wellIdx = models.PositiveIntegerField(default=0)
     def __str__(self):
-        return self.name
+        return "plate_" + str(self.plate.id) + "_" + self.name
 
     class Meta:
         ordering = ('wellIdx',)
@@ -294,7 +292,7 @@ class SubWell(models.Model):
     hasCrystal = models.BooleanField(default=False)
 
     def __str__(self):
-        return "Subwell_" + str(self.idx)
+        return repr(self.parentWell) + "Subwell_" + str(self.idx)
 
     class Meta:
         ordering = ('idx',)

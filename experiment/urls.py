@@ -28,6 +28,7 @@ urlpatterns = [
 	# re_path(r'^experiments/exp/(?P<pk>\d+)/$', experiment_views.experiment, name='exp'),
 	re_path(r'^exp/(?P<pk>\d+)/soaks_csv_view/$', experiment_views.soaks_csv_view, name='soaks_csv_view'),
     re_path(r'^exp/(?P<pk>\d+)/soaks/$', experiment_views.soaks, name='exp_soaks'),
+    re_path(r'^exp/(?P<pk>\d+)/plates/$', experiment_views.plates, name='exp_plates'),
     re_path(r'^exps/$', experiment_views.experiments, name='experiments'),
     re_path(r'^exps/new/$', experiment_views.NewExp.as_view(), name='new_experiment'),
     re_path(r'^exps/delete_exp/(?P<pk>\d+)/$', experiment_views.delete_experiment, name='delete_exp'),

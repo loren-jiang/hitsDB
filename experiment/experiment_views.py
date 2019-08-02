@@ -5,7 +5,9 @@ from django.db import transaction
 from .models import Experiment, Plate, Well, SubWell, Soak, Project
 from .tables import SoaksTable, ExperimentsTable
 from django_tables2 import RequestConfig
-from djqscsv import render_to_csv_response
+# from djqscsv import render_to_csv_response
+import csv
+from django.http import HttpResponse
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.serializers import serialize
 from django.forms.models import model_to_dict
@@ -40,15 +42,25 @@ def experiment(request, pk):
 #views experiment soaks as table
 @login_required(login_url="/login")
 def soaks(request, pk):
-    soaks_qs = Experiment.objects.get(id=pk).soaks.select_related('dest__parentWell__plate','src__plate',
-        ).prefetch_related('transferCompound',).order_by('id')
-
-    soaks_table=SoaksTable(soaks_qs)
+    experiment = Experiment.objects.get(id=pk)
+    soaks_table=experiment.getSoaksTable()
     RequestConfig(request, paginate={'per_page': 50}).configure(soaks_table)
     data = {
         'soaks_table': soaks_table,
     }
     return render(request, 'experiment/expTemplates/soaks_table.html', data)
+
+#views experiment plates as table
+@login_required(login_url="/login")
+def plates(request, pk):
+    experiment = Experiment.objects.get(id=pk)
+    plates_table=experiment.getPlatesTable(exc=["id","xPitch","yPitch","plateHeight","plateWidth","plateLength",
+        "wellDepth", "xOffsetA1","yOffsetA1","experiment","isSource","isTemplate","isCustom"])
+    RequestConfig(request, paginate={'per_page': 10}).configure(plates_table)
+    data = {
+        'plates_table': plates_table,
+    }
+    return render(request, 'experiment/expTemplates/plates_table.html', data)
 
 @login_required(login_url="/login")
 def experiments(request):
@@ -101,9 +113,26 @@ def delete_exp_plates(request, pk):
 # pk is experiment pk
 def soaks_csv_view(request,pk):
     exp = get_object_or_404(Experiment, pk=pk)
-    # qs = Soak.objects.filter(experiment=exp).values('transferCompound__nameInternal')
-    qs = Soak.objects.filter(experiment=exp).values()
-    return render_to_csv_response(qs)
+    qs = exp.soaks.filter().select_related("dest__parentWell__plate","src__plate").prefetch_related()
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment;filename=exp_' + str(exp.id) + '_soaks' +  '.csv'
+    writer = csv.writer(response)
+    writer.writerow(["Source Plate Name","Source Well","Destination Plate Name","Destination Well","Transfer Volume",
+                    "Destination Well X Offset","Destination Well Y Offset"]) #headers for csv
+    for s in qs:
+        s_dict = s.__dict__
+        src_well = s.src
+        dest_well = s.dest.parentWell
+    
+        src_plate_name = "Source[" + str(src_well.plate.plateIdxExp) + "]"
+        src_well = src_well.name
+        dest_plate_name = "Destination["  +str(dest_well.plate.plateIdxExp) + "]"
+        dest_well = dest_well.name
+        transfer_vol = s.transferVol
+        x_offset = s.soakOffsetX
+        y_offset = s.soakOffsetY
+        writer.writerow([src_plate_name,src_well,dest_plate_name,dest_well,transfer_vol,x_offset,y_offset])
+    return response
 
 class NewExp(TemplateView):
     template_name = 'new_experiment.html'
