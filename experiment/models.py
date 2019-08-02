@@ -61,7 +61,7 @@ class Experiment(models.Model):
        
 
         qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
-            ).prefetch_related('transferCompound__library',
+            ).prefetch_related('transferCompound',
             ).order_by('id')
 
         soaks_lst = [soak for soak in qs_soaks]
@@ -213,6 +213,7 @@ class Plate(models.Model):
             xOffsetA1 = 12.13,
             yOffsetA1 = 8.99,
             isSource = True,
+            isTemplate=True,
             echoCompatible=True,)
         instance.save()
 
@@ -226,66 +227,24 @@ class Plate(models.Model):
         return instance
 
     @classmethod
-    def create384SourcePlate(cls, name,
-        formatType="Greiner 384 well microplate",
-        numRows=16,
-        numCols=24,
-        xPitch = 4.5,
-        yPitch = 4.5,
-        width = 127.76,
-        height = 85.48,
-        xOffsetA1 = 12.13,
-        yOffsetA1 = 8.99,
-        isSource = True,):
-        
+    def create96MRC3DestPlate(cls):
         instance = cls(
-            name=name,
-            plateType=plateType,
-            numRows=numRows,
-            numCols=numCols,
-            xPitch = xPitch,
-            yPitch = yPitch,
-            width = width,
-            height = height,
-            xOffsetA1 = xPosA1,
-            yOffsetA1 = yPosA1,
-            isSource = isSource)
-        instance.save()
-        well_lst = [None]*len(instance.wellDict)
-        for key, val in instance.wellDict.items():
-            well_idx = val + 1
-            well_lst[val] = Well(name=key, wellIdx=well_idx,
-                maxResVol=130, minResVol=10, plate_id=instance.pk)
-            # instance.wells.create(name=key, maxResVol=130, minResVol=10)
-        Well.objects.bulk_create(well_lst)
-        return instance
+            name="",
+            formatType="Swiss MRC-3 96 well microplate",
+            numRows=8,
+            numCols=12,
+            xPitch = 9,
+            yPitch = 9,
+            plateLength = 127.5,
+            plateWidth = 85.3,
+            plateHeight = 11.7,
+            xOffsetA1 = 16.1,
+            yOffsetA1 = 8.9,
+            isSource = False,
+            isTemplate=True,
+            echoCompatible=True,
+        )
 
-    @classmethod
-    def create96MRC3DestPlate(cls, name,
-        plateType="Swiss MRC-3 96 well microplate",
-        numRows=8,
-        numCols=12,
-        xPitch = 9,
-        yPitch = 9,
-        width = 127.5,
-        height = 85.3,
-        xOffsetA1 = 16.1,
-        yOffsetA1 = 8.9,
-        isSource = False):
-        
-    
-        instance= cls(
-            name=name,
-            plateType=plateType,
-            numRows=numRows,
-            numCols=numCols,
-            xPitch = xPitch,
-            yPitch = yPitch,
-            width = width,
-            height = height,
-            xOffsetA1 = xPosA1,
-            yOffsetA1 = yPosA1,
-            isSource = isSource)
         instance.save()
         well_lst = [None]*len(instance.wellDict)
         for key, val in instance.wellDict.items():
@@ -311,7 +270,6 @@ def createPlateWells(sender, instance, created, **kwargs):
 class Well(models.Model):
     name = models.CharField(max_length=3) #format should be A1, X10, etc.
     compounds = models.ManyToManyField(Compound, related_name='wells', blank=True) #can a well have more than one compound???
-    # compound = models.ForeignKey(Compound, on_delete=models.CASCADE, related_name='well',null=True, blank=True)
     maxResVol = models.DecimalField(max_digits=10, decimal_places=0)
     minResVol = models.DecimalField(max_digits=10, decimal_places=0)
     plate = models.ForeignKey(Plate, on_delete=models.CASCADE, related_name='wells',null=True, blank=True)
@@ -333,8 +291,6 @@ class SubWell(models.Model):
     parentWell = models.ForeignKey(Well,on_delete=models.CASCADE, related_name='subwells',null=True, blank=True)
     compounds = models.ManyToManyField(Compound, related_name='subwells', blank=True)
     protein = models.CharField(max_length=100, default="")
-    #src_plate_well = models.CharField(max_length=20,default="")
-    #expSrcWell = models.ForeignKey(Well, on_delete=models.CASCADE, related_name='dest_subwells',null=True,blank=True) #experiment source well 
     hasCrystal = models.BooleanField(default=False)
 
     def __str__(self):

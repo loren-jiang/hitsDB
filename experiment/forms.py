@@ -75,6 +75,7 @@ class PlateSetupForm(forms.Form):
         label="Destination plate",
         initial=0)
     dest_plate_screen = forms.ModelChoiceField(queryset=CrystalScreen.objects.all(), 
+        required=False,
         initial=0)
     experiment = forms.ModelChoiceField(
         queryset=Experiment.objects
