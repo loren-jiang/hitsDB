@@ -21,8 +21,7 @@ def experiment(request, pk):
     dest_plates = experiment.plates.filter(isSource=False)
     num_src_plates = len(source_plates)
     num_dest_plates = len(dest_plates)
-    soaks_qs = Soak.objects.filter(experiment=experiment
-        ).select_related('dest__parentWell__plate','src__plate',
+    soaks_qs = experiment.soaks.select_related('dest__parentWell__plate','src__plate',
         ).prefetch_related('transferCompound',).order_by('id')
     table=SoaksTable(soaks_qs)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
@@ -41,11 +40,11 @@ def experiment(request, pk):
 #views experiment soaks as table
 @login_required(login_url="/login")
 def soaks(request, pk):
-    soaks_qs = Soak.objects.filter(experiment_id=pk
-        ).select_related('dest__parentWell__plate','src__plate',
+    soaks_qs = Experiment.objects.get(id=pk).soaks.select_related('dest__parentWell__plate','src__plate',
         ).prefetch_related('transferCompound',).order_by('id')
-    soaks_table=SoaksTable(soaks_qs)
 
+    soaks_table=SoaksTable(soaks_qs)
+    RequestConfig(request, paginate={'per_page': 50}).configure(soaks_table)
     data = {
         'soaks_table': soaks_table,
     }

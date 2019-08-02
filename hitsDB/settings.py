@@ -66,10 +66,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'hitsDB.urls'
 
-DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
-    # '...
-}
+# DEBUG_TOOLBAR_CONFIG = {
+#     'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
+#     # '...
+# }
 
 TEMPLATES = [
     {
