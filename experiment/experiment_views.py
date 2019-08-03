@@ -19,17 +19,16 @@ from .forms import NewExperimentForm, PlateSetupForm
 def experiment(request, pk):
     experiment = Experiment.objects.select_related(
         'owner').get(id=pk)
-    source_plates = experiment.plates.filter(isSource=True)
-    dest_plates = experiment.plates.filter(isSource=False)
-    num_src_plates = len(source_plates)
-    num_dest_plates = len(dest_plates)
+    # source_plates = experiment.plates.filter(isSource=True)
+    # dest_plates = experiment.plates.filter(isSource=False)
+    # num_src_plates = len(source_plates)
+    # num_dest_plates = len(dest_plates)
     soaks_qs = experiment.soaks.select_related('dest__parentWell__plate','src__plate',
         ).prefetch_related('transferCompound',).order_by('id')
     table=SoaksTable(soaks_qs)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
 
-    formattedSoaks = experiment.formatSoaks(num_src_plates,num_dest_plates)
-
+    formattedSoaks = experiment.formattedSoaks #played around with caching, results in x2 time reduction
     data = {
         'pkUser': request.user.id,
         'experiment': experiment,

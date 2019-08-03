@@ -1,7 +1,11 @@
+
+{% extends 'base.html' %}
+{% block content %}
 <!-- <p>
     {{keys}}
 </p> -->
-
 <a href="/image-gui/{{prev_image_key}}">{{prev_image_key}}</a>
 <img height="400px" width="400px" src={{image_url}}> </img>
 <a href="/image-gui/{{next_image_key}}">{{next_image_key}}</a>
+
+{% endblock %}

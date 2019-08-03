@@ -21,3 +21,4 @@ class WellImage(models.Model):
 # # method for creating s3 object after WellImage save
 # @receiver(post_save, sender=WellImage, dispatch_uid="make_s3_object")
 # def create_s3_object(sender, instance, **kwargs):
+            

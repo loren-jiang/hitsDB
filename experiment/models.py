@@ -6,6 +6,7 @@ from import_ZINC.models import Library, Compound
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils.functional import cached_property 
 
 # Create your models here.
 
@@ -50,15 +51,29 @@ class Experiment(models.Model):
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)
 
-    # Arguments
-    # - source_params: {
-    #                   'num_wells':# of wells/plate, 
-    #                   'num_subwells':# of subwells/well
-    #                   }
-    # - dest_params: same thing as above but for destination plates
-    def formatSoaks(self, num_src_plates, num_dest_plates, 
+    @cached_property
+    def numSrcPlates(self):
+        return len(self.plates.filter(isSource=True))
+    
+    @cached_property
+    def numDestPlates(self):
+        return len(self.plates.filter(isSource=False))
+
+    @cached_property
+    def formattedSoaks(self,  
                     s_num_rows=16, s_num_cols = 24, 
                     d_num_rows=8, d_num_cols=12, d_num_subwells=3):
+        num_src_plates = self.numSrcPlates
+        num_dest_plates = self.numDestPlates
+        # if (num_src_plates != 0 and num_dest_plates!= 0):
+        #     src_plate = src_plates[0]
+        #     dest_plate = dest_plates[0]
+        #     s_num_rows = src_plate.numRows 
+        #     s_num_cols = src_plate.numCols
+        #     d_num_rows = dest_plate.numRows
+        #     d_num_cols = dest_plate.numCols
+        #     d_
+            
         s_num_wells = s_num_rows * s_num_cols
         d_num_wells = d_num_rows * d_num_cols
         qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
@@ -164,6 +179,7 @@ class Plate(models.Model):
 
     def importLibrary(self, file):
         return
+    
     # returns number of reservoir wells
     @property 
     def numResWells(self):
