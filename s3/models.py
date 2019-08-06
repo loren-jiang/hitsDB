@@ -7,9 +7,10 @@ from botocore.exceptions import ClientError
 from .s3utils import PrivateMediaStorage
 from django.contrib.auth.models import User
 from experiment.models import Plate
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 def upload_path(instance, filename):
-    print(instance.bucket_key)
     return instance.bucket_key
 
 # contains images appropriately named '[well]_[subwell].jpg' (i.e. 'A01_1.jpg')
@@ -23,6 +24,8 @@ class PublicFile(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     upload = models.FileField()
 
+@receiver(post_save, sender=PrivateFile)
+def generateBucketKey(sender, instance, created, **kwargs):
 
 
 class S3PrivateFileField(models.FileField):

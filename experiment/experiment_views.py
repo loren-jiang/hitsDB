@@ -23,18 +23,22 @@ def experiment(request, pk):
     # dest_plates = experiment.plates.filter(isSource=False)
     # num_src_plates = len(source_plates)
     # num_dest_plates = len(dest_plates)
-    soaks_qs = experiment.soaks.select_related('dest__parentWell__plate','src__plate',
-        ).prefetch_related('transferCompound',).order_by('id')
-    table=SoaksTable(soaks_qs)
-    RequestConfig(request, paginate={'per_page': 5}).configure(table)
-
-    formattedSoaks = experiment.formattedSoaks #played around with caching, results in x2 time reduction
+    # soaks_qs = experiment.soaks.select_related('dest__parentWell__plate','src__plate',
+    #     ).prefetch_related('transferCompound',).order_by('id')
+    # soaks_table=SoaksTable(soaks_qs)
+    soaks_table = experiment.getSoaksTable(exc=[])
+    RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
+    src_plates_table = experiment.getSrcPlatesTable(exc=[])
+    RequestConfig(request, paginate={'per_page': 5}).configure(src_plates_table)
+    
+    # formattedSoaks = experiment.formattedSoaks(soaks_qs) #played around with caching
     data = {
         'pkUser': request.user.id,
         'experiment': experiment,
         'pkOwner': experiment.owner.id,
-        'plates' : formattedSoaks,
-        'soaks': table,
+        'plates_table': src_plates_table,
+        # 'plates' : formattedSoaks, #rendering the plate grids takes too long and isn't useful; maybe we should just list plates?
+        'soaks_table': soaks_table,
     }
     return render(request,'experiment.html', data)
 
@@ -133,6 +137,7 @@ def soaks_csv_view(request,pk):
         writer.writerow([src_plate_name,src_well,dest_plate_name,dest_well,transfer_vol,x_offset,y_offset])
     return response
 
+# This seems like it should be rewritten -- 'sub' models should ideally be created on post_save signal
 class NewExp(TemplateView):
     template_name = 'new_experiment.html'
 

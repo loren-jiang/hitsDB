@@ -58,9 +58,9 @@ class Experiment(models.Model):
     @cached_property
     def numDestPlates(self):
         return len(self.plates.filter(isSource=False))
+        
 
-    @cached_property
-    def formattedSoaks(self,  
+    def formattedSoaks(self, qs_soaks,
                     s_num_rows=16, s_num_cols = 24, 
                     d_num_rows=8, d_num_cols=12, d_num_subwells=3):
         num_src_plates = self.numSrcPlates
@@ -76,8 +76,8 @@ class Experiment(models.Model):
             
         s_num_wells = s_num_rows * s_num_cols
         d_num_wells = d_num_rows * d_num_cols
-        qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
-            ).prefetch_related('transferCompound',).order_by('id')
+        # qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
+        #     ).prefetch_related('transferCompound',).order_by('id')
 
         soaks_lst = [soak for soak in qs_soaks]
         src_wells = [0]*num_src_plates*s_num_wells
@@ -114,7 +114,7 @@ class Experiment(models.Model):
                                 }
 
         src_wells = chunk_list(src_wells,s_num_cols)
-        dest_subwells = chunk_list(dest_subwells,d_num_cols) #group subwells 1-3 into well
+        dest_subwells = chunk_list(dest_subwells,d_num_subwells) #group subwells 1-3 into well
         dest_subwells = chunk_list(dest_subwells,d_num_cols) #group columns into row
 
         return {'src_plates':split_list(src_wells,num_src_plates), 
@@ -129,10 +129,15 @@ class Experiment(models.Model):
         return SoaksTable(qs, exclude=exc)
 
     # takes in exc list of column names to exclude
-    def getPlatesTable(self, exc=[]):
+    def getSrcPlatesTable(self, exc=[]):
         from .tables import PlatesTable
         # might want to implement try catch
-        return PlatesTable(self.plates.all(), exclude=exc)
+        return PlatesTable(self.plates.filter(isSource=True), exclude=exc)
+
+    def getDestPlatesTable(self, exc=[]):
+        from .tables import PlatesTable
+        # might want to implement try catch
+        return PlatesTable(self.plates.filter(isSource=False), exclude=exc)
 
     def get_absolute_url(self):
         return "/exp/%i/" % self.id
@@ -252,7 +257,7 @@ class Plate(models.Model):
     plateType = models.ForeignKey(PlateType, related_name='plates', on_delete=models.SET_NULL, null=True, blank=True)
     numCols = models.PositiveIntegerField(default=12)
     numRows = models.PositiveIntegerField(default=8)
-    numSubwells = models.PositiveIntegerField(default=0) 
+    # numSubwells = models.PositiveIntegerField(default=0) 
     # x and y synonmous with row and col respectively
     xPitch = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) # pitch in x direction of wells [mm]
     yPitch = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) # pitch in y direction of wells [mm]
@@ -368,30 +373,31 @@ class Plate(models.Model):
 @receiver(post_save, sender=Plate)
 def createPlateWells(sender, instance, created, **kwargs):
     # creates appropriate wells for plate instance
-    plateType = instance.plateType
-    wellDict = plateType.wellDict
-    well_lst = [None]*len(wellDict)
     wells = None
-    if plateType:
-        for key, val in wellDict.items():
-            well_props = val
-            wellIdx = well_props['wellIdx']
-            wellRowIdx = well_props['wellRowIdx']
-            wellColIdx = well_props['wellColIdx']
+    if created: # we only want to create wells and subwells once for plates on model creation
+        plateType = instance.plateType
+        wellDict = plateType.wellDict
+        well_lst = [None]*len(wellDict)
+        if plateType:
+            for key, val in wellDict.items():
+                well_props = val
+                wellIdx = well_props['wellIdx']
+                wellRowIdx = well_props['wellRowIdx']
+                wellColIdx = well_props['wellColIdx']
 
-            # instance.wells.create(name=key, maxResVol=130, minResVol=10)
-            well_lst[wellIdx] = Well(name=key, wellIdx=wellIdx, wellRowIdx=wellRowIdx, wellColIdx=wellColIdx,
-                maxResVol=130, minResVol=10, plate_id=instance.pk)
+                # instance.wells.create(name=key, maxResVol=130, minResVol=10)
+                well_lst[wellIdx] = Well(name=key, wellIdx=wellIdx, wellRowIdx=wellRowIdx, wellColIdx=wellColIdx,
+                    maxResVol=130, minResVol=10, plate_id=instance.pk)
 
-        Well.objects.bulk_create(well_lst)
-        wells = instance.wells.all()
-
-        if instance.numSubwells:
-            for w in wells:
-                subwells_lst = [None]*len(instance.numSubwells)
-                for i in range(instance.numSubwells):
-                    subwells_lst[i] = SubWell(idx=i+1,xPos= 0,yPos=0, parentWell_id=w.pk)
-                SubWell.objects.bulk_create(subwells_lst)
+            Well.objects.bulk_create(well_lst)
+            wells = instance.wells.all()
+            numSubwells = plateType.numSubwells
+            if numSubwells:
+                for w in wells:
+                    subwells_lst = [None]*numSubwells
+                    for i in range(numSubwells):
+                        subwells_lst[i] = SubWell(idx=i+1,xPos= 0,yPos=0, parentWell_id=w.pk)
+                    SubWell.objects.bulk_create(subwells_lst)
     return wells
 
 class Well(models.Model):
@@ -404,6 +410,10 @@ class Well(models.Model):
     wellIdx = models.PositiveIntegerField(default=0)
     wellRowIdx = models.PositiveIntegerField(default=0)
     wellColIdx = models.PositiveIntegerField(default=0)
+
+    @cached_property
+    def numSubwells(self):
+        return len(self.subwells)
 
     def __str__(self):
         return "plate_" + str(self.plate.id) + "_" + self.name

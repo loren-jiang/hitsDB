@@ -12,9 +12,42 @@ from django.forms.models import model_to_dict
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from import_ZINC.models import Library, Compound
 from .forms import NewExperimentForm, ProjectForm, SimpleProjectForm, PlateSetupForm
-
 from django.urls import reverse
+from django.contrib.auth.mixins import LoginRequiredMixin
 
+class ProjectView(LoginRequiredMixin, TemplateView):
+    login_url = '/login'
+    template_name = 'project.html'
+    def get(self,request,*args,**kwargs):
+        pk_proj = self.kwargs['pk']
+        proj = Project.objects.get(pk=pk_proj)
+        data = {
+            'experimentsTable': proj.getExperimentsTable(),
+            'pk_proj':pk_proj,
+            'librariesTable': proj.getLibrariesTable(),
+            'collaboratorsTable' :proj.getCollaboratorsTable(),
+            'form': NewExperimentForm()
+        }
+        return self.render_to_response(data)
+
+    def post(self,request,*args,**kwargs):
+        form = NewExperimentForm(request.POST)
+        pk_proj = self.kwargs['pk']
+        proj = Project.objects.get(pk=pk_proj)
+        if form.is_valid():
+            exp = form.save(commit=False)
+            form_data = form.cleaned_data
+            exp.project = proj
+            exp.owner = request.user
+            exp.save()
+        data = {
+            'experimentsTable': proj.getExperimentsTable(),
+            'pk_proj':pk_proj,
+            'librariesTable': proj.getLibrariesTable(),
+            'collaboratorsTable' :proj.getCollaboratorsTable(),
+            'form': NewExperimentForm()
+        }
+        return self.render_to_response(data)
 
 @login_required(login_url="/login")
 def project(request, pk):

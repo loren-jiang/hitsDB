@@ -19,7 +19,8 @@ urlpatterns = [
     re_path(r'^proj_libraries/(?P<pk_proj>\d+)$', project_views.proj_libraries, name='proj_libs'),
     re_path(r'^projects/$', project_views.projects, name='projects'),
     re_path(r'^projects/delete_projs/(?P<pks>(?:\d+/)+)$', project_views.delete_projects, name='delete_projs'),
-    re_path(r'^proj/(?P<pk>\d+)$', project_views.project, name='proj'),
+    # re_path(r'^proj/(?P<pk>\d+)$', project_views.project, name='proj'),
+    re_path(r'^proj/(?P<pk>\d+)$', project_views.ProjectView.as_view(), name='proj'),
     re_path(r'^proj/(?P<pk_proj>\d+)/exp/new/$', project_views.NewExp.as_view(), name='new_proj_experiment'),
     re_path(r'^proj/(?P<pk_proj>\d+)/delete_exps/(?P<pks>(?:\d+/)+)$', project_views.delete_experiments, name='delete_proj_exps'),
     

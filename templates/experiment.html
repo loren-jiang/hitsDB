@@ -64,12 +64,23 @@
 <div class="tab-content" id="myTabContent">
   <div class="tab-pane fade show active" id="soaks" role="tabpanel" aria-labelledby="soaks-tab">
     <div class='row justify-content-center'>
-            {% load django_tables2 %} 
-            {% render_table soaks %}
+      <div class='col-md-10'>
+          {% load django_tables2 %} 
+          {% render_table soaks_table %}
+      </div>
+           
     </div>
   </div>
-
   <div class="tab-pane fade" id="plates" role="tabpanel" aria-labelledby="plates-tab">
+    <div class='row justify-content-center'>
+      <div class='col-md-10'>
+          {% load django_tables2 %} 
+          {% render_table plates_table %}
+      </div>
+            
+    </div>
+  </div>
+  <!-- <div class="tab-pane fade" id="plates" role="tabpanel" aria-labelledby="plates-tab">
     <div class="row">
           <div class="col-5">
                 {% for p in plates.src_plates %}
@@ -113,7 +124,7 @@
 
             </div>
         </div>
-  </div>
+  </div> -->
 
   <div class="tab-pane fade" id="crystals" role="tabpanel" aria-labelledby="crystals-tab">
     
@@ -193,8 +204,7 @@
        $("#src_" + id).toggleClass('forum_hover');
        
       });
-      var plates = {{plates|safe}}
-      console.log(plates)
+      // console.log({{plates|safe}})
     });
 </script>
 {% endblock %}
