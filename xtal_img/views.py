@@ -2,55 +2,76 @@ from django.shortcuts import render
 import boto3
 from django.conf import settings
 from botocore.exceptions import ClientError
-from s3.s3utils import myS3Client, myS3Resource
-from s3.models import PrivateFile
+from s3.s3utils import myS3Client, myS3Resource, create_presigned_url
+from django.views.generic.edit import FormView
+# from s3.models import PrivateImage
+from s3.forms import FileFieldForm
+import logging
+from s3.models import WellImage
+from experiment.models import Plate
+from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
 
-# creates presigned url that expires for private s3 objects
-def create_presigned_url(bucket_name, object_name, expiration=3600):
-    """Generate a presigned URL to share an S3 object
+# upload multiple image view
+class FileFieldView(FormView):
+    form_class = FileFieldForm
+    template_name = './s3/private_files_upload.html'  # Replace with your template.
+    success_url = '/'  # Replace with your URL or reverse().
 
-    :param bucket_name: string
-    :param object_name: string
-    :param expiration: Time in seconds for the presigned URL to remain valid
-    :return: Presigned URL as string. If error, returns None.
-    """
-
-    # Generate a presigned URL for the S3 object
-    s3_client = myS3Client()
-    try:
-        response = s3_client.generate_presigned_url('get_object',
-                                                    Params={'Bucket': bucket_name,
-                                                            'Key': object_name},
-                                                    ExpiresIn=expiration)
-    except ClientError as e:
-        logging.error(e)
-        return None
-    # The response contains the presigned URL
-    return response
+    def post(self, request, *args, **kwargs):
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        files = request.FILES.getlist('file_field')
+        if form.is_valid():
+            for f in files:
+                new_image = WellImage(upload=f, owner=request.user)
+                new_image.save()
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
 
 # Create your views here.
-def imageGUIView(request, curr_image_key="media/private/test-gui-images/A01_2.jpg"):
+def imageGUIView(request, *args, **kwargs):
     s3 = myS3Resource()
     bucket = s3.Bucket(settings.AWS_STORAGE_BUCKET_NAME)
-    prefix = 'media/private/test-gui-images/' #change to folder name in future implementation
-    obj_keys = []
-    for obj in bucket.objects.filter(Prefix=prefix): 
-        # check that the object key belongs to the requesting user
-        obj_keys.append(obj.key)
-    # folder_key = obj_keys.pop(0) #remove folder key 
-    
-    if obj_keys:
-        # curr_image_key = "media/testing-gui/A05_2.jpg"
-        curr_key_idx = obj_keys.index(curr_image_key)
-        prev_image_key = obj_keys[curr_key_idx-1]
-        next_image_key = obj_keys[(curr_key_idx+1) % len(obj_keys)]
-        image_url = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, curr_image_key, 4000)
+    plate_id = kwargs['plate_id']
+    user_id = kwargs['user_id']
+    well_name = kwargs['well_name']
+    if request.user.id == int(user_id): #users can only see their own images
+        p = get_object_or_404(Plate,id=plate_id)
+        p_well_images= p.well_images.all()
 
-    data = {
-        # "response": response,
-        "prev_image_key":prev_image_key,
-        "image_url":image_url,
-        "next_image_key":next_image_key,
-        "keys": obj_keys,
-    }
-    return render(request, "xtal_img/imageGUI.html", data)
+        well_names = [w.well_name for w in p_well_images]
+
+        prefix = 'media/private/private/' + str(user_id) + '/' + str(plate_id) + '/'
+        obj_keys = []
+        for obj in bucket.objects.filter(Prefix=prefix): 
+            # check that the object key belongs to the requesting user
+            obj_keys.append(obj.key)
+        # folder_key = obj_keys.pop(0) #remove folder key 
+        
+        if obj_keys:
+            curr_image_key = prefix + str(p_well_images.filter(well_name=well_name)[0].key)
+            # curr_key_idx = obj_keys.index(curr_image_key)
+            # prev_image_key = obj_keys[curr_key_idx-1]
+            # next_image_key = obj_keys[(curr_key_idx+1) % len(obj_keys)]
+            image_url = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, curr_image_key, 4000)
+
+            curr_well_name_idx = well_names.index(well_name)
+            prev_well = well_names[curr_well_name_idx-1]
+            next_well = well_names[(curr_well_name_idx+1)%len(well_names)]
+        data = {
+            # "response": response,
+            # "prev_image_key":prev_image_key,
+            # "next_image_key":next_image_key,
+            "prev_well":prev_well,
+            "image_url":image_url,
+            "next_well":next_well,
+            "keys": obj_keys,
+            "well_name":well_name,
+            "user_id":user_id,
+            "plate_id":plate_id
+        }
+        return render(request, "xtal_img/imageGUI.html", data)
+    else:
+        return HttpResponse("bad request")

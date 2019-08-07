@@ -1,17 +1,18 @@
 from django import forms
-from .models import PrivateFile
+from .models import PrivateFile, WellImage
+from experiment.models import Plate
 
 class PrivateFileUploadForm(forms.ModelForm):
     # bucket_key = forms.CharField(max_length=100)
     class Meta:
         model = PrivateFile
-        fields=('upload','bucket_key')
+        fields=('upload',)
 
-# class PrivateFolderUploadForm(forms.Form):
-#     folder_path = forms.FilePathField(path="../",allow_folders=True, allow_files=False)
-#     class Meta:
-#         model = PrivateFile
-#         fields=('folder_path',)
+class PrivateImageUploadForm(forms.ModelForm):
+    # bucket_key = forms.CharField(max_length=100)
+    class Meta:
+        model = WellImage
+        fields=('upload','plate')
 
 class FileFieldForm(forms.Form):
     file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': True}))

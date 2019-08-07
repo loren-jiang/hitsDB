@@ -144,6 +144,7 @@ class Experiment(models.Model):
 
     def __str__(self):
         return self.name
+
     class Meta:
         get_latest_by = "dateTime"
 
@@ -277,6 +278,9 @@ class Plate(models.Model):
     dataSheetURL = models.URLField(max_length=200, null=True, blank=True)
     echoCompatible = models.BooleanField(default=False, null=True, blank=True)
     
+    def get_absolute_url(self):
+        return "/plate/%i/" % self.id
+        
     # returns number of reservoir wells
     @property 
     def numResWells(self):

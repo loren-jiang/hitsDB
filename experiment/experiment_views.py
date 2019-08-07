@@ -57,7 +57,7 @@ def soaks(request, pk):
 @login_required(login_url="/login")
 def plates(request, pk):
     experiment = Experiment.objects.get(id=pk)
-    plates_table=experiment.getPlatesTable(exc=["id","xPitch","yPitch","plateHeight","plateWidth","plateLength",
+    plates_table=experiment.getDestPlatesTable(exc=["id","xPitch","yPitch","plateHeight","plateWidth","plateLength",
         "wellDepth", "xOffsetA1","yOffsetA1","experiment","isSource","isTemplate","isCustom"])
     RequestConfig(request, paginate={'per_page': 10}).configure(plates_table)
     data = {

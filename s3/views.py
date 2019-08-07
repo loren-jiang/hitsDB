@@ -5,16 +5,39 @@ from django import http
 from django.shortcuts import get_object_or_404
 from django.views.generic import RedirectView
 # from boto.s3.connection import S3Connection
-from .models import PublicFile, PrivateFile
+from .models import PublicFile, PrivateFile, WellImage
 from django.views.generic.edit import FormView
-from .forms import FileFieldForm, PrivateFileUploadForm
+from .forms import FileFieldForm, PrivateFileUploadForm, PrivateImageUploadForm
 import boto3
 from django.views.generic.edit import CreateView
 from django.urls import reverse_lazy
 from django.conf import settings 
 import os
+from experiment.models import Plate
 
-class FileFieldView(FormView):
+#loads well images with corresponding model instance and associated plate id and user id 
+class WellImagesUploadView(FormView):
+    form_class = FileFieldForm
+    template_name = './s3/private_images_upload.html'  # Replace with your template.
+    success_url = '/'  # Replace with your URL or reverse().
+
+    def post(self, request, *args, **kwargs):
+        p = get_object_or_404(Plate, id=kwargs['plate_pk'])
+        if p.experiment.owner == request.user: #only the appropriate user can upload images 
+            p.well_images.filter().delete() #delete well images associated with plate before uploading new ones
+            form_class = self.get_form_class()
+            form = self.get_form(form_class)
+            files = request.FILES.getlist('file_field')
+            if form.is_valid():
+                for f in files:
+                    well_name = f.name.split('.')[0] #just get the file name, not the extension
+                    new_file = WellImage(upload=f, owner=request.user, plate=p, well_name=well_name)
+                    new_file.save()
+                return self.form_valid(form)
+            else:
+                return self.form_invalid(form)
+
+class PrivateFilesUploadView(FormView):
     form_class = FileFieldForm
     template_name = './s3/private_files_upload.html'  # Replace with your template.
     success_url = '/'  # Replace with your URL or reverse().
@@ -25,7 +48,7 @@ class FileFieldView(FormView):
         files = request.FILES.getlist('file_field')
         if form.is_valid():
             for f in files:
-                new_file = PrivateFile(upload=f, bucket_key="test-gui-images/"+f.name, owner=request.user)
+                new_file = PrivateFile(upload=f, owner=request.user)
                 new_file.save()
             return self.form_valid(form)
         else:

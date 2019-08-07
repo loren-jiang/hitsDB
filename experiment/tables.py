@@ -5,10 +5,13 @@ from import_ZINC.models import Compound, Library
 from django.contrib.auth.models import User, Group
 
 class PlatesTable(tables.Table):
-
+    upload_well_images = tables.LinkColumn(viewname='well_images_upload', args=[A('pk')], orderable=False, empty_values=())
+    def render_upload_well_images(self):
+        return 'Upload images'
     class Meta:
         model = Plate
         template_name = 'django_tables2/bootstrap-responsive.html'
+        fields=('name','plateType','upload_well_images',)
 
 class SoaksTable(tables.Table):
     # transferCompound = tables.Column()
