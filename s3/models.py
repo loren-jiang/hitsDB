@@ -19,7 +19,7 @@ class WellImage(models.Model):
     owner = models.ForeignKey(User, related_name='well_images', on_delete=models.SET_NULL, null=True, blank=True)
     upload = models.ImageField(upload_to=upload_path,storage=PrivateMediaStorage())
     plate = models.ForeignKey(Plate, related_name='well_images', on_delete=models.SET_NULL, null=True, blank=True)
-    well_name = models.CharField(max_length=10)
+    file_name = models.CharField(max_length=10)
     # well = models.OneToOneField(Well, related_name='image', on_delete=models.SET_NULL, null=True, blank=True)
 
 # contains images appropriately named '[well]_[subwell].jpg' (i.e. 'A01_1.jpg')

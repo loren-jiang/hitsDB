@@ -30,8 +30,8 @@ class WellImagesUploadView(FormView):
             files = request.FILES.getlist('file_field')
             if form.is_valid():
                 for f in files:
-                    well_name = f.name.split('.')[0] #just get the file name, not the extension
-                    new_file = WellImage(upload=f, owner=request.user, plate=p, well_name=well_name)
+                    file_name = f.name.split('.')[0] #just get the file name, not the extension
+                    new_file = WellImage(upload=f, owner=request.user, plate=p, file_name=file_name)
                     new_file.save()
                 return self.form_valid(form)
             else:

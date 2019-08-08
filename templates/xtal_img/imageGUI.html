@@ -1,11 +1,43 @@
-
 {% extends 'base.html' %}
+{% load staticfiles%}
 {% block content %}
-<!-- <p>
-    {{keys}}
-</p> -->
-<a href="/image-gui/{{user_id}}/{{plate_id}}/{{prev_well}}">{{prev_well}}</a>
-<img height="400px" width="400px" src={{image_url}}> </img>
-<a href="/image-gui/{{user_id}}/{{plate_id}}/{{next_well}}">{{next_well}}</a>
+    <link href="{% static 'css/imageGUI.css' %}" rel="stylesheet">
+    <script src="{% static 'js/imageGUI.js'%}"></script>
+
+
+    <div class="container">
+        <div class="row" > 
+            <div class="col" id="well-image-container">
+                <img id="well-image" src={{image_url}}></img>
+                <a class="button" href="/image-gui/{{user_id}}/{{plate_id}}/{{prev_well}}">&lt;&lt; {{prev_well}}</a>
+                <a class="button" href="/image-gui/{{user_id}}/{{plate_id}}/{{next_well}}">{{next_well}}&gt;&gt;</a>
+            </div>
+            <div class="col">
+                <div class="row">
+                    <div class="col">
+                        <p>Soak coordinates:<br></p>
+                        <p> {{soakX}},{{soakY}}<br></p>
+
+                        <form id="soak-form" action="" method="post">
+                            {% csrf_token %}
+                            soak X coord: <input id="soak-x" type="number" step="0.01" name="soak-x" value="{{soakX}}"><br>
+                            soak Y coord: <input id="soak-y" type="number" step="0.01" name="soak-y" value="{{soakY}}"><br>
+                            <input type="button" onclick="saveCoordinates()" value="Save">
+                        </form>
+                          
+                        <select id="sel-well" name="sel-name" onchange="goToWell('{{user_id}}','{{plate_id}}')">
+                            {% for f in file_names %}
+                            <option value="{{f}}"> {{f}} </option>
+                            {% endfor %}                 
+                        </select>
+                    </div>
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+    
 
 {% endblock %}
