@@ -6,10 +6,12 @@ import logging
 from botocore.exceptions import ClientError
 from .s3utils import PrivateMediaStorage
 from django.contrib.auth.models import User
-from experiment.models import Plate, Well
+from experiment.models import Plate, Well, SubWell
 import uuid
 
 def upload_path(instance, filename):
+    # p = instance.plate
+    # well_dict = p.wellDict
     return 'private/' +  str(instance.owner.id)+ '/' +str(instance.plate.id)+ '/'+ str(instance.key)
 
 class WellImage(models.Model):
@@ -20,7 +22,10 @@ class WellImage(models.Model):
     upload = models.ImageField(upload_to=upload_path,storage=PrivateMediaStorage())
     plate = models.ForeignKey(Plate, related_name='well_images', on_delete=models.SET_NULL, null=True, blank=True)
     file_name = models.CharField(max_length=10)
-    # well = models.OneToOneField(Well, related_name='image', on_delete=models.SET_NULL, null=True, blank=True)
+    # subwell = models.OneToOneField(SubWell, related_name='image', on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return self.file_name
 
 # contains images appropriately named '[well]_[subwell].jpg' (i.e. 'A01_1.jpg')
 class PrivateFile(models.Model):

@@ -51,14 +51,73 @@ class Experiment(models.Model):
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)
 
-    @cached_property
+    @property
+    def libCompounds(self):
+        return self.library.compounds.all()
+
+    @property
     def numSrcPlates(self):
         return len(self.plates.filter(isSource=True))
     
-    @cached_property
+    @property
     def numDestPlates(self):
         return len(self.plates.filter(isSource=False))
-        
+
+    #get queryset of destination subwells
+    @property
+    def getDestSubwells(self):
+        return SubWell.objects.filter(well_id__in=Well.objects.filter(plate_id__in= self.plates.filter(isSource=False)))
+
+    #get queryset of source wells
+    @property
+    def getSrcWells(self):
+        return Well.objects.filter(plate_id__in=self.plates.filter(isSource=True))
+
+    def generateSoaks(self):
+        ct = 0
+        cmpds = self.libCompounds
+        list_soaks = [None]*cmpds.count()
+        list_src_wells = [w for w in self.getSrcWells.order_by('id')]
+        list_dest_subwells = [w for w in self.getDestSubwells.order_by('id')]
+        for c in cmpds:
+        # for compound, src_well, dest_subwell in zipped_lst:
+            src_well = list_src_wells[ct]
+            src_well.compounds.add(c)
+            # src_well_plate_idx = src_well.plate.plateIdxExp
+
+            dest_subwell = list_dest_subwells[ct]
+
+            dest_subwell.compounds.add(c)
+            dest_subwell.hasCrystal = True
+            soak = Soak(experiment_id=self.id,src=src_well,dest=dest_subwell,
+                    transferCompound=c)
+            # soak.save()
+            list_soaks[ct] = soak
+            ct += 1
+        Soak.objects.bulk_create(list_soaks)
+        return
+
+    #create the source plate and dest plates given the library size
+    # num_subwells should be lte to dest_plate_type.numSubwells
+    def generateSrcDestPlates(self, src_plate_type, dest_plate_type, num_subwells):
+        # exp_compounds = self.library.compounds.order_by('id')
+        num_compounds = self.libCompounds.count()
+
+        num_src_wells = src_plate_type.numCols * src_plate_type.numRows
+        num_dest_wells = dest_plate_type.numCols * dest_plate_type.numRows
+        num_src_plates = ceiling_div(num_compounds,num_src_wells)
+        num_dest_plates = ceiling_div(num_compounds,num_dest_wells * num_subwells)
+        src_plates_to_create = [None]*num_src_plates
+        dest_plates_to_create = [None]*num_dest_plates
+
+        # loop through and create the appropriate number of plates 
+        for i in range(num_src_plates):
+            src_plates_to_create[i] = Plate(plateType=src_plate_type, experiment_id=self.id,isSource=True)
+        for i in range(num_dest_plates):
+            dest_plates_to_create[i] = Plate(plateType=dest_plate_type, experiment_id=self.id,isSource=False)
+
+        plates = Plate.objects.bulk_create(src_plates_to_create + dest_plates_to_create) #bulk create Plate objects
+        return plates
 
     def formattedSoaks(self, qs_soaks,
                     s_num_rows=16, s_num_cols = 24, 

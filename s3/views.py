@@ -7,7 +7,7 @@ from django.views.generic import RedirectView
 # from boto.s3.connection import S3Connection
 from .models import PublicFile, PrivateFile, WellImage
 from django.views.generic.edit import FormView
-from .forms import FileFieldForm, PrivateFileUploadForm, PrivateImageUploadForm
+from .forms import ImagesFieldForm, FilesFieldForm, PrivateFileUploadForm, PrivateImageUploadForm
 import boto3
 from django.views.generic.edit import CreateView
 from django.urls import reverse_lazy
@@ -17,9 +17,19 @@ from experiment.models import Plate
 
 #loads well images with corresponding model instance and associated plate id and user id 
 class WellImagesUploadView(FormView):
-    form_class = FileFieldForm
+    form_class = ImagesFieldForm
     template_name = './s3/private_images_upload.html'  # Replace with your template.
     success_url = '/'  # Replace with your URL or reverse().
+    
+    def get(self, request, *args, **kwargs):
+        p = get_object_or_404(Plate, id=kwargs['plate_pk'])
+        well_images = p.well_images.filter()
+        form = self.get_form(self.get_form_class())
+        data = {
+            'form': form,
+            'well_images': well_images,
+        }
+        return render(request, './s3/private_images_upload.html', data)
 
     def post(self, request, *args, **kwargs):
         p = get_object_or_404(Plate, id=kwargs['plate_pk'])
@@ -27,7 +37,7 @@ class WellImagesUploadView(FormView):
             p.well_images.filter().delete() #delete well images associated with plate before uploading new ones
             form_class = self.get_form_class()
             form = self.get_form(form_class)
-            files = request.FILES.getlist('file_field')
+            files = request.FILES.getlist('image_field')
             if form.is_valid():
                 for f in files:
                     file_name = f.name.split('.')[0] #just get the file name, not the extension
@@ -38,7 +48,7 @@ class WellImagesUploadView(FormView):
                 return self.form_invalid(form)
 
 class PrivateFilesUploadView(FormView):
-    form_class = FileFieldForm
+    form_class = FilesFieldForm
     template_name = './s3/private_files_upload.html'  # Replace with your template.
     success_url = '/'  # Replace with your URL or reverse().
 

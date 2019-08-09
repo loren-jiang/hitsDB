@@ -1,6 +1,18 @@
-<form method="post" enctype="multipart/form-data">
+{% extends 'base.html' %}
+{% load staticfiles%}
+{% block content %}
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit">Submit</button>
   </form>
+
+  {% for img in well_images %}
+    {{img}}, 
+  {% endfor %}
+{% endblock %}
+
+
+
+
   
