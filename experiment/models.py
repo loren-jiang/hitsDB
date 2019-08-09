@@ -7,8 +7,103 @@ from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils.functional import cached_property 
-
+from orm_custom.custom_functions import bulk_add, bulk_one_to_one_add
 # Create your models here.
+
+class PlateType(models.Model):
+    name = models.CharField(max_length=30, default="",unique=True) 
+    numCols = models.PositiveIntegerField(default=12)
+    numRows = models.PositiveIntegerField(default=8)
+    numSubwells = models.PositiveIntegerField(default=0) 
+    # x and y synonmous with row and col respectively
+    xPitch = models.DecimalField(max_digits=10, decimal_places=3) # pitch in x direction of wells [mm]
+    yPitch = models.DecimalField(max_digits=10, decimal_places=3) # pitch in y direction of wells [mm]
+    plateHeight = models.DecimalField(max_digits=10, decimal_places=3) # height of plate
+    plateWidth = models.DecimalField(max_digits=10, decimal_places=3) #width of plate
+    plateLength = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    wellDepth = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    xOffsetA1 = models.DecimalField(max_digits=10, decimal_places=3) #x postion of center of well A1 relative to top left corner of plate
+    yOffsetA1 = models.DecimalField(max_digits=10, decimal_places=3) #y postion of center of well A1 relative to top left corner of plate
+    dataSheetURL = models.URLField(max_length=200, null=True, blank=True)
+    echoCompatible = models.BooleanField(default=False, null=True, blank=True)
+    isSBS = models.BooleanField(default=True)
+
+    maxResVol = models.DecimalField(max_digits=10, decimal_places=0, default=1000) #in uL
+    minResVol = models.DecimalField(max_digits=10, decimal_places=0, default=50) #in uL
+
+    maxDropVol = models.DecimalField(max_digits=10, decimal_places=0,default=5.0) #in uL
+    minDropVol = models.DecimalField(max_digits=10, decimal_places=0, default=0.5) #in uL
+
+    # returns number of reservoir wells
+    @property 
+    def numResWells(self):
+        return self.numCols * self.numRows
+
+    @property
+    def wellDict(self):
+        numWells = self.numResWells
+        letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
+            'L', 'M', 'N','O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
+        wellNames = [None] *  numWells
+        wellProps = [None] * numWells
+        wellIdx = 0
+        for rowIdx in range(self.numRows):
+          for colIdx in range(self.numCols):
+            let = letters[rowIdx]
+            num = str(colIdx + 1)
+            if (len(num)==1):
+                num = "0" + num
+            s = let + num
+            wellNames[wellIdx] = s
+            wellProps[wellIdx] = {
+                'wellIdx':wellIdx,
+                'wellRowIdx':rowIdx,
+                'wellColIdx':colIdx,
+            }
+            wellIdx += 1
+        return dict(zip(wellNames, wellProps))
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def createEchoSourcePlate(cls):
+        instance = cls(
+            name="Echo 384-well source plate",
+            numRows=16,
+            numCols=24,
+            xPitch = 4.5,
+            yPitch = 4.5,
+            plateLength = 127.76,
+            plateWidth = 85.48,
+            plateHeight = 10.48,
+            xOffsetA1 = 12.13,
+            yOffsetA1 = 8.99,
+            echoCompatible=True,
+            dataSheetURL=''
+        )
+        instance.save()
+        return instance
+
+    @classmethod
+    def create96MRC3DestPlate(cls):
+        instance = cls(
+            name="Swiss MRC-3 96 well microplate",
+            numRows=8,
+            numCols=12,
+            numSubwells = 3,
+            xPitch = 9,
+            yPitch = 9,
+            plateLength = 127.5,
+            plateWidth = 85.3,
+            plateHeight = 11.7,
+            xOffsetA1 = 16.1,
+            yOffsetA1 = 8.9,
+            echoCompatible=True,
+            dataSheetURL=''
+        )
+        instance.save()
+        return instance
 
 class Project(models.Model):
     name = models.CharField(max_length=30)
@@ -50,6 +145,8 @@ class Experiment(models.Model):
     dateTime = models.DateTimeField(auto_now_add=True)
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)
+    srcPlateType = models.ForeignKey(PlateType, null=True, blank=True, on_delete=models.CASCADE, related_name='experiments_src') #only one src plate type per experiment
+    destPlateType = models.ForeignKey(PlateType, null=True, blank=True, on_delete=models.CASCADE,related_name='experiments_dest') #noly one dest plate type per experiment
 
     @property
     def libCompounds(self):
@@ -63,38 +160,55 @@ class Experiment(models.Model):
     def numDestPlates(self):
         return len(self.plates.filter(isSource=False))
 
+    #expected number of source plates based on number of compounds in library
+    def expNumSrcPlates(self, num_subwells):
+        src_plate_type = self.srcPlateType
+        num_src_wells = src_plate_type.numCols * src_plate_type.numRows
+        return ceiling_div(self.libCompounds.count(), num_src_wells)
+
+    #expected number of dest plates based on number of compounds in library
+    def expNumDestPlates(self, num_subwells):
+        dest_plate_type = self.destPlateType
+        num_dest_wells = dest_plate_type.numCols * dest_plate_type.numRows
+        return ceiling_div(self.libCompounds.count(),num_dest_wells * num_subwells)
+
     #get queryset of destination subwells
     @property
     def getDestSubwells(self):
-        return SubWell.objects.filter(well_id__in=Well.objects.filter(plate_id__in= self.plates.filter(isSource=False)))
+        return SubWell.objects.filter(parentWell_id__in=Well.objects.filter(plate_id__in= self.plates.filter(isSource=False)))
 
     #get queryset of source wells
     @property
     def getSrcWells(self):
         return Well.objects.filter(plate_id__in=self.plates.filter(isSource=True))
-
+    
     def generateSoaks(self):
         ct = 0
         cmpds = self.libCompounds
         list_soaks = [None]*cmpds.count()
         list_src_wells = [w for w in self.getSrcWells.order_by('id')]
         list_dest_subwells = [w for w in self.getDestSubwells.order_by('id')]
+
         for c in cmpds:
-        # for compound, src_well, dest_subwell in zipped_lst:
             src_well = list_src_wells[ct]
-            src_well.compounds.add(c)
-            # src_well_plate_idx = src_well.plate.plateIdxExp
-
+            # src_well.compounds.add(c) # too slow and too many queries
             dest_subwell = list_dest_subwells[ct]
-
-            dest_subwell.compounds.add(c)
+            # dest_subwell.compounds.add(c) # too slow and too many queries
             dest_subwell.hasCrystal = True
-            soak = Soak(experiment_id=self.id,src=src_well,dest=dest_subwell,
-                    transferCompound=c)
-            # soak.save()
+            soak = Soak(experiment_id=self.id,src=src_well,dest=dest_subwell, transferCompound=c)
             list_soaks[ct] = soak
             ct += 1
         Soak.objects.bulk_create(list_soaks)
+
+        cmpds_pks = [c.pk for c in cmpds]
+        src_wells_pks = [w.pk for w in list_src_wells]
+        dest_subwells_pks = [s_w.pk for s_w in list_dest_subwells]
+        WellCompoundRelation = Well.compounds.through
+        SubWellCompoundRelation = SubWell.compounds.through
+        bulk_one_to_one_add(WellCompoundRelation, src_wells_pks, cmpds_pks,
+            "well_id","compound_id")
+        bulk_one_to_one_add(SubWellCompoundRelation, dest_subwells_pks, cmpds_pks,
+            "subwell_id","compound_id")
         return
 
     #create the source plate and dest plates given the library size
@@ -113,11 +227,14 @@ class Experiment(models.Model):
         # loop through and create the appropriate number of plates 
         for i in range(num_src_plates):
             src_plates_to_create[i] = Plate(plateType=src_plate_type, experiment_id=self.id,isSource=True)
+            # src_plates_to_create[i].save()
         for i in range(num_dest_plates):
             dest_plates_to_create[i] = Plate(plateType=dest_plate_type, experiment_id=self.id,isSource=False)
-
+            # dest_plates_to_create[i].save()
         plates = Plate.objects.bulk_create(src_plates_to_create + dest_plates_to_create) #bulk create Plate objects
-        return plates
+        for p in plates:
+            p.createPlateWells()
+        return 
 
     def formattedSoaks(self, qs_soaks,
                     s_num_rows=16, s_num_cols = 24, 
@@ -215,101 +332,6 @@ class CrystalScreen(models.Model):
 
     def __str__(self):
         return self.name
-
-class PlateType(models.Model):
-    name = models.CharField(max_length=30, default="",unique=True) 
-    numCols = models.PositiveIntegerField(default=12)
-    numRows = models.PositiveIntegerField(default=8)
-    numSubwells = models.PositiveIntegerField(default=0) 
-    # x and y synonmous with row and col respectively
-    xPitch = models.DecimalField(max_digits=10, decimal_places=3) # pitch in x direction of wells [mm]
-    yPitch = models.DecimalField(max_digits=10, decimal_places=3) # pitch in y direction of wells [mm]
-    plateHeight = models.DecimalField(max_digits=10, decimal_places=3) # height of plate
-    plateWidth = models.DecimalField(max_digits=10, decimal_places=3) #width of plate
-    plateLength = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
-    wellDepth = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
-    xOffsetA1 = models.DecimalField(max_digits=10, decimal_places=3) #x postion of center of well A1 relative to top left corner of plate
-    yOffsetA1 = models.DecimalField(max_digits=10, decimal_places=3) #y postion of center of well A1 relative to top left corner of plate
-    dataSheetURL = models.URLField(max_length=200, null=True, blank=True)
-    echoCompatible = models.BooleanField(default=False, null=True, blank=True)
-    isSBS = models.BooleanField(default=True)
-
-    maxResVol = models.DecimalField(max_digits=10, decimal_places=0, default=1000) #in uL
-    minResVol = models.DecimalField(max_digits=10, decimal_places=0, default=50) #in uL
-
-    maxDropVol = models.DecimalField(max_digits=10, decimal_places=0,default=5.0) #in uL
-    minDropVol = models.DecimalField(max_digits=10, decimal_places=0, default=0.5) #in uL
-
-    # returns number of reservoir wells
-    @property 
-    def numResWells(self):
-        return self.numCols * self.numRows
-
-    @property
-    def wellDict(self):
-        numWells = self.numResWells
-        letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
-            'L', 'M', 'N','O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
-        wellNames = [None] *  numWells
-        wellProps = [None] * numWells
-        wellIdx = 0
-        for rowIdx in range(self.numRows):
-          for colIdx in range(self.numCols):
-            let = letters[rowIdx]
-            num = str(colIdx + 1)
-            if (len(num)==1):
-                num = "0" + num
-            s = let + num
-            wellNames[wellIdx] = s
-            wellProps[wellIdx] = {
-                'wellIdx':wellIdx,
-                'wellRowIdx':rowIdx,
-                'wellColIdx':colIdx,
-            }
-            wellIdx += 1
-        return dict(zip(wellNames, wellProps))
-
-    def __str__(self):
-        return self.name
-
-    @classmethod
-    def createEchoSourcePlate(cls):
-        instance = cls(
-            name="Echo 384-well source plate",
-            numRows=16,
-            numCols=24,
-            xPitch = 4.5,
-            yPitch = 4.5,
-            plateLength = 127.76,
-            plateWidth = 85.48,
-            plateHeight = 10.48,
-            xOffsetA1 = 12.13,
-            yOffsetA1 = 8.99,
-            echoCompatible=True,
-            dataSheetURL=''
-        )
-        instance.save()
-        return instance
-
-    @classmethod
-    def create96MRC3DestPlate(cls):
-        instance = cls(
-            name="Swiss MRC-3 96 well microplate",
-            numRows=8,
-            numCols=12,
-            numSubwells = 3,
-            xPitch = 9,
-            yPitch = 9,
-            plateLength = 127.5,
-            plateWidth = 85.3,
-            plateHeight = 11.7,
-            xOffsetA1 = 16.1,
-            yOffsetA1 = 8.9,
-            echoCompatible=True,
-            dataSheetURL=''
-        )
-        instance.save()
-        return instance
 
 class Plate(models.Model):
     name = models.CharField(max_length=30, default="plate_name") #do I need unique?
@@ -432,13 +454,12 @@ class Plate(models.Model):
             well.subwells.create(idx=2,xPos= -3.8,yPos=4.25, )
             well.subwells.create(idx=3,xPos= 0, yPos=4.25, )
         return instance
-
-@receiver(post_save, sender=Plate)
-def createPlateWells(sender, instance, created, **kwargs):
-    # creates appropriate wells for plate instance
-    wells = None
-    if created: # we only want to create wells and subwells once for plates on model creation
-        plateType = instance.plateType
+    
+    
+    def createPlateWells(self):
+        # creates appropriate wells for plate instance
+        wells = None
+        plateType = self.plateType
         wellDict = plateType.wellDict
         well_lst = [None]*len(wellDict)
         if plateType:
@@ -448,12 +469,12 @@ def createPlateWells(sender, instance, created, **kwargs):
                 wellRowIdx = well_props['wellRowIdx']
                 wellColIdx = well_props['wellColIdx']
 
-                # instance.wells.create(name=key, maxResVol=130, minResVol=10)
+                # self.wells.create(name=key, maxResVol=130, minResVol=10)
                 well_lst[wellIdx] = Well(name=key, wellIdx=wellIdx, wellRowIdx=wellRowIdx, wellColIdx=wellColIdx,
-                    maxResVol=130, minResVol=10, plate_id=instance.pk)
+                    maxResVol=130, minResVol=10, plate_id=self.pk)
 
             Well.objects.bulk_create(well_lst)
-            wells = instance.wells.all()
+            wells = self.wells.all()
             numSubwells = plateType.numSubwells
             if numSubwells:
                 for w in wells:
@@ -461,7 +482,13 @@ def createPlateWells(sender, instance, created, **kwargs):
                     for i in range(numSubwells):
                         subwells_lst[i] = SubWell(idx=i+1,xPos= 0,yPos=0, parentWell_id=w.pk)
                     SubWell.objects.bulk_create(subwells_lst)
-    return wells
+        return wells
+
+@receiver(post_save, sender=Plate)
+def createPlateWells(sender, instance, created, **kwargs):
+    if created: # we only want to create wells and subwells once for plates on model creation
+        instance.createPlateWells()
+    return 
 
 class Well(models.Model):
     name = models.CharField(max_length=3) #format should be A01, X10, etc.
