@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block content %}
+<!-- might change this to check for same GROUP -->
+{% if pkOwner == pkUser %}
+<table class="table">
+    <thead class="thead-inverse">
+        <tr>
+            <th>Experiment name</th>
+            <th>Date created</th>
+            <th>Protein</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ experiment.name }}</td>
+            <td>{{ experiment.dateTime }}</td>
+            <td>{{ experiment.protein }}</td>
+            <td>{{ experiment.description }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<a class='btn btn-info' role='button' href={% url 'delete_exp' experiment.pk %}> Delete experiment </a> 
+
+<a class='btn btn-info' role='button' href={% url 'delete_exp_plates' experiment.pk %}> Delete plates </a>
+
+<a class='btn btn-info' role='button' href={% url 'soaks_csv_view' experiment.pk %}> Download soaks as .csv </a> 
+<br>
+<br>
+
+{% else %}
+<div class=container-fluid>
+    <div class="col-lg-4 offset-md-4">
+        <div class="jumbotron">
+        <p> You don't have permission to view this experiment...</p>
+      </div>
+  </div>
+</div>
+{% endif %}
+
+
+<div class="container-fluid">
+
+<ul class="nav nav-tabs justify-content-center" id="myTab" role="tablist">
+
+  <li class="nav-item">
+    <a class="nav-link active" id="profile-tab" data-toggle="tab" href="#soaks" role="tab" aria-controls="soaks" aria-selected="true">Soaks</a>
+  </li>
+
+  <li class="nav-item">
+    <a class="nav-link" id="home-tab" data-toggle="tab" href="#plates" role="tab" aria-controls="plates" aria-selected="false">Plates</a>
+  </li>
+
+  <li class="nav-item">
+    <a class="nav-link" id="crystals-tab" data-toggle="tab" href="#crystals" role="tab" aria-controls="crystals" aria-selected="false">Crystals</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="cryo-tab" data-toggle="tab" href="#cryo" role="tab" aria-controls="cryo" aria-selected="false">Plates</a>
+  </li>
+  
+</ul>
+
+<div class="tab-content" id="myTabContent">
+  <div class="tab-pane fade show active" id="soaks" role="tabpanel" aria-labelledby="soaks-tab">
+    <div class='row justify-content-center'>
+      <div class='col-md-10'>
+          {% load django_tables2 %} 
+          {% render_table soaks_table %}
+      </div>
+           
+    </div>
+  </div>
+  <div class="tab-pane fade" id="plates" role="tabpanel" aria-labelledby="plates-tab">
+    <div class='row justify-content-center'>
+      <div class='col-md-10'>
+          {% load django_tables2 %} 
+          {% render_table plates_table %}
+      </div>
+            
+    </div>
+  </div>
+  <!-- <div class="tab-pane fade" id="plates" role="tabpanel" aria-labelledby="plates-tab">
+    <div class="row">
+          <div class="col-5">
+                {% for p in plates.src_plates %}
+                {% for j in p %}
+                <div id="source_plates" class="flex-container">
+                    {% for k in j %}
+                      <div id="src_{{k.well_id}}" soak-id="{{k.soak_id}}" class="flex-item" data-toggle="tooltip" data-placement="top" title="{{k.well_name}} | {{k.compound}}"></div>
+
+                    {% endfor %}
+                </div>
+                {% endfor %}
+                <br>
+                {% endfor %}
+            </div>
+            <div class="col-2">
+               <div id="soak_desc"> </div>
+            </div>
+           
+            <div class="col-5">
+                {% for p in plates.dest_plates %}
+                {% for j in p %}
+                <div id="dest_plates" class="flex-container">
+                    {% for k in j %}
+                      <div class="flex-item">
+                        <div class ="flex-container">
+                            <div id="dest_{{k.0.src_well_id}}" class="flex-item" style="background:aqua;" data-toggle="tooltip" data-placement="top" title="{{k.0.parentWell_name}} | Subwell_{{k.0.subwell_idx}} | {{k.0.compound}}"></div>
+
+                            <div id="dest_{{k.1.src_well_id}}" class="flex-item" style="background:aqua;" data-toggle="tooltip" data-placement="top" title="{{k.1.parentWell_name}} | Subwell_{{k.1.subwell_idx}} | {{k.1.compound}}"></div>
+                        </div>
+                        <div class ="flex-container">
+                            <div class="flex-item" style="background:teal;" ></div>
+                            <div id="dest_{{k.2.src_well_id}}" class="flex-item" style="background:aqua;" data-toggle="tooltip" data-placement="top" title="{{k.2.parentWell_name}} | Subwell_{{k.2.subwell_idx}} | {{k.2.compound}}"></div>
+                        </div>
+                        
+                      </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+                <br>
+                {% endfor %}
+
+            </div>
+        </div>
+  </div> -->
+
+  <div class="tab-pane fade" id="crystals" role="tabpanel" aria-labelledby="crystals-tab">
+    
+  </div>
+
+  <div class="tab-pane fade" id="cryo" role="tabpanel" aria-labelledby="cryo-tab">
+   
+  </div>
+
+  
+
+</div>
+
+</div>
+   
+
+{% endblock %}
+{% block javascript %}
+
+<script>
+    // $(document).ready(function(){
+    //   $('[data-toggle="tooltip"]').tooltip();   
+    // });
+    
+    $(document).ready(function(){
+      $("#source_plates .flex-item").hover(function(){
+        var id = this.id.split("_")[1];
+       $("#dest_" + id).toggleClass('forum_hover');
+        var soak_id = $(this).attr("soak-id");
+       $("#soak_desc").html(soak_id);
+      });
+
+      $("#dest_plates .flex-item").hover(function(){
+        var id = this.id.split("_")[1];
+       $("#src_" + id).toggleClass('forum_hover');
+       
+      });
+    });
+</script>
+{% endblock %}
