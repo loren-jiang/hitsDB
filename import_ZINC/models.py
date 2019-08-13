@@ -34,8 +34,8 @@ class Library(models.Model):
     description = models.CharField(max_length=300, default='')
     isCommerical = models.BooleanField(default=False)
     sourceURL = models.URLField(null=True, blank=True)
-    groups = models.ManyToManyField(Group, related_name='libraries', blank=True)
-    owner = models.ForeignKey(User, related_name='library', on_delete=models.CASCADE,null=True, blank=True)
+    groups = models.ManyToManyField(Group, related_name='group_libraries', blank=True)
+    owner = models.ForeignKey(User, related_name='libraries', on_delete=models.CASCADE,null=True, blank=True)
     isTemplate = models.BooleanField(default=False)
     supplier = models.CharField(max_length=100, default='')
     # library can have many compounds; compound can have many libraries
@@ -44,7 +44,11 @@ class Library(models.Model):
 
     def __str__(self):
         return self.name
-
+    
+    @property
+    def numCompounds(self):
+        return self.compounds.all().count()
+    
         # import JSON of compounds and create new library from them
     def newLibraryFromJSON(self, f):
         from .serializers import CompoundJSONSerializer

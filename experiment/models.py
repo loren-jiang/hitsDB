@@ -16,7 +16,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 class Project(models.Model):
     name = models.CharField(max_length=30)
     owner = models.ForeignKey(User, related_name='projects',on_delete=models.CASCADE)
-    dateTime = models.DateTimeField(auto_now_add=True)
+    dateTime = models.DateTimeField(auto_now_add=True, verbose_name='Created')
     description = models.CharField(max_length=300)
     collaborators = models.ManyToManyField(User, related_name='collab_projects',blank=True) 
     
@@ -42,7 +42,10 @@ class Project(models.Model):
         get_latest_by = "dateTime"
 
     def get_absolute_url(self):
-        return "/proj/%i/" % self.id
+        return "/projects/%i/" % self.id
+
+    def __str__(self):
+        return self.name
         
 class Experiment(models.Model):
     name = models.CharField(max_length=30)
@@ -59,6 +62,11 @@ class Experiment(models.Model):
         models.PositiveSmallIntegerField(blank=True, null=True, validators=[MaxValueValidator(3), MinValueValidator(1)]),
         size=3, blank=True, null=True
         )
+
+    class Meta:
+        get_latest_by="dateTime"
+        # ordering = ['-dateTime']
+
     @property
     def libCompounds(self):
         return self.library.compounds.all()

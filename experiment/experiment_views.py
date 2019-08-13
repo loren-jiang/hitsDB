@@ -33,6 +33,7 @@ def experiment(request, pk):
     
     # formattedSoaks = experiment.formattedSoaks(soaks_qs) #played around with caching
     data = {
+        'show_path' : True,
         'pkUser': request.user.id,
         'experiment': experiment,
         'pkOwner': experiment.owner.id,

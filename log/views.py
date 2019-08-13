@@ -17,8 +17,6 @@ from experiment.models import Project
 
 
 # Create your views here.
-# this login required decorator is to not allow to any  
-# view without authenticating
 @login_required(login_url="login/")
 def user_home(request):
     user = request.user

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+  {% if filter %}
+      <form action="" method="get" class="form">
+          {% csrf_token %}
+          {{ filter.form | crispy }}
+          <button type="submit" class="btn btn-primary">Filter</button>
+      </form>
+  {% endif %}
+{% load django_tables2 %} 
+{% render_table table %}
+
+  <!-- <form method="get">
+    {{ filter.form.as_p }}
+    <button type="submit">Search</button>
+  </form>
+  <ul>
+  {% for c in filter.qs %}
+    <li>{{ c.zinc_id }} | {{ c.molWeight}}</li>
+  {% endfor %}
+  </ul> -->
+{% endblock %}

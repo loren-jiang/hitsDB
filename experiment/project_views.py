@@ -18,41 +18,39 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 class ProjectView(LoginRequiredMixin, TemplateView):
     login_url = '/login'
     template_name = 'project.html'
-    def get(self,request,*args,**kwargs):
-        pk_proj = self.kwargs['pk']
+
+    def get_data(self, pk_proj):
         proj = Project.objects.get(pk=pk_proj)
         data = {
+            'show_path': True,
             'experimentsTable': proj.getExperimentsTable(),
+            'proj':proj,
             'pk_proj':pk_proj,
             'librariesTable': proj.getLibrariesTable(),
             'collaboratorsTable' :proj.getCollaboratorsTable(),
             'form': NewExperimentForm()
         }
-        return self.render_to_response(data)
+        return data
+    def get(self,request,*args,**kwargs):
+        return self.render_to_response(self.get_data(self.kwargs['pk']))
 
     def post(self,request,*args,**kwargs):
         form = NewExperimentForm(request.POST)
-        pk_proj = self.kwargs['pk']
-        proj = Project.objects.get(pk=pk_proj)
+        data = self.get_data(self.kwargs['pk'])
         if form.is_valid():
             exp = form.save(commit=False)
-            form_data = form.cleaned_data
-            exp.project = proj
+            # form_data = form.cleaned_data
+            exp.project = data['proj']
             exp.owner = request.user
             exp.save()
-        data = {
-            'experimentsTable': proj.getExperimentsTable(),
-            'pk_proj':pk_proj,
-            'librariesTable': proj.getLibrariesTable(),
-            'collaboratorsTable' :proj.getCollaboratorsTable(),
-            'form': NewExperimentForm()
-        }
+
         return self.render_to_response(data)
 
 @login_required(login_url="/login")
 def project(request, pk):
     pk_proj = pk
     proj = Project.objects.get(pk=pk_proj)
+    form = NewExperimentForm()
 
     # data = [get_proj_exps_libs(request, pk_proj)]
     data = [
@@ -61,10 +59,10 @@ def project(request, pk):
                 'pk_proj':pk_proj,
                 'librariesTable': proj.getLibrariesTable(),
                 'collaboratorsTable' :proj.getCollaboratorsTable(),
+                'form':form,
             }
         ]
-    form = NewExperimentForm()
-    data[0]['form'] = form
+    
 
     #     return render(request, "projects.html", data[0])
     if request.method == 'POST':
@@ -83,11 +81,10 @@ def project(request, pk):
 
 @login_required(login_url="/login")
 def projects(request):
-    data = [{"projectsTable":get_user_projects(request)}]
+    data = [{"projectsTable":get_user_projects(request)}] #wrapped in list so we can access in both GET and POST views
     form = ProjectForm(user=request.user)
     data[0]['form'] = form
-    # if request.method == 'GET':
-    #     return render(request, "projects.html", data[0])
+
     if request.method == 'POST':
         form = ProjectForm(request.user,request.POST)
         if form.is_valid():
@@ -183,7 +180,7 @@ def project_edit_simple(request,pk):
 
 @login_required(login_url="/login")
 def delete_projects(request, pks):
-    pks = pks.split('/')
+    pks = pks.split('_')
     for pk in pks:
         if pk: #check if pk is not empty
             try:
@@ -196,7 +193,7 @@ def delete_projects(request, pks):
     
 @login_required(login_url="/login")
 def delete_experiments(request, pks, pk_proj=None):
-    pks = pks.split('/')
+    pks = pks.split('_')
     for pk in pks:
             if pk: #check if pk is not empty
                 try:
@@ -210,17 +207,23 @@ def delete_experiments(request, pks, pk_proj=None):
     else:
         return redirect('experiments')
 
-# returns user projects as django tables 2
+# returns user projects as django tables 2 for home page
 # argument should be request for pagination to work properly
-def get_user_projects(request, excludeCols=[]):
+def get_user_projects(request, exc=[]):
     user_proj_qs = request.user.projects.all()
     user_collab_proj_qs = request.user.collab_projects.all()
-    projectsTable = ProjectsTable(data=user_proj_qs.union(user_collab_proj_qs),exclude=excludeCols)
+    projectsTable = ProjectsTable(data=user_proj_qs.union(user_collab_proj_qs),exclude=exc)
     RequestConfig(request, paginate={'per_page': 5}).configure(projectsTable)
     # return {
     #     'projectsTable': projectsTable,
     # }
     return projectsTable
+
+def get_user_libraries(request, exc=[]):
+    user_lib_qs = Library.objects.filter(owner_id=request.user.id)
+    libsTable = LibrariesTable(data=user_lib_qs,exclude=exc)
+    RequestConfig(request, paginate={'per_page': 5}).configure(libsTable)
+    return libsTable
 
 class NewExp(TemplateView):
     template_name = 'new_experiment.html'

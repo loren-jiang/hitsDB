@@ -1,7 +1,12 @@
+/* NAVBAR STYLES */
+
 /* change the background color */
 .navbar-custom {
     background-color: #052049;
 }
+
+
+
 /* change the brand and text color */
 .navbar-custom .navbar-brand,
 .navbar-custom .navbar-text {
@@ -18,6 +23,31 @@
     color: rgba(255,255,255,1);
 }
 
+
+/* BUTTON STYLES */
+.btn-info {
+    color: #fff !important;
+}
+
+/* FORM STYLES */
+.col-form-label {
+    font-weight: bold;
+}
+
+/* SITE TREE STYLES */
+#url_path_row {
+    padding: 10px;
+    margin: 10px;
+    background-color: aliceblue;
+}
+
+/* ICON STYLES */
+.icon {
+    width: 30px !important;
+    height: 30px !important; 
+}
+
+/* TABLE STYLES */
 .pagination li {
     margin-left:10px;
 }

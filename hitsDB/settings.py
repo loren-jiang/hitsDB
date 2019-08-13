@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'livereload', #hot reloading for Django
     'django.contrib.staticfiles',
     'widget_tweaks',
     'log',
@@ -51,6 +52,8 @@ INSTALLED_APPS = [
     's3',
     'xtal_img',
     'storages',
+    'crispy_forms',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -62,14 +65,15 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'livereload.middleware.LiveReloadScript',
 ]
 
 ROOT_URLCONF = 'hitsDB.urls'
 
-DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
-    # '...
-}
+# DEBUG_TOOLBAR_CONFIG = {
+#     'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
+#     # '...
+# }
 
 TEMPLATES = [
     {
@@ -192,3 +196,6 @@ PRIVATE_FILE_STORAGE = 's3.s3utils.PrivateMediaStorage'
 
 AWS_QUERYSTRING_EXPIRE = '5000' # expiration time for signed urls in seconds
 
+
+# CRISPY FORMS SETTINGS:
+CRISPY_TEMPLATE_PACK = 'bootstrap4'

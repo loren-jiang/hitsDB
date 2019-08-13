@@ -15,22 +15,25 @@ from djqscsv import render_to_csv_response
 from django.forms.models import model_to_dict
 from import_ZINC.models import Library, Compound
 from django.urls import reverse
-from .project_views import get_user_projects
+from experiment.tables import get_user_projects, get_user_libraries, get_user_recent_exps
 
 # Create your views here.
 @login_required(login_url="/login")
 def home(request):
     user = request.user
-    projectsTable = get_user_projects(request, excludeCols=["owner","collaborators","id"]) #takes in request
-    # recent_projs = Project.objects.filter(owner=user)[:3]
+    projectsTable = get_user_projects(request, exc=["owner","id","expChecked"]) #takes in request
+    libsTable = get_user_libraries(request, exc=[])
+    recentExpsTable = get_user_recent_exps(request, exc=['owner','expChecked'])
+
     data = {
         'user':user,
         'projectsTable':projectsTable,
+        'libsTable':libsTable,
+        'recentExpsTable':recentExpsTable,
         # 'recent_projs':recent_projs,
     }
 
-    return render(request,"user_home.html", data)
-
+    return render(request,"experiment/home_templates/home.html", data)
 
 ### OLD VIEWS MOVED INTO SEPARATE .PY FILES-----------------------------------------------------------------------
 
