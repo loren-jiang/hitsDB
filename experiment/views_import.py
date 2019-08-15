@@ -1,7 +1,7 @@
 # common imports for views
 from django.contrib.auth.models import User, Group
-from django.http import HttpResponse
-from django.urls import reverse
+from django.http import HttpResponse, HttpResponseRedirect
+from django.urls import reverse, reverse_lazy
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder

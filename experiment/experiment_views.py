@@ -5,35 +5,81 @@ from django_tables2 import RequestConfig
 import csv
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from import_ZINC.models import Library, Compound
-from .forms import NewExperimentForm, PlateSetupForm
+from .forms import NewExperimentForm, PlateSetupForm, EditExperimentAsMultiForm
+from forms_custom.multiforms import MultiFormsView
+
+class MultipleFormsDemoView(MultiFormsView):
+    template_name = "experiment/expTemplates/cbv_multiple_forms.html"
+    form_classes = {'exp': EditExperimentAsMultiForm,
+                    'plates': PlateSetupForm,
+                    }
+
+    success_urls = {}
+
+    def exp_form_valid(self, form):
+        pk = self.kwargs.get('pk', None)
+        cleaned_data = form.cleaned_data
+        form_name = cleaned_data.pop('action')
+        experiment = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
+        experiment.update(**cleaned_data)
+        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
+        return HttpResponseRedirect(self.get_success_url(form_name))
+    
+    
+    def plates_form_valid(self, form):
+        email = form.cleaned_data.get('email')
+        form_name = form.cleaned_data.get('action')
+        print(email)
+        return HttpResponseRedirect(self.get_success_url(form_name))
+    
+    def get_context_data(self, **kwargs):
+        context = super(MultiFormsView, self).get_context_data(**kwargs)
+        pk = self.kwargs.get('pk', None)
+        request = self.request
+        experiment = request.user.experiments.prefetch_related('plates','soaks').get(id=pk)
+        soaks_table = experiment.getSoaksTable(exc=[])
+        RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
+        src_plates_table = experiment.getSrcPlatesTable(exc=[])
+        dest_plates_table = experiment.getDestPlatesTable(exc=[])
+        context['experiment'] = experiment
+        context['src_plates_table'] = src_plates_table
+        context['dest_plates_table'] = dest_plates_table
+        context['soaks_table'] = soaks_table
+
+        # populate success_urls dictionary with urls
+        self.success_urls['library'] = reverse_lazy('exp', kwargs={'pk':pk})
+        self.success_urls['plates'] = reverse_lazy('exp', kwargs={'pk':pk})
+        return context
+
+#checks if project is the user's
+def experiment_is_users(user, e):
+    projects_with_exp = user.projects.filter(experiments__in=[e.id]) 
+    return projects_with_exp.count() > 0 
 
 @login_required(login_url="/login")
 def experiment(request, pk):
     experiment = Experiment.objects.select_related(
         'owner').get(id=pk)
-    # source_plates = experiment.plates.filter(isSource=True)
-    # dest_plates = experiment.plates.filter(isSource=False)
-    # num_src_plates = len(source_plates)
-    # num_dest_plates = len(dest_plates)
-    # soaks_qs = experiment.soaks.select_related('dest__parentWell__plate','src__plate',
-    #     ).prefetch_related('transferCompound',).order_by('id')
-    # soaks_table=SoaksTable(soaks_qs)
-    soaks_table = experiment.getSoaksTable(exc=[])
-    RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
-    src_plates_table = experiment.getSrcPlatesTable(exc=[])
-    RequestConfig(request, paginate={'per_page': 5}).configure(src_plates_table)
-    
-    # formattedSoaks = experiment.formattedSoaks(soaks_qs) #played around with caching
-    data = {
-        'show_path' : True,
-        'pkUser': request.user.id,
-        'experiment': experiment,
-        'pkOwner': experiment.owner.id,
-        'plates_table': src_plates_table,
-        # 'plates' : formattedSoaks, #rendering the plate grids takes too long and isn't useful; maybe we should just list plates?
-        'soaks_table': soaks_table,
-    }
-    return render(request,'experiment.html', data)
+    if experiment_is_users(request.user, experiment):
+        soaks_table = experiment.getSoaksTable(exc=[])
+        RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
+        src_plates_table = experiment.getSrcPlatesTable(exc=[])
+        dest_plates_table = experiment.getDestPlatesTable(exc=[])
+        
+        # formattedSoaks = experiment.formattedSoaks(soaks_qs) #played around with caching
+        data = {
+            'show_path' : True,
+            'pkUser': request.user.id,
+            'experiment': experiment,
+            'pkOwner': experiment.owner.id,
+            'src_plates_table': src_plates_table,
+            'dest_plates_table': dest_plates_table,
+            # 'plates' : formattedSoaks, #rendering the plate grids takes too long and isn't useful; maybe we should just list plates?
+            'soaks_table': soaks_table,
+        }
+        return render(request,'experiment.html', data)
+    else:
+        return HttpResponse("Don't have permission") # should create a request denied template later!
 
 #views experiment soaks as table
 @login_required(login_url="/login")

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% load static %}
+{% load render_table from django_tables2 %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+<div id="exp-container" class="container">
+    <div class="row">
+
+        <div class="col-3">
+        <div id="exp-info" class="jumbotron">
+            <h4> {{ experiment.name }}</h4>
+            <p> Created: {{ experiment.dateTime }}</p>
+            <p> Protein: {{ experiment.protein }}</p>
+            <p> Description: {{ experiment.description }}</p>
+            <a class='btn btn-danger' role='button' href={% url 'delete_exp' experiment.pk %}> Delete experiment </a> 
+        </div>
+
+        <div id="exp-plates">
+            {% render_table src_plates_table %}
+            {% render_table dest_plates_table %}
+        </div>  
+        </div>
+
+        <div class="col-9">
+            <div class="jumbotron">
+                <form id="exp-form" method="post">{% csrf_token %}
+                    {{ forms.exp|crispy}}
+                    <input type="submit" value="Send">
+                </form>
+            </div>
+            
+            
+            <div class="jumbotron">
+                <form id="plates-form" method="post">{% csrf_token %}
+                    {{ forms.plates|crispy}}
+                    <input type="submit" value="Send">
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+  
+  
+
+{% endblock content %}

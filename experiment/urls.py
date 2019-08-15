@@ -31,8 +31,10 @@ urlpatterns = [
     # re_path(r'^projects/(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)$', project_views.ProjectView.as_view(), name='proj_exps'),
     
     # --------------- urls to Experiment views ------------------------------
-    re_path(r'^exps/(?P<pk>\d+)/$', experiment_views.experiment, name='exp'),
-	# re_path(r'^experiments/exp/(?P<pk>\d+)/$', experiment_views.experiment, name='exp'),
+    # re_path(r'^multiform/$', experiment_views.MultipleFormsDemoView.as_view(), name='multiform'),
+    # re_path(r'^exps/(?P<pk>\d+)/$', experiment_views.experiment, name='exp'),
+    re_path(r'^exps/(?P<pk>\d+)/$', experiment_views.MultipleFormsDemoView.as_view(), name='exp'),
+	# re_path(r'^experiments/exp/(?P<pk>\d+)/$', experiment_views.experiment, name='exp'),pip
 	re_path(r'^exps/(?P<pk>\d+)/soaks_csv_view/$', experiment_views.soaks_csv_view, name='soaks_csv_view'),
     re_path(r'^exps/(?P<pk>\d+)/soaks/$', experiment_views.soaks, name='exp_soaks'),
     re_path(r'^exps/(?P<pk>\d+)/plates/$', experiment_views.plates, name='exp_plates'),

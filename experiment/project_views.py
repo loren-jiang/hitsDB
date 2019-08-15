@@ -9,7 +9,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 # from .request_access_tests import request_passes_test
 
 #checks if project is the user's
-def proj_in_user_projects(user, proj):
+def proj_is_users(user, proj):
     projects = user.projects.filter(id=proj.id)
     return projects.count() > 0 
 
@@ -48,10 +48,10 @@ class ProjectView(LoginRequiredMixin, TemplateView):
 def project(request, pk):
     pk_proj = pk
     proj = Project.objects.get(pk=pk_proj)
-    if proj_in_user_projects(request.user, proj):
+    if proj_is_users(request.user, proj):
         form = NewExperimentForm()
         data = {
-                    'experimentsTable': proj.getExperimentsTable(),
+                    'experimentsTable': proj.getExperimentsTable(exc=['project']),
                     'pk_proj':pk_proj,
                     'librariesTable': proj.getLibrariesTable(),
                     'collaboratorsTable' :proj.getCollaboratorsTable(),
@@ -68,7 +68,7 @@ def project(request, pk):
                 exp.save()
             return redirect('proj',pk=pk)
 
-        return render(request,'project.html',data)
+        return render(request,'experiment/proj_templates/project.html',data)
     else:
         return HttpResponse("Don't have permission") # should create a request denied template later!
 
@@ -88,7 +88,7 @@ def projects(request):
             for c in form_data['collaborators']:
                 proj.collaborators.add(c)
         return redirect('projects')
-    return render(request, 'projects.html', data)
+    return render(request, 'experiment/proj_templates/projects.html', data)
 
 @login_required(login_url="/login")
 def proj_libraries(request, pk_proj):

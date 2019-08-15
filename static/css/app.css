@@ -25,7 +25,7 @@
 
 
 /* BUTTON STYLES */
-.btn-info {
+.btn-info, .btn-danger {
     color: #fff !important;
 }
 
