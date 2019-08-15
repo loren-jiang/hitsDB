@@ -82,10 +82,12 @@ class LibrariesTable(tables.Table):
         fields=('name','numCompounds','supplier')
 
 class CompoundsTable(tables.Table):
+    selection = tables.CheckBoxColumn(accessor='pk')
+
     class Meta:
         model=Compound
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields=('zinc_id','nameInternal','smiles')
+        fields=('zinc_id','smiles','selection')
         
 # returns user projects as django tables 2 for home page
 # argument should be request for pagination to work properly

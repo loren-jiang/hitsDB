@@ -89,8 +89,6 @@ class Library(models.Model):
             # optionally, we can bulk update here I think...
             return [c for c in compounds_created], [c for c in compounds_existing]
 
-   
-
         relations = []
         created = []
         existed = []
@@ -112,8 +110,3 @@ class Library(models.Model):
             created.extend(compounds_created)
             existed.extend(compounds_existing)
         return relations, created, existed
-
-
-
-
-    

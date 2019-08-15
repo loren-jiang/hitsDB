@@ -1,43 +1,58 @@
-from django.contrib.auth.decorators import login_required
+from .views_import import * #common imports for views
 from django_tables2 import RequestConfig
-from django.shortcuts import render, redirect, get_object_or_404
 from import_ZINC.models import Library, Compound
 from .tables import LibrariesTable, CompoundsTable
 from import_ZINC.filters import LibCompoundFilter, CompoundFilter
-from django.urls import reverse
 from django_tables2.views import SingleTableMixin
 from django_filters.views import FilterView
 
-# @login_required(login_url="/login")
-# def user_compounds(request):
-#     user_libs = request.user.libraries.all()
-#     compounds = Compound.objects.filter(libraries__in=user_libs)
-#     compound_filter = CompoundFilter(request.GET, queryset=compounds)
-#     return render(request, 'experiment/lib_templates/lib_compounds_search.html', {'filter': compound_filter})
+@login_required(login_url="/login")
+def user_compounds(request):
+    user_libs = request.user.libraries.all()
+    compounds = Compound.objects.filter(libraries__in=user_libs)
+    compounds_table = CompoundsTable(compounds)
+    RequestConfig(request, paginate={'per_page': 25}).configure(compounds_table)
+    compound_filter = CompoundFilter(request.GET, queryset=compounds)
+    data = {
+        'filter':compound_filter,
+        'form_id':"filter-form",
+        'table':compounds_table,
+        "table_id": "compounds_table",
+        # "delete_url": reverse('delete_compounds',kwargs={'pks':''})
+    }
+    return render(request, 'experiment/list_delete_table.html', data)
 
+# generic viewset is kinda meh since it doesn't allow get_context_data to extend...
 class UserCompoundsFilterView(SingleTableMixin, FilterView):
     table_class = CompoundsTable
     model = Compound
-    template_name = 'experiment/lib_templates/lib_compounds_search.html'
+    template_name = 'experiment/list_delete_table.html'
     filterset_class = CompoundFilter
 
-@login_required(login_url="/login")
-def lib_compounds_search(request, pk_lib):
-    lib = get_object_or_404(Library, pk=pk_lib)
-    compounds = lib.compounds.all()
-    compound_filter = LibCompoundFilter(request.GET, queryset=compounds)
-    return render(request, 'experiment/lib_templates/lib_compounds_search.html', {'filter': compound_filter})
 
 @login_required(login_url="/login")
 def lib_compounds(request, pk_lib):
     lib = get_object_or_404(Library, pk=pk_lib)
     compounds = lib.compounds.all()
-    table=CompoundsTable(compounds)
+    compounds_filter = LibCompoundFilter(request.GET, queryset=compounds)
+    table = CompoundsTable(compounds_filter.qs)
     RequestConfig(request, paginate={'per_page': 25}).configure(table)
     data = {
-        'CompoundsTable': table,
-    }
-    return render(request,'lib_compounds.html', data)
+        'filter': compounds_filter,
+        'table':table,
+        }
+    return render(request, 'experiment/lib_templates/lib_compounds.html', data)
+
+# @login_required(login_url="/login")
+# def lib_compounds(request, pk_lib):
+#     lib = get_object_or_404(Library, pk=pk_lib)
+#     compounds = lib.compounds.all()
+#     table=CompoundsTable(compounds)
+#     RequestConfig(request, paginate={'per_page': 25}).configure(table)
+#     data = {
+#         'CompoundsTable': table,
+#     }
+#     return render(request,'lib_compounds.html', data)
 
 @login_required(login_url="/login")
 def libraries(request):

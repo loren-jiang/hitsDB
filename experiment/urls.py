@@ -12,10 +12,9 @@ urlpatterns = [
     # --------------- urls to Library views ------------------------------
     # re_path(r'^lib_compounds/(?P<pk_lib>\d+)/$', library_views.lib_compounds, name='lib_compounds'),
     re_path(r'^libraries/(?P<pk_lib>\d+)/$', library_views.lib_compounds, name='lib'),
-    re_path(r'^libraries/(?P<pk_lib>\d+)/search/$', library_views.lib_compounds_search, name='lib_compounds_search'),
     re_path(r'^libraries/$', library_views.libraries, name='libs'),
-    # re_path(r'^compounds/search/$', library_views.user_compounds, name='user_compounds'),
-    re_path(r'^compounds/search/$', library_views.UserCompoundsFilterView.as_view(), name='user_compounds'),
+    # re_path(r'^compounds_search/$', library_views.UserCompoundsFilterView.as_view(), name='user_compounds'),
+    re_path(r'^compounds_search/$', library_views.user_compounds, name='user_compounds'),
 
 
     # --------------- urls to Project views ------------------------------
@@ -24,8 +23,8 @@ urlpatterns = [
     re_path(r'^proj_libraries/(?P<pk_proj>\d+)/$', project_views.proj_libraries, name='proj_libs'),
     re_path(r'^projects/$', project_views.projects, name='projects'),
     re_path(r'^projects/delete_projs/(?P<pks>\d*(?:_\d+)*)$', project_views.delete_projects, name='delete_projs'),
-    # re_path(r'^proj/(?P<pk>\d+)$', project_views.project, name='proj'),
-    re_path(r'^projects/(?P<pk>\d+)/$', project_views.ProjectView.as_view(), name='proj'),
+    re_path(r'^projects/(?P<pk>\d+)/$', project_views.project, name='proj'),
+    # re_path(r'^projects/(?P<pk>\d+)/$', project_views.ProjectView.as_view(), name='proj'),
     re_path(r'^projects/(?P<pk_proj>\d+)/exp/new/$', project_views.NewExp.as_view(), name='new_proj_experiment'),
     re_path(r'^projects/(?P<pk_proj>\d+)/delete_exps/(?P<pks>\d*(?:_\d+)*)$', project_views.delete_experiments, name='delete_proj_exps'),
     # re_path(r'^projects/(?P<pk_proj>\d+)/exps/$', project_views.ProjectView.as_view(), name='proj_exps'),

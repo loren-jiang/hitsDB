@@ -1,19 +1,17 @@
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic.base import TemplateView
-from django.db import transaction
+from .views_import import * #common imports for views
 from .models import Experiment, Plate, Well, SubWell, Soak, Project
 from .tables import SoaksTable, ExperimentsTable, LibrariesTable, ProjectsTable
 from django_tables2 import RequestConfig
-from djqscsv import render_to_csv_response
-from django.core.serializers.json import DjangoJSONEncoder
-from django.core.serializers import serialize
-from django.forms.models import model_to_dict
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from import_ZINC.models import Library, Compound
 from .forms import NewExperimentForm, ProjectForm, SimpleProjectForm, PlateSetupForm
-from django.urls import reverse
 from django.contrib.auth.mixins import LoginRequiredMixin
+# from .request_access_tests import request_passes_test
+
+#checks if project is the user's
+def proj_in_user_projects(user, proj):
+    projects = user.projects.filter(id=proj.id)
+    return projects.count() > 0 
 
 class ProjectView(LoginRequiredMixin, TemplateView):
     login_url = '/login'
@@ -50,40 +48,35 @@ class ProjectView(LoginRequiredMixin, TemplateView):
 def project(request, pk):
     pk_proj = pk
     proj = Project.objects.get(pk=pk_proj)
-    form = NewExperimentForm()
+    if proj_in_user_projects(request.user, proj):
+        form = NewExperimentForm()
+        data = {
+                    'experimentsTable': proj.getExperimentsTable(),
+                    'pk_proj':pk_proj,
+                    'librariesTable': proj.getLibrariesTable(),
+                    'collaboratorsTable' :proj.getCollaboratorsTable(),
+                    'form':form,
+                }
 
-    # data = [get_proj_exps_libs(request, pk_proj)]
-    data = [
-            {
-                'experimentsTable': proj.getExperimentsTable(),
-                'pk_proj':pk_proj,
-                'librariesTable': proj.getLibrariesTable(),
-                'collaboratorsTable' :proj.getCollaboratorsTable(),
-                'form':form,
-            }
-        ]
-    
+        if request.method == 'POST':
+            form = NewExperimentForm(request.POST)
+            if form.is_valid():
+                exp = form.save(commit=False)
+                form_data = form.cleaned_data
+                exp.project = Project.objects.get(id=pk_proj)
+                exp.owner = request.user
+                exp.save()
+            return redirect('proj',pk=pk)
 
-    #     return render(request, "projects.html", data[0])
-    if request.method == 'POST':
-
-        form = NewExperimentForm(request.POST)
-        if form.is_valid():
-            exp = form.save(commit=False)
-            form_data = form.cleaned_data
-            exp.project = Project.objects.get(id=pk_proj)
-            exp.owner = request.user
-            exp.save()
-        # data[0] = get_proj_exps_libs(request, pk_proj)
-        data[0]['form'] = NewExperimentForm()
-
-    return render(request,'project.html',data[0])#,{'experiments':})
+        return render(request,'project.html',data)
+    else:
+        return HttpResponse("Don't have permission") # should create a request denied template later!
 
 @login_required(login_url="/login")
 def projects(request):
-    data = [{"projectsTable":get_user_projects(request)}] #wrapped in list so we can access in both GET and POST views
+    data = {"projectsTable":get_user_projects(request)} #wrapped in list so we can access in both GET and POST views
     form = ProjectForm(user=request.user)
-    data[0]['form'] = form
+    data['form'] = form
 
     if request.method == 'POST':
         form = ProjectForm(request.user,request.POST)
@@ -94,10 +87,8 @@ def projects(request):
             proj.save()
             for c in form_data['collaborators']:
                 proj.collaborators.add(c)
-        data[0] = {"projectsTable":get_user_projects(request)}
-        data[0]['form'] = ProjectForm(request.user)
-
-    return render(request, 'projects.html', data[0])
+        return redirect('projects')
+    return render(request, 'projects.html', data)
 
 @login_required(login_url="/login")
 def proj_libraries(request, pk_proj):

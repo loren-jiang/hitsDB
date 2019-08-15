@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% load render_table from django_tables2 %} 
+{% block content %}
+
+  <script src="{% static 'js/selectDeleteDj2Table.js' %}"></script>
+  {% if filter %}
+      <div class="container">
+        <div class="row">
+          <div class="col-3">
+            <form id="my_form" action="" method="get" class="form">
+                {% csrf_token %}
+                {{ filter.form | crispy }}
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a class="btn btn-info" role="button" id="delete_compounds"> Deleted selected </a>
+            </form>
+          </div>
+
+          <div class="col-9">
+            <div id="my_table">
+              {% render_table table %}
+            </div>
+          </div>  
+        </div>
+      </div>
+      
+      
+      
+  {% endif %}
+    
+  <script>
+    $(document).ready(function() {
+      let $table = $("#my_table");
+      $table.find('input[type="checkbox"]').shiftSelectable();
+
+      $("#delete_compounds").on("click", function(e) {
+        e.preventDefault();
+        let selected = getSelected();
+        // let base_url = "{% url 'delete_projs' '' %}";
+        // base_url = base_url.slice(0, base_url.length-1);
+        // deleteSelected(selected, base_url, "_")
+      });      
+
+    });
+  </script>
+
+{% endblock %}

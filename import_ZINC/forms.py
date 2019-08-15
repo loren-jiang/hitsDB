@@ -1,20 +1,6 @@
 from django import forms
 from .models import Library, Compound
 
-# class UploadCompoundsNewLib(forms.Form):
-#     library = forms.CharField(max_length=30, min_length=3)
-#     file = forms.FileField()
-
-#     def clean(self):
-# 	    cd = self.cleaned_data
-# 	    lib_name = cd['library']
-
-# 	    # check if library with lib_name already exists
-# 	    if Library.objects.filter(name=lib_name).exists():
-# 	        self._errors['library'] = ["Library name already exists. Please rename."]
-# 	        # del cd['library']
-# 	    return cd
-
 class UploadCompoundsFromJSON(forms.Form):
     file = forms.FileField()
 

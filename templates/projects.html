@@ -1,8 +1,10 @@
 {% extends 'base.html' %}
-
-
+{% load render_table from django_tables2 %} 
+{% load crispy_forms_tags %}
+{% load static %}
 {% block content %}
-<script src="/static/js/selectDeleteDj2Table.js"></script>
+
+<script src="{% static 'js/selectDeleteDj2Table.js' %}"></script>
 <!-- <script src="/static/js/editProjectModal.js"></script> -->
 
 
@@ -20,8 +22,8 @@
       <div class="modal-body">
         
           {% csrf_token %}
-          {% include 'bs4_form.html' with form=form %}
-          
+          {{ form|crispy }}
+          <!-- {% include 'bs4_form.html' with form=form %} -->
         
       </div>
       <!-- Modal footer -->
@@ -39,8 +41,10 @@
   <div class='row justify-content-center'>
     <div class='col-md-6'>
       <div class='jumbotron'>
-          {% load django_tables2 %} 
-          {% render_table projectsTable %}
+          <div id="proj_table">
+            {% render_table projectsTable %}
+          </div>
+          
           <a class="btn btn-info" role="button" id="delete-projs"> Deleted selected </a>
           <!-- Button to Open the Modal -->
           <button type="button" class="btn btn-info" data-toggle="modal" data-target="#newProj">
@@ -59,12 +63,13 @@
 
 <script>
   $(document).ready(function() {
+    let $table = $("#proj_table");
+    $table.find('input[type="checkbox"]').shiftSelectable();
     $("#delete-projs").on("click", function(e) {
       e.preventDefault();
-      let selected = getSelected();
+      let selected = getSelected("td input[type='checkbox']:checked");
       let base_url = "{% url 'delete_projs' '' %}";
-      // base_url = base_url.slice(0, base_url.length-1);
-      deleteSelected(selected, base_url)
+      deleteSelected(selected, base_url, "_")
     });      
 
   });

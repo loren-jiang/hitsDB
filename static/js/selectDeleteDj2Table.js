@@ -1,27 +1,61 @@
 // Javascript module used to get selected options from Django table (django-tables-2)
 // and delete them
-function getSelected() {
-  var selected = [];
-            $.each($("td input[type='checkbox']:checked"), function(){
-                var exp = $(this).val();     
-                if (exp.length > 0)  {selected.push(exp);}   
-            });
-  return selected;
-}
+// $(document).ready(function() {
 
-function deleteSelected(selected, base_url) {
-  // let url = base_url + '/' + selected.join("_");
-  let url = base_url + selected.join("_");
-  console.log(url);
-  if (selected.length > 0) {
-    if (confirm("Are you sure you want to delete?")) {
-      // $("#delete-exps").prop("href", url);
-      window.location.href = url;
+  // get selected checkboxes and return as array
+  function getSelected(selector) {
+    var selected = [];
+              $.each($(selector), function(){
+                  var a = $(this).val();     
+                  if (a.length > 0)  {selected.push(a);}   
+              });
+    return selected;
+  }
+
+  function deleteSelected(selected, base_url, delimiter) {
+    let url = base_url + selected.join(delimiter);
+    let msg = "Are you sure you want to delete? \n"; //+ selected.join(", ")
+    if (selected.length > 0) {
+
+      if (confirm(msg)) {
+        window.location.href = url;
+      } 
     } 
-  } 
-}
+  }
 
+  
+  //https://gist.github.com/AndrewRayCode/3784055
+  // Usage: $form.find('input[type="checkbox"]').shiftSelectable();
+  // replace input[type="checkbox"] with the selector to match your list of checkboxes
+  $.fn.shiftSelectable = function() {
+    var lastChecked,
+        $chkboxes = this;
 
+    $chkboxes.click(function(evt) {
+        if(!lastChecked) {
+            lastChecked = this;
+            return;
+        }
+
+        if (evt.shiftKey) {
+          var start = $chkboxes.index(this);
+          var end = $chkboxes.index(lastChecked);
+
+          $chkboxes.slice(Math.min(start,end), Math.max(start,end)+ 1).prop('checked', lastChecked.checked);
+        }
+
+        // if(evt.shiftKey) {
+        //     var start = $chkboxes.index(this),
+        //         end = $chkboxes.index(lastChecked);
+        //     $chkboxes.slice(Math.min(start, end), Math.max(start, end) + 1)
+        //         .attr('checked', lastChecked.checked)
+        //         .trigger('change');
+        // }
+
+        lastChecked = this;
+    });
+  };
+// });
 
 // $(document).ready(function() {
      

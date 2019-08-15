@@ -17,7 +17,7 @@ class Project(models.Model):
     name = models.CharField(max_length=30)
     owner = models.ForeignKey(User, related_name='projects',on_delete=models.CASCADE)
     dateTime = models.DateTimeField(auto_now_add=True, verbose_name='Created')
-    description = models.CharField(max_length=300)
+    description = models.CharField(max_length=300, blank=True, null=True)
     collaborators = models.ManyToManyField(User, related_name='collab_projects',blank=True) 
     
     # takes in exc list of column names to exclude
@@ -52,7 +52,7 @@ class Experiment(models.Model):
     library = models.ForeignKey(Library, related_name='experiments',
         on_delete=models.CASCADE, null=True, blank=True)#need to create Library model
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='experiments')
-    description = models.CharField(max_length=300)
+    description = models.CharField(max_length=300, blank=True, null=True)
     dateTime = models.DateTimeField(auto_now_add=True)
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)
