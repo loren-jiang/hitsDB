@@ -13,13 +13,24 @@
                 {% csrf_token %}
                 {{ filter.form | crispy }}
                 <button type="submit" class="btn btn-primary">Filter</button>
-                <a class="btn btn-info" role="button" id="delete_compounds"> Deleted selected </a>
+                
             </form>
+            <a class="btn btn-danger" role="button" id="{{btn1_id}}"> Remove selected </a>
+
+            <a class="btn btn-danger" role="button" id="{{btn2_id}}"> Deactivate selected </a>
+
+            <a class="btn btn-danger" role="button" id="{{btn3_id}}"> Activate selected </a>
           </div>
 
           <div class="col-9">
             <div id="my_table">
-              {% render_table table %}
+              <form id="compounds_form" action="{{remove_from_lib_url}}" method="post">
+                {% csrf_token %}
+                {% render_table table %}
+                <!-- <button type="submit" style="display: none" id="remove_from_lib"></button> -->
+                <!-- <button type="submit" style="display: none" id="deactivate_from_lib"></button> -->
+              </form>
+              
             </div>
           </div>  
         </div>
@@ -32,15 +43,26 @@
   <script>
     $(document).ready(function() {
       let $table = $("#my_table");
-      $table.find('input[type="checkbox"]').shiftSelectable();
-
-      $("#delete_compounds").on("click", function(e) {
+      let $th_checkbox = $table.find('th input[type="checkbox"]');
+      let $td_checkboxes = $table.find('td input[type="checkbox"]')
+      
+      $th_checkbox.checkIfChecked($td_checkboxes);
+      $td_checkboxes.shiftSelectable();
+   
+      $("#{{btn1_id}}, #{{btn2_id}}, #{{btn3_id}}").click( function(e) {
         e.preventDefault();
-        let selected = getSelected();
+        let $form = $("#compounds_form");
+        $("<input />").attr("type","hidden")
+          .attr("name","btn")
+          .attr("value",this.id)
+          .appendTo($form);
+        $form.submit();
+        // $("#deactivate_from_lib").click();
+        // let selected = getSelected();
         // let base_url = "{% url 'delete_projs' '' %}";
         // base_url = base_url.slice(0, base_url.length-1);
         // deleteSelected(selected, base_url, "_")
-      });      
+      });  
 
     });
   </script>

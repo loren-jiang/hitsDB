@@ -9,6 +9,7 @@ def bulk_add(throughRel, a_pks, b_pks, a_col_name, b_col_name):
         relations.extend([throughRel(**{a_col_name: a, b_col_name: b}) 
             for a in a_pks])
 
+    # rels = throughRel.objects.bulk_create(relations, ignore_conflicts=True)
     rels = throughRel.objects.bulk_create(relations, ignore_conflicts=True)
     return rels
 

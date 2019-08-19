@@ -40,22 +40,14 @@
     <div class="row">
         <div class="col-md-6">
             <div class="jumbotron">
-                <h3>Edit <img src={% static 'icons/atomic.png' %} height="10%" width="10%"> </h3>
+                <h3>Edit <img src="{% static 'icons/atomic.png' %}" class="icon"> </h3>
 
-                  {% render_table experimentsTable %}
-                  <!-- Button to Open the Modal -->
-                  <button type="button" class="btn btn-info" data-toggle="modal" data-target="#newExp">
-                      New Experiment
-                  </button>
-                  <!--<a class="btn btn-info" role="button" href={% url 'new_proj_experiment' pk_proj %}> New Experiment </a>-->
-                  <a  class="btn btn-danger" role="button" id="delete-exps"> Delete Selected </a>
-                  {# <a  onclick="return deleteSelExps()" class="btn btn-info" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a> #}
             </div>
         </div>
 
         <div class="col-md-6">
             <div class="jumbotron">
-                <h3>Experiments <img src={% static 'icons/atomic.png' %} height="10%" width="10%"> </h3>
+                <h3>Experiments <img src="{% static 'icons/atomic.png' %}" class="icon"> </h3>
 
                   {% render_table experimentsTable %}
                   <!-- Button to Open the Modal -->
@@ -69,7 +61,7 @@
         </div>
         <div class="col-md-6">
             <div class="jumbotron">
-                  <h3>Libraries <img src={% static 'icons/book.png' %} height="10%" width="10%"></h3>
+                  <h3>Libraries <img src="{% static 'icons/book.png' %}" class="icon"></h3>
                   
                   {% render_table librariesTable %}
                   <a class="btn btn-info" role="button" href={% url 'proj_libs' pk_proj %}>View all libraries</a>
@@ -78,7 +70,7 @@
 
         <div class="col-md-6">
             <div class="jumbotron">
-                <h3>Collaborators <img src={% static 'icons/users.png' %} height="10%" width="10%"> </h3>
+                <h3>Collaborators <img src="{% static 'icons/users.png' %}" class="icon"> </h3>
 
                   {% render_table collaboratorsTable %}
           

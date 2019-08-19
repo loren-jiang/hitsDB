@@ -66,6 +66,11 @@ class Experiment(models.Model):
     class Meta:
         get_latest_by="dateTime"
         # ordering = ['-dateTime']
+    
+    def plates_valid(self):
+        return self.plates.count() > 0 \
+            and self.numSrcPlates == self.expNumSrcPlates() \
+                and self.numDestPlates >= self.expNumDestPlates()
 
     @property
     def libCompounds(self):
@@ -80,13 +85,15 @@ class Experiment(models.Model):
         return len(self.plates.filter(isSource=False))
 
     #expected number of source plates based on number of compounds in library
-    def expNumSrcPlates(self, num_subwells):
+    def expNumSrcPlates(self):
         src_plate_type = self.srcPlateType
         num_src_wells = src_plate_type.numCols * src_plate_type.numRows
         return ceiling_div(self.libCompounds.count(), num_src_wells)
+  
 
     #expected number of dest plates based on number of compounds in library
-    def expNumDestPlates(self, num_subwells):
+    def expNumDestPlates(self):
+        num_subwells  = len(self.subwell_locations)
         dest_plate_type = self.destPlateType
         num_dest_wells = dest_plate_type.numCols * dest_plate_type.numRows
         return ceiling_div(self.libCompounds.count(),num_dest_wells * num_subwells)
@@ -320,69 +327,69 @@ class Plate(models.Model):
     class Meta:
         ordering = ('id',)
 
-    @classmethod
-    def createEchoSourcePlate(cls):
-        instance = cls(
-            name="",
-            formatType="Echo 384-well source plate",
-            numRows=16,
-            numCols=24,
-            xPitch = 4.5,
-            yPitch = 4.5,
-            plateLength = 127.76,
-            plateWidth = 85.48,
-            plateHeight = 10.48,
-            xOffsetA1 = 12.13,
-            yOffsetA1 = 8.99,
-            isSource = True,
-            isTemplate=True,
-            echoCompatible=True,)
-        instance.save()
+    # @classmethod
+    # def createEchoSourcePlate(cls):
+    #     instance = cls(
+    #         name="",
+    #         formatType="Echo 384-well source plate",
+    #         numRows=16,
+    #         numCols=24,
+    #         xPitch = 4.5,
+    #         yPitch = 4.5,
+    #         plateLength = 127.76,
+    #         plateWidth = 85.48,
+    #         plateHeight = 10.48,
+    #         xOffsetA1 = 12.13,
+    #         yOffsetA1 = 8.99,
+    #         isSource = True,
+    #         isTemplate=True,
+    #         echoCompatible=True,)
+    #     instance.save()
 
-        well_lst = [None]*len(instance.wellDict)
-        for key, val in instance.wellDict.items():
-            well_idx = val + 1
-            well_lst[val] = Well(name=key, wellIdx=well_idx,
-                maxResVol=130, minResVol=10, plate_id=instance.pk)
-            # instance.wells.create(name=key, maxResVol=130, minResVol=10)
-        Well.objects.bulk_create(well_lst)
-        return instance
+    #     well_lst = [None]*len(instance.wellDict)
+    #     for key, val in instance.wellDict.items():
+    #         well_idx = val + 1
+    #         well_lst[val] = Well(name=key, wellIdx=well_idx,
+    #             maxResVol=130, minResVol=10, plate_id=instance.pk)
+    #         # instance.wells.create(name=key, maxResVol=130, minResVol=10)
+    #     Well.objects.bulk_create(well_lst)
+    #     return instance
 
-    @classmethod
-    def create96MRC3DestPlate(cls):
-        instance = cls(
-            name="",
-            formatType="Swiss MRC-3 96 well microplate",
-            numRows=8,
-            numCols=12,
-            numSubwells = 3,
-            xPitch = 9,
-            yPitch = 9,
-            plateLength = 127.5,
-            plateWidth = 85.3,
-            plateHeight = 11.7,
-            xOffsetA1 = 16.1,
-            yOffsetA1 = 8.9,
-            isSource = False,
-            isTemplate=True,
-            echoCompatible=True,
-        )
+    # @classmethod
+    # def create96MRC3DestPlate(cls):
+    #     instance = cls(
+    #         name="",
+    #         formatType="Swiss MRC-3 96 well microplate",
+    #         numRows=8,
+    #         numCols=12,
+    #         numSubwells = 3,
+    #         xPitch = 9,
+    #         yPitch = 9,
+    #         plateLength = 127.5,
+    #         plateWidth = 85.3,
+    #         plateHeight = 11.7,
+    #         xOffsetA1 = 16.1,
+    #         yOffsetA1 = 8.9,
+    #         isSource = False,
+    #         isTemplate=True,
+    #         echoCompatible=True,
+    #     )
 
-        instance.save()
-        well_lst = [None]*len(instance.wellDict)
-        for key, val in instance.wellDict.items():
-            well_idx = val + 1
-            # instance.wells.create(name=key, maxResVol=130, minResVol=10)
-            well_lst[val] = Well(name=key, wellIdx=well_idx,
-                maxResVol=130, minResVol=10, plate_id=instance.pk)
+    #     instance.save()
+    #     well_lst = [None]*len(instance.wellDict)
+    #     for key, val in instance.wellDict.items():
+    #         well_idx = val + 1
+    #         # instance.wells.create(name=key, maxResVol=130, minResVol=10)
+    #         well_lst[val] = Well(name=key, wellIdx=well_idx,
+    #             maxResVol=130, minResVol=10, plate_id=instance.pk)
             
-        Well.objects.bulk_create(well_lst)
+    #     Well.objects.bulk_create(well_lst)
             
-        for well in instance.wells.all():
-            well.subwells.create(idx=1,xPos= -3.8,yPos=0.25,)
-            well.subwells.create(idx=2,xPos= -3.8,yPos=4.25, )
-            well.subwells.create(idx=3,xPos= 0, yPos=4.25, )
-        return instance
+    #     for well in instance.wells.all():
+    #         well.subwells.create(idx=1,xPos= -3.8,yPos=0.25,)
+    #         well.subwells.create(idx=2,xPos= -3.8,yPos=4.25, )
+    #         well.subwells.create(idx=3,xPos= 0, yPos=4.25, )
+    #     return instance
     
     
     def createPlateWells(self):

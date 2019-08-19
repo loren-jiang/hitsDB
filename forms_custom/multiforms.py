@@ -1,4 +1,5 @@
 # taken from https://gist.github.com/badri/4a1be2423ce9353373e1b3f2cc67b80b
+# I added feature to take in form arguments
 
 from django.views.generic.base import ContextMixin, TemplateResponseMixin
 from django.views.generic.edit import ProcessFormView
@@ -7,6 +8,7 @@ from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidde
 class MultiFormMixin(ContextMixin):
 
     form_classes = {} 
+    form_arguments = {}
     prefixes = {}
     success_urls = {}
     
@@ -14,12 +16,14 @@ class MultiFormMixin(ContextMixin):
     prefix = None
     success_url = None
      
+    def get_form_arguments(self, form_name):
+        return self.form_arguments.get(form_name)
+
     def get_form_classes(self):
         return self.form_classes
      
     def get_forms(self, form_classes):
-        return dict([(key, self._create_form(key, class_name)) \
-            for key, class_name in form_classes.items()])
+        return dict([(key, self._create_form(key, class_name)) for key, class_name in form_classes.items()])
     
     def get_form_kwargs(self, form_name):
         kwargs = {}
@@ -30,6 +34,10 @@ class MultiFormMixin(ContextMixin):
                 'data': self.request.POST,
                 'files': self.request.FILES,
             })
+        form_arguments = self.get_form_arguments(form_name)
+        print(form_arguments)
+        if form_arguments:
+            kwargs.update(form_arguments)
         return kwargs
     
     def forms_valid(self, forms, form_name):

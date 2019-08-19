@@ -12,18 +12,22 @@ urlpatterns = [
     # --------------- urls to Library views ------------------------------
     # re_path(r'^lib_compounds/(?P<pk_lib>\d+)/$', library_views.lib_compounds, name='lib_compounds'),
     re_path(r'^libraries/(?P<pk_lib>\d+)/$', library_views.lib_compounds, name='lib'),
+    re_path(r'^libraries/(?P<pk_lib>\d+)/remove_compounds_from_lib/$', 
+        library_views.remove_compounds_from_lib, name='remove_compounds_from_lib'),
     re_path(r'^libraries/$', library_views.libraries, name='libs'),
     # re_path(r'^compounds_search/$', library_views.UserCompoundsFilterView.as_view(), name='user_compounds'),
     re_path(r'^compounds_search/$', library_views.user_compounds, name='user_compounds'),
 
 
     # --------------- urls to Project views ------------------------------
-    re_path(r'^projects/(?P<pk>\d+)/edit/$', project_views.project_edit, name='proj_edit'),
-    re_path(r'^projects/simple_edit/(?P<pk>\d+)/$', project_views.project_edit_simple, name='proj_edit_simple'),
+    re_path(r'^projects/(?P<pk_proj>\d+)/libraries/(?P<pk_lib>\d+)/$', project_views.proj_lib, name='proj_lib'),
+    re_path(r'^projects/(?P<pk_proj>\d+)/libraries/$', project_views.proj_libraries, name='proj_libraries'),
+    re_path(r'^projects/(?P<pk_proj>\d+)/edit/$', project_views.project_edit, name='proj_edit'),
+    re_path(r'^projects/simple_edit/(?P<pk_proj>\d+)/$', project_views.project_edit_simple, name='proj_edit_simple'),
     re_path(r'^proj_libraries/(?P<pk_proj>\d+)/$', project_views.proj_libraries, name='proj_libs'),
     re_path(r'^projects/$', project_views.projects, name='projects'),
     re_path(r'^projects/delete_projs/(?P<pks>\d*(?:_\d+)*)$', project_views.delete_projects, name='delete_projs'),
-    re_path(r'^projects/(?P<pk>\d+)/$', project_views.project, name='proj'),
+    re_path(r'^projects/(?P<pk_proj>\d+)/$', project_views.project, name='proj'),
     # re_path(r'^projects/(?P<pk>\d+)/$', project_views.ProjectView.as_view(), name='proj'),
     re_path(r'^projects/(?P<pk_proj>\d+)/exp/new/$', project_views.NewExp.as_view(), name='new_proj_experiment'),
     re_path(r'^projects/(?P<pk_proj>\d+)/delete_exps/(?P<pks>\d*(?:_\d+)*)$', project_views.delete_experiments, name='delete_proj_exps'),
@@ -34,6 +38,7 @@ urlpatterns = [
     # re_path(r'^multiform/$', experiment_views.MultipleFormsDemoView.as_view(), name='multiform'),
     # re_path(r'^exps/(?P<pk>\d+)/$', experiment_views.experiment, name='exp'),
     re_path(r'^exps/(?P<pk>\d+)/$', experiment_views.MultipleFormsDemoView.as_view(), name='exp'),
+    re_path(r'^exps/(?P<pk>\d+)/setup/$', experiment_views.MultipleFormsDemoView.as_view(), name='exp_setup'),
 	# re_path(r'^experiments/exp/(?P<pk>\d+)/$', experiment_views.experiment, name='exp'),pip
 	re_path(r'^exps/(?P<pk>\d+)/soaks_csv_view/$', experiment_views.soaks_csv_view, name='soaks_csv_view'),
     re_path(r'^exps/(?P<pk>\d+)/soaks/$', experiment_views.soaks, name='exp_soaks'),

@@ -11,7 +11,7 @@
 
         <div class="col-3">
         <div id="exp-info" class="jumbotron">
-            <h4> {{ experiment.name }}</h4>
+            <h3> {{ experiment.name }}</h3>
             <p> Created: {{ experiment.dateTime }}</p>
             <p> Protein: {{ experiment.protein }}</p>
             <p> Description: {{ experiment.description }}</p>
@@ -25,20 +25,58 @@
         </div>
 
         <div class="col-9">
-            <div class="jumbotron">
-                <form id="exp-form" method="post">{% csrf_token %}
-                    {{ forms.exp|crispy}}
-                    <input type="submit" value="Send">
-                </form>
+            <div class="row">
+                <div class="col-6">
+                    <div class="jumbotron">
+                        <h3>Step 1: Experiment setup</h3>
+                        <form id="exp-form" method="post">{% csrf_token %}
+                            {{ forms.expform|crispy}}
+                            <input type="submit" value="Send">
+                        </form>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="jumbotron">
+                        <h3>Step 2: Plate setup</h3>
+                        {% if experiment.library %}
+                        <form id="plates-form" method="post">{% csrf_token %}
+                            {{ forms.platesform|crispy}}
+                            <input type="submit" value="Send">
+                        </form>
+                        {% else %}
+                        <p> Please complete Step 1.</p>
+                        {% endif %}
+                    </div>
+                </div> 
+
+                <div class="col-6">
+                    <div class="jumbotron">
+                        <h3>Step 3: Plate setup</h3>
+                        {% if plates_valid %}
+                        <form id="plates-form" method="post">{% csrf_token %}
+                            {{ forms.platesform|crispy}}
+                            <input type="submit" value="Send">
+                        </form>
+                        {% else %}
+                        <p> Please complete Step 2.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="jumbotron">
+                        <h3>Step 4: Plate setup</h3>
+                        {% if experiment.library %}
+                        <form id="plates-form" method="post">{% csrf_token %}
+                            {{ forms.platesform|crispy}}
+                            <input type="submit" value="Send">
+                        </form>
+                        {% else %}
+                        <p> Please complete Step 1.</p>
+                        {% endif %}
+                    </div>
+                </div> 
             </div>
             
-            
-            <div class="jumbotron">
-                <form id="plates-form" method="post">{% csrf_token %}
-                    {{ forms.plates|crispy}}
-                    <input type="submit" value="Send">
-                </form>
-            </div>
         </div>
 
     </div>

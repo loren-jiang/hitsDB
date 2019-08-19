@@ -5,18 +5,34 @@ from django_tables2 import RequestConfig
 import csv
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from import_ZINC.models import Library, Compound
-from .forms import NewExperimentForm, PlateSetupForm, EditExperimentAsMultiForm
+from .forms import ExperimentModelForm, PlateSetupForm, ExperimentAsMultiForm
 from forms_custom.multiforms import MultiFormsView
 
 class MultipleFormsDemoView(MultiFormsView):
     template_name = "experiment/expTemplates/cbv_multiple_forms.html"
-    form_classes = {'exp': EditExperimentAsMultiForm,
-                    'plates': PlateSetupForm,
+    form_classes = {
+                    'expform': ExperimentAsMultiForm,
+                    'platesform': PlateSetupForm,
                     }
-
+    form_arguments = {}
     success_urls = {}
 
-    def exp_form_valid(self, form):
+    # overload to process request to properly instantiate multiforms wit form arguments and success urls
+    def dispatch(self, request, *args, **kwargs):
+        # parse the request here ie.
+        # populate form_arguments 
+        pk = self.kwargs.get('pk', None)
+        self.form_arguments['expform'] = {
+                                        'user':request.user,
+                                        'lib_qs':Library.objects.filter()        
+                                    }
+        # populate success_urls dictionary with urls
+        self.success_urls['expform'] = reverse_lazy('exp', kwargs={'pk':pk})
+        self.success_urls['platesform'] = reverse_lazy('exp', kwargs={'pk':pk})
+        # call the view
+        return super(MultipleFormsDemoView, self).dispatch(request, *args, **kwargs)
+
+    def expform_form_valid(self, form):
         pk = self.kwargs.get('pk', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
@@ -25,30 +41,29 @@ class MultipleFormsDemoView(MultiFormsView):
         self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
         return HttpResponseRedirect(self.get_success_url(form_name))
     
-    
-    def plates_form_valid(self, form):
+    def platesform_form_valid(self, form):
         email = form.cleaned_data.get('email')
         form_name = form.cleaned_data.get('action')
         print(email)
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def get_context_data(self, **kwargs):
-        context = super(MultiFormsView, self).get_context_data(**kwargs)
         pk = self.kwargs.get('pk', None)
         request = self.request
+        
         experiment = request.user.experiments.prefetch_related('plates','soaks').get(id=pk)
         soaks_table = experiment.getSoaksTable(exc=[])
         RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
         src_plates_table = experiment.getSrcPlatesTable(exc=[])
         dest_plates_table = experiment.getDestPlatesTable(exc=[])
+        context = super(MultiFormsView, self).get_context_data(**kwargs)
         context['experiment'] = experiment
         context['src_plates_table'] = src_plates_table
         context['dest_plates_table'] = dest_plates_table
         context['soaks_table'] = soaks_table
+        context['plates_valid'] = experiment.plates_valid()
 
-        # populate success_urls dictionary with urls
-        self.success_urls['library'] = reverse_lazy('exp', kwargs={'pk':pk})
-        self.success_urls['plates'] = reverse_lazy('exp', kwargs={'pk':pk})
+        
         return context
 
 #checks if project is the user's
@@ -116,8 +131,13 @@ def experiments(request):
 @login_required(login_url="/login")
 def delete_experiment(request, pk):
     experiment = get_object_or_404(Experiment, pk=pk)
+    pk_proj = experiment.project.id
     experiment.delete()
-    return redirect('experiments')
+    if pk_proj:
+        return redirect('proj',kwargs={'pk':pk_proj})
+    else:
+        return redirect('experiments')
+    
 
 @login_required(login_url="/login")
 def delete_experiments(request, pks, pk_proj=None):

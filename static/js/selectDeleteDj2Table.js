@@ -23,6 +23,14 @@
     } 
   }
 
+  // checks elements toBeSelected depending of status
+  $.fn.checkIfChecked = function(toBeSelected) {
+    this.click( function(evt) {
+      let status = this.checked;
+      toBeSelected.prop('checked', status);
+    });
+    
+  };
   
   //https://gist.github.com/AndrewRayCode/3784055
   // Usage: $form.find('input[type="checkbox"]').shiftSelectable();

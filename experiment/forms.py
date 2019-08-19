@@ -49,32 +49,28 @@ class ProjectForm(forms.ModelForm):
                 is_stacked=False, attrs={'rows':'5'}),
                 required=False)
 
-    # class EditProjectAsMultiForm(MultipleForm):
-    #     name = forms.CharField(max_length=30)
-    #     description = forms.CharField(widget=forms.Textarea(), max_length=300)
-    #     # collaborators = forms.ModelMultipleChoiceField()
-    #     def __init__(self, user, *args, **kwargs):
-    #         super(ProjectForm, self).__init__(*args, **kwargs)
-    #         collab_qs=User.objects.filter(groups__in=user.groups.all()).exclude(id=user.id)    
-    #         # self.fields['collaborators'].queryset = collab_qs
-    #         self.fields['collaborators'] = forms.ModelMultipleChoiceField(
-    #             queryset=collab_qs,
-    #             widget=FilteredSelectMultiple("User", 
-    #                 is_stacked=False, attrs={'rows':'5'}),
-    #                 required=False)
 
-
-class NewExperimentForm(forms.ModelForm):
+class ExperimentModelForm(forms.ModelForm):
     description = forms.CharField(widget=forms.Textarea(), max_length=300)
     class Meta:
         model = Experiment
         fields = ("name", "description", "protein", "library",)
         
-class EditExperimentAsMultiForm(MultipleForm):
+class ExperimentAsMultiForm(MultipleForm):
     name = forms.CharField(max_length=30)
     description = forms.CharField(widget=forms.Textarea(), max_length=300)
     protein = forms.CharField(max_length=30)
-    library = forms.ModelChoiceField(queryset=Library.objects.all(),initial=0, required=False)
+    # library = forms.ModelChoiceField(queryset=Library.objects.all(),initial=0, required=False)
+
+    """specify library queryset"""
+    def __init__(self, user, lib_qs=None,*args, **kwargs):
+        super(ExperimentAsMultiForm, self).__init__(*args, **kwargs)
+        qs = user.libraries.filter()
+        if lib_qs:
+            self.fields['library'] = forms.ModelChoiceField(queryset=lib_qs,initial=0, required=False)
+        else:
+            self.fields['library'] = forms.ModelChoiceField(queryset=qs,initial=0, required=False)
+        
 
 class SourcePlateForm(forms.ModelForm):
     class Meta:

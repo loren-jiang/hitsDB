@@ -4,14 +4,15 @@ from .tables import SoaksTable, ExperimentsTable, LibrariesTable, ProjectsTable
 from django_tables2 import RequestConfig
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from import_ZINC.models import Library, Compound
-from .forms import NewExperimentForm, ProjectForm, SimpleProjectForm, PlateSetupForm
+from .forms import ExperimentModelForm, ProjectForm, SimpleProjectForm, PlateSetupForm, ExperimentAsMultiForm
 from django.contrib.auth.mixins import LoginRequiredMixin
-# from .request_access_tests import request_passes_test
+from .library_views import lib_compounds
+# from .decorators import request_passes_test
+from .decorators import is_users_project
 
 #checks if project is the user's
-def proj_is_users(user, proj):
-    projects = user.projects.filter(id=proj.id)
-    return projects.count() > 0 
+def proj_is_users(proj, user):
+    return user.pk == proj.owner.pk
 
 class ProjectView(LoginRequiredMixin, TemplateView):
     login_url = '/login'
@@ -26,14 +27,14 @@ class ProjectView(LoginRequiredMixin, TemplateView):
             'pk_proj':pk_proj,
             'librariesTable': proj.getLibrariesTable(),
             'collaboratorsTable' :proj.getCollaboratorsTable(),
-            'form': NewExperimentForm()
+            'form': ExperimentModelForm()
         }
         return data
     def get(self,request,*args,**kwargs):
         return self.render_to_response(self.get_data(self.kwargs['pk']))
 
     def post(self,request,*args,**kwargs):
-        form = NewExperimentForm(request.POST)
+        form = ExperimentModelForm(request.POST)
         data = self.get_data(self.kwargs['pk'])
         if form.is_valid():
             exp = form.save(commit=False)
@@ -44,33 +45,33 @@ class ProjectView(LoginRequiredMixin, TemplateView):
 
         return self.render_to_response(data)
 
+@is_users_project
 @login_required(login_url="/login")
-def project(request, pk):
-    pk_proj = pk
+def project(request, pk_proj):
     proj = Project.objects.get(pk=pk_proj)
-    if proj_is_users(request.user, proj):
-        form = NewExperimentForm()
-        data = {
-                    'experimentsTable': proj.getExperimentsTable(exc=['project']),
-                    'pk_proj':pk_proj,
-                    'librariesTable': proj.getLibrariesTable(),
-                    'collaboratorsTable' :proj.getCollaboratorsTable(),
-                    'form':form,
-                }
+    # if proj_is_users(proj, request.user):
+    form = ExperimentModelForm()
+    data = {
+                'experimentsTable': proj.getExperimentsTable(exc=['project']),
+                'pk_proj':pk_proj,
+                'librariesTable': proj.getLibrariesTable(),
+                'collaboratorsTable' :proj.getCollaboratorsTable(),
+                'form':form,
+            }
 
-        if request.method == 'POST':
-            form = NewExperimentForm(request.POST)
-            if form.is_valid():
-                exp = form.save(commit=False)
-                form_data = form.cleaned_data
-                exp.project = Project.objects.get(id=pk_proj)
-                exp.owner = request.user
-                exp.save()
-            return redirect('proj',pk=pk)
+    if request.method == 'POST':
+        form = ExperimentModelForm(request.POST)
+        if form.is_valid():
+            exp = form.save(commit=False)
+            form_data = form.cleaned_data
+            exp.project = Project.objects.get(id=pk_proj)
+            exp.owner = request.user
+            exp.save()
+        return redirect('proj',pk=pk_proj)
 
-        return render(request,'experiment/proj_templates/project.html',data)
-    else:
-        return HttpResponse("Don't have permission") # should create a request denied template later!
+    return render(request,'experiment/proj_templates/project.html',data)
+    # else:
+    #     return HttpResponse("Don't have permission") # should create a request denied template later!
 
 @login_required(login_url="/login")
 def projects(request):
@@ -90,11 +91,16 @@ def projects(request):
         return redirect('projects')
     return render(request, 'experiment/proj_templates/projects.html', data)
 
+@is_users_project
+@login_required(login_url="/login")
+def proj_lib(request, pk_proj, pk_lib):
+    return lib_compounds(request, pk_lib)
+
+@is_users_project
 @login_required(login_url="/login")
 def proj_libraries(request, pk_proj):
     exps = Experiment.objects.filter(project_id=pk_proj)
-    libs_qs = Library.objects.filter(experiments__in=exps).union(
-        Library.objects.filter(isTemplate=True))
+    libs_qs = Library.objects.filter(experiments__in=exps)
     table=LibrariesTable(libs_qs)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
     data = {
@@ -119,9 +125,9 @@ def get_proj_exps_libs(request, pk_proj):
     return page_data
 
 # edit project fields like name, description, and collaborators (any more?)
+@is_users_project
 @login_required(login_url="/login")
-def project_edit(request,pk):
-    pk_proj = pk
+def project_edit(request,pk_proj):
     proj = Project.objects.get(pk=pk_proj)
     init_form_data = {
         "name":proj.name,
@@ -142,9 +148,9 @@ def project_edit(request,pk):
     return render(request,'project_edit.html', data)#,{'experiments':})
 
 # edit simple project fields like name and description
+@is_users_project
 @login_required(login_url="/login")
-def project_edit_simple(request,pk):
-    pk_proj = pk
+def project_edit_simple(request,pk_proj):
     proj = Project.objects.get(pk=pk_proj)
     init_form_data = {
         "name":proj.name,
@@ -176,7 +182,7 @@ def delete_projects(request, pks):
         if pk: #check if pk is not empty
             try:
                 proj = get_object_or_404(Project, pk=pk)
-                if (proj.owner.pk == request.user.pk):
+                if proj_is_users(proj,request.user):
                     proj.delete()
             except:
                 break
