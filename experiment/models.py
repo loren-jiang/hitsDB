@@ -46,7 +46,10 @@ class Project(models.Model):
 
     def __str__(self):
         return self.name
-        
+
+def defaultSubwellLocations():
+    return list([1])
+
 class Experiment(models.Model):
     name = models.CharField(max_length=30)
     library = models.ForeignKey(Library, related_name='experiments',
@@ -60,13 +63,14 @@ class Experiment(models.Model):
     destPlateType = models.ForeignKey('PlateType', null=True, blank=True, on_delete=models.CASCADE,related_name='experiments_dest') #noly one dest plate type per experiment
     subwell_locations = ArrayField(
         models.PositiveSmallIntegerField(blank=True, null=True, validators=[MaxValueValidator(3), MinValueValidator(1)]),
-        size=3, blank=True, null=True
+        size=3, default=defaultSubwellLocations
         )
 
     class Meta:
         get_latest_by="dateTime"
         # ordering = ['-dateTime']
     
+    @property
     def plates_valid(self):
         return self.plates.count() > 0 \
             and self.numSrcPlates == self.expNumSrcPlates() \
@@ -108,7 +112,8 @@ class Experiment(models.Model):
     def getSrcWells(self):
         return Well.objects.filter(plate_id__in=self.plates.filter(isSource=True))
     
-    def generateSoaks(self):
+    def generateSoaks(self, transferVol=25, soakOffsetX=0, soakOffsetY=0):
+        self.soaks.all().delete() #start from fresh
         ct = 0
         cmpds = self.libCompounds
         list_soaks = [None]*cmpds.count()
@@ -121,7 +126,8 @@ class Experiment(models.Model):
             dest_subwell = list_dest_subwells[ct]
             # dest_subwell.compounds.add(c) # too slow and too many queries
             dest_subwell.hasCrystal = True
-            soak = Soak(experiment_id=self.id,src=src_well,dest=dest_subwell, transferCompound=c)
+            soak = Soak(experiment_id=self.id,src=src_well,dest=dest_subwell, transferCompound=c, 
+                soakOffsetX=soakOffsetX, soakOffsetY=soakOffsetY, transferVol=transferVol)
             list_soaks[ct] = soak
             ct += 1
         Soak.objects.bulk_create(list_soaks)
@@ -149,8 +155,11 @@ class Experiment(models.Model):
 
     #create the source plate and dest plates given the library size
     # num_subwells should be lte to dest_plate_type.numSubwells
-    def generateSrcDestPlates(self, src_plate_type, dest_plate_type):
+    def generateSrcDestPlates(self):
         # exp_compounds = self.library.compounds.order_by('id')
+        self.plates.all().delete() #start from fresh 
+        src_plate_type = self.srcPlateType
+        dest_plate_type = self.destPlateType
         num_compounds = self.libCompounds.count()
         num_subwells = len(self.subwell_locations)
         num_src_wells = src_plate_type.numCols * src_plate_type.numRows
@@ -162,10 +171,12 @@ class Experiment(models.Model):
 
         # loop through and create the appropriate number of plates 
         for i in range(num_src_plates):
-            src_plates_to_create[i] = Plate(plateType=src_plate_type, experiment_id=self.id,isSource=True)
+            src_plates_to_create[i] = Plate(name='src_'+str(i+1),plateType=src_plate_type, 
+                experiment_id=self.id, isSource=True, plateIdxExp=i+1)
             # src_plates_to_create[i].save()
         for i in range(num_dest_plates):
-            dest_plates_to_create[i] = Plate(plateType=dest_plate_type, experiment_id=self.id,isSource=False)
+            dest_plates_to_create[i] = Plate(name='dest_'+str(i+1),plateType=dest_plate_type, 
+                experiment_id=self.id,isSource=False, plateIdxExp=i+1)
             # dest_plates_to_create[i].save()
         plates = Plate.objects.bulk_create(src_plates_to_create + dest_plates_to_create) #bulk create Plate objects
         for p in plates:
@@ -326,71 +337,6 @@ class Plate(models.Model):
 
     class Meta:
         ordering = ('id',)
-
-    # @classmethod
-    # def createEchoSourcePlate(cls):
-    #     instance = cls(
-    #         name="",
-    #         formatType="Echo 384-well source plate",
-    #         numRows=16,
-    #         numCols=24,
-    #         xPitch = 4.5,
-    #         yPitch = 4.5,
-    #         plateLength = 127.76,
-    #         plateWidth = 85.48,
-    #         plateHeight = 10.48,
-    #         xOffsetA1 = 12.13,
-    #         yOffsetA1 = 8.99,
-    #         isSource = True,
-    #         isTemplate=True,
-    #         echoCompatible=True,)
-    #     instance.save()
-
-    #     well_lst = [None]*len(instance.wellDict)
-    #     for key, val in instance.wellDict.items():
-    #         well_idx = val + 1
-    #         well_lst[val] = Well(name=key, wellIdx=well_idx,
-    #             maxResVol=130, minResVol=10, plate_id=instance.pk)
-    #         # instance.wells.create(name=key, maxResVol=130, minResVol=10)
-    #     Well.objects.bulk_create(well_lst)
-    #     return instance
-
-    # @classmethod
-    # def create96MRC3DestPlate(cls):
-    #     instance = cls(
-    #         name="",
-    #         formatType="Swiss MRC-3 96 well microplate",
-    #         numRows=8,
-    #         numCols=12,
-    #         numSubwells = 3,
-    #         xPitch = 9,
-    #         yPitch = 9,
-    #         plateLength = 127.5,
-    #         plateWidth = 85.3,
-    #         plateHeight = 11.7,
-    #         xOffsetA1 = 16.1,
-    #         yOffsetA1 = 8.9,
-    #         isSource = False,
-    #         isTemplate=True,
-    #         echoCompatible=True,
-    #     )
-
-    #     instance.save()
-    #     well_lst = [None]*len(instance.wellDict)
-    #     for key, val in instance.wellDict.items():
-    #         well_idx = val + 1
-    #         # instance.wells.create(name=key, maxResVol=130, minResVol=10)
-    #         well_lst[val] = Well(name=key, wellIdx=well_idx,
-    #             maxResVol=130, minResVol=10, plate_id=instance.pk)
-            
-    #     Well.objects.bulk_create(well_lst)
-            
-    #     for well in instance.wells.all():
-    #         well.subwells.create(idx=1,xPos= -3.8,yPos=0.25,)
-    #         well.subwells.create(idx=2,xPos= -3.8,yPos=4.25, )
-    #         well.subwells.create(idx=3,xPos= 0, yPos=4.25, )
-    #     return instance
-    
     
     def createPlateWells(self):
         # creates appropriate wells for plate instance
@@ -430,6 +376,7 @@ class PlateType(models.Model):
     name = models.CharField(max_length=30, default="",unique=True) 
     numCols = models.PositiveIntegerField(default=12)
     numRows = models.PositiveIntegerField(default=8)
+    isSource = models.BooleanField(default=False) #is it a source plate? if not, it's a dest plate
     numSubwells = models.PositiveIntegerField(default=0) 
     # x and y synonmous with row and col respectively
     xPitch = models.DecimalField(max_digits=10, decimal_places=3) # pitch in x direction of wells [mm]
@@ -571,6 +518,8 @@ class Soak(models.Model):
     soakOffsetX = models.DecimalField(max_digits=10, decimal_places=2,default=0)
     soakOffsetY = models.DecimalField(max_digits=10, decimal_places=2,default=0)
 
+def __str__(self):
+    return "soak_" + str(self.id)
 
 def createWellDict(numCol, numRow):
     numWells = numRow * numCol

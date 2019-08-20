@@ -24,7 +24,17 @@ function buildNavPath() {
     return output + last;
 }
 
+function userConfirm(btn) {
+    if (confirm("Please confirm.")) {
+        btn.click();
+    }
+}
 $( document ).ready(function() {
     $('#url_path').html(buildNavPath());
-});
 
+    // $('.btn-danger').click( function(e) {
+    //     e.preventDefault();
+    //     userConfirm(this);
+    // }
+    // );
+});

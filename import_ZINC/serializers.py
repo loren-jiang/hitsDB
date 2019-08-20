@@ -2,10 +2,11 @@ from rest_framework import serializers
 from .models import Compound, Library
 
 class CompoundSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Compound
         fields = ('zinc_id','smiles')
-        
+
     def create(self, validated_data):
         return Compound.objects.create(**validated_data)
 
@@ -15,10 +16,9 @@ class CompoundSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
-class NoSaveCompoundSerializer(CompoundSerializer):
-
-    def __init__(self, *args, **kwargs):
-        super(NoSaveCompoundSerializer, self).__init__(*args, **kwargs)
+class NoSaveCompoundSerializer(serializers.Serializer):
+    zinc_id = serializers.CharField(max_length=30)
+    smiles = serializers.CharField(max_length=200)
 
     def create(self, validated_data):
         print("hi")

@@ -5,52 +5,71 @@ from django_tables2 import RequestConfig
 import csv
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from import_ZINC.models import Library, Compound
-from .forms import ExperimentModelForm, PlateSetupForm, ExperimentAsMultiForm
+from .forms import ExperimentModelForm, PlatesSetupMultiForm, ExperimentAsMultiForm, SoaksSetupMultiForm
 from forms_custom.multiforms import MultiFormsView
+from django.db.models import Count, F, Value
 
 class MultipleFormsDemoView(MultiFormsView):
     template_name = "experiment/expTemplates/cbv_multiple_forms.html"
     form_classes = {
                     'expform': ExperimentAsMultiForm,
-                    'platesform': PlateSetupForm,
+                    'platesform': PlatesSetupMultiForm,
+                    'soaksform' : SoaksSetupMultiForm,
                     }
     form_arguments = {}
     success_urls = {}
 
-    # overload to process request to properly instantiate multiforms wit form arguments and success urls
-    def dispatch(self, request, *args, **kwargs):
+    # overload to process request to properly instantiate multiforms with form arguments and success urls
+    def setup(self, request, *args, **kwargs):
         # parse the request here ie.
         # populate form_arguments 
-        pk = self.kwargs.get('pk', None)
+        user = request.user
+        pk = kwargs.get('pk', None)
         self.form_arguments['expform'] = {
-                                        'user':request.user,
-                                        'lib_qs':Library.objects.filter()        
+                                        'user':user,
+                                        'lib_qs':user.libraries.filter(),
+                                        'exp': user.experiments.get(id=pk,)
                                     }
         # populate success_urls dictionary with urls
-        self.success_urls['expform'] = reverse_lazy('exp', kwargs={'pk':pk})
-        self.success_urls['platesform'] = reverse_lazy('exp', kwargs={'pk':pk})
-        # call the view
-        return super(MultipleFormsDemoView, self).dispatch(request, *args, **kwargs)
+        exp_view_url = reverse_lazy('exp', kwargs={'pk':pk})
+        self.success_urls['expform'] = exp_view_url
+        self.success_urls['platesform'] = exp_view_url
+        self.success_urls['soaksform'] = exp_view_url
+        # call super
+        return super(MultipleFormsDemoView, self).setup(request, *args, **kwargs)
 
     def expform_form_valid(self, form):
         pk = self.kwargs.get('pk', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
+        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
         experiment = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         experiment.update(**cleaned_data)
-        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def platesform_form_valid(self, form):
-        email = form.cleaned_data.get('email')
-        form_name = form.cleaned_data.get('action')
-        print(email)
+        pk = self.kwargs.get('pk', None)
+        cleaned_data = form.cleaned_data
+        form_name = cleaned_data.pop('action')
+        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
+        exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
+        exp_qs.update(**cleaned_data)
+        exp_qs[0].generateSrcDestPlates()
+        return HttpResponseRedirect(self.get_success_url(form_name))
+    
+    def soaksform_form_valid(self, form):
+        pk = self.kwargs.get('pk', None)
+        cleaned_data = form.cleaned_data
+        form_name = cleaned_data.pop('action')
+        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
+        exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
+        # exp_qs.update(**cleaned_data)
+        exp_qs[0].generateSoaks(cleaned_data['transferVol'],cleaned_data['soakOffsetX'],cleaned_data['soakOffsetY'] ) 
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def get_context_data(self, **kwargs):
         pk = self.kwargs.get('pk', None)
         request = self.request
-        
         experiment = request.user.experiments.prefetch_related('plates','soaks').get(id=pk)
         soaks_table = experiment.getSoaksTable(exc=[])
         RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
@@ -61,9 +80,7 @@ class MultipleFormsDemoView(MultiFormsView):
         context['src_plates_table'] = src_plates_table
         context['dest_plates_table'] = dest_plates_table
         context['soaks_table'] = soaks_table
-        context['plates_valid'] = experiment.plates_valid()
-
-        
+        context['plates_valid'] = experiment.plates_valid
         return context
 
 #checks if project is the user's
@@ -100,9 +117,23 @@ def experiment(request, pk):
 @login_required(login_url="/login")
 def soaks(request, pk):
     experiment = Experiment.objects.get(id=pk)
+    # src_plate_ids = [p.id for p in experiment.plates.filter(isSource=True)]
     soaks_table=experiment.getSoaksTable()
     RequestConfig(request, paginate={'per_page': 50}).configure(soaks_table)
     data = {
+        'src_soaks_qs' : experiment.soaks.select_related('src__plate')
+          .annotate(plate_id=F('src__plate_id'))
+          .annotate(well_row=F('src__wellRowIdx'))
+          .annotate(well_col=F('src__wellColIdx'))
+          .order_by('src__plate_id','well_row'),
+
+        'dest_soaks_qs' : experiment.soaks.select_related('dest__parentWell__plate')
+          .annotate(plate_id=F('dest__parentWell__plate_id'))
+          .annotate(well_row=F('dest__parentWell__wellRowIdx'))
+          .annotate(well_col=F('dest__parentWell__wellColIdx'))
+          .annotate(subwell_idx=F('dest__idx'))
+          .order_by('dest__parentWell__plate_id','subwell_idx','well_row'),
+
         'soaks_table': soaks_table,
     }
     return render(request, 'experiment/expTemplates/soaks_table.html', data)
@@ -173,9 +204,11 @@ def delete_exp_plates(request, pk):
     return redirect('exp',pk)
 
 # pk is experiment pk
-def soaks_csv_view(request,pk):
+def soaks_csv_view(request,pk,pk_src_plate, pk_dest_plate):
     exp = get_object_or_404(Experiment, pk=pk)
-    qs = exp.soaks.filter().select_related("dest__parentWell__plate","src__plate").prefetch_related()
+    # dest_plate = get_object_or_404(Plate,pk_plate)
+    qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(
+      ).filter(src__plate_id=pk_src_plate, dest__parentWell__plate_id=pk_dest_plate)
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment;filename=exp_' + str(exp.id) + '_soaks' +  '.csv'
     writer = csv.writer(response)
@@ -185,7 +218,6 @@ def soaks_csv_view(request,pk):
         s_dict = s.__dict__
         src_well = s.src
         dest_well = s.dest.parentWell
-    
         src_plate_name = "Source[" + str(src_well.plate.plateIdxExp) + "]"
         src_well = src_well.name
         dest_plate_name = "Destination["  +str(dest_well.plate.plateIdxExp) + "]"

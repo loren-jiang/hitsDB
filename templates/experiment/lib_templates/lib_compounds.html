@@ -52,11 +52,15 @@
       $("#{{btn1_id}}, #{{btn2_id}}, #{{btn3_id}}").click( function(e) {
         e.preventDefault();
         let $form = $("#compounds_form");
-        $("<input />").attr("type","hidden")
-          .attr("name","btn")
-          .attr("value",this.id)
-          .appendTo($form);
-        $form.submit();
+        const $this_id = this.id;
+        const msg = "Are you sure?"
+        if (confirm(msg)) {
+          $("<input />").attr("type","hidden")
+            .attr("name","btn")
+            .attr("value",$this_id)
+            .appendTo($form);
+          $form.submit();
+        }
         // $("#deactivate_from_lib").click();
         // let selected = getSelected();
         // let base_url = "{% url 'delete_projs' '' %}";

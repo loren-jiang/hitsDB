@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
+from django.core.validators import MaxValueValidator, MinValueValidator
 from datetime import date
 import json
 import csv
@@ -12,10 +13,8 @@ from utility_functions import chunks
 
 # Create your models here.
 class Compound(models.Model): #doesnt need to be unique?
-    nameInternal = models.CharField(max_length=100, unique=True, null=True, blank=True)
     chemicalName = models.CharField(max_length=300,null=True, blank=True)
-    commonName = models.CharField(max_length=100, default='')
-    chemFormula = models.CharField(max_length=100, default='')
+    chemicalFormula = models.CharField(max_length=100, default='')
     # library = models.ForeignKey(Library, related_name='compounds', on_delete=models.CASCADE, null=True, blank=True)
     #not all smiles have unique zincID, or perhaps vice versa
     wellLocation = models.CharField(max_length=4, null=True, blank=True) # e.g. A01, AB02
@@ -24,7 +23,7 @@ class Compound(models.Model): #doesnt need to be unique?
     zincURL = models.URLField(null=True, blank=True)
     molWeight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     concentration = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    # chemName = models.CharField(max_length=1000, default='')
+    purity = models.PositiveSmallIntegerField(default=100, validators=[MaxValueValidator(100), MinValueValidator(0)])
     active = models.BooleanField(default=True)
     def __str__(self):
         return self.zinc_id
@@ -44,6 +43,8 @@ class Library(models.Model):
     compounds = models.ManyToManyField(Compound, related_name='libraries', blank=True)
     active = models.BooleanField(default=True)
 
+    def get_absolute_url(self):
+        return "/libraries/%i/" % self.id
     def __str__(self):
         return self.name
     
@@ -58,6 +59,8 @@ class Library(models.Model):
 
         for i in range(num):
             data = serialized_data[i]
+            fields = NoSaveCompoundSerializer.__dict__['_declared_fields']
+            data = { k: data[k] for k in fields }
             serialize = NoSaveCompoundSerializer(data=data)
             if serialize.is_valid():
                 obj_lst[i]=serialize.save()

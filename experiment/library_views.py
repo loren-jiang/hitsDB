@@ -36,9 +36,10 @@ def remove_compounds_from_lib(request, pk_lib):
     if request.method=="POST":
         form = request.POST
         compound_pks = form.getlist('selection') #list of compound pks
-        compounds = [c for c in Compound.objects.filter(id__in=compound_pks)]
+        compounds_qs = Compound.objects.filter(id__in=compound_pks)
+        compounds = [c for c in compounds_qs]
         if form['btn']=="remove_compounds":
-            pass
+            compounds_qs.delete()
         if form['btn']=="deactivate_compounds":
             for c in compounds:
                 c.active = False

@@ -15,6 +15,11 @@
             <p> Created: {{ experiment.dateTime }}</p>
             <p> Protein: {{ experiment.protein }}</p>
             <p> Description: {{ experiment.description }}</p>
+            <p> Library: 
+                {% if experiment.library %}
+                <a href="{% url 'lib' experiment.library.id %}">{{ experiment.library }}</a> 
+                {% endif %}
+            </p> 
             <a class='btn btn-danger' role='button' href={% url 'delete_exp' experiment.pk %}> Delete experiment </a> 
         </div>
 
@@ -31,7 +36,7 @@
                         <h3>Step 1: Experiment setup</h3>
                         <form id="exp-form" method="post">{% csrf_token %}
                             {{ forms.expform|crispy}}
-                            <input type="submit" value="Send">
+                            <input type="submit" value="Save">
                         </form>
                     </div>
                 </div>
@@ -41,22 +46,22 @@
                         {% if experiment.library %}
                         <form id="plates-form" method="post">{% csrf_token %}
                             {{ forms.platesform|crispy}}
-                            <input type="submit" value="Send">
+                            <input type="submit" value="Generate plates">
                         </form>
                         {% else %}
-                        <p> Please complete Step 1.</p>
+                        <p> Please select library in Step 1.</p>
                         {% endif %}
                     </div>
                 </div> 
 
                 <div class="col-6">
                     <div class="jumbotron">
-                        <h3>Step 3: Plate setup</h3>
-                        {% if plates_valid %}
-                        <form id="plates-form" method="post">{% csrf_token %}
-                            {{ forms.platesform|crispy}}
-                            <input type="submit" value="Send">
-                        </form>
+                        <h3>Step 3: Soak setup</h3>
+                        {% if experiment.plates_valid %}
+                        <form id="soaks-form" method="post">{% csrf_token %}
+                            {{ forms.soaksform|crispy}}
+                            <input type="submit" value="Generate soaks">
+                        </form> 
                         {% else %}
                         <p> Please complete Step 2.</p>
                         {% endif %}
@@ -65,11 +70,8 @@
                 <div class="col-6">
                     <div class="jumbotron">
                         <h3>Step 4: Plate setup</h3>
-                        {% if experiment.library %}
-                        <form id="plates-form" method="post">{% csrf_token %}
-                            {{ forms.platesform|crispy}}
-                            <input type="submit" value="Send">
-                        </form>
+                        {% if experiment.soaks %}
+                        <p>soaks!</p>
                         {% else %}
                         <p> Please complete Step 1.</p>
                         {% endif %}
