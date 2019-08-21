@@ -47,7 +47,8 @@
 
         <div class="col-md-6">
             <div class="jumbotron">
-                <h3>Experiments <img src="{% static 'icons/atomic.png' %}" class="icon"> </h3>
+              <div class="modify-table" id="experiments_table">
+                  <h3>Experiments <img src="{% static 'icons/atomic.png' %}" class="icon"> </h3>
 
                   {% render_table experimentsTable %}
                   <!-- Button to Open the Modal -->
@@ -57,6 +58,8 @@
                   <!--<a class="btn btn-info" role="button" href={% url 'new_proj_experiment' pk_proj %}> New Experiment </a>-->
                   <a  class="btn btn-danger" role="button" id="delete-exps"> Delete Selected </a>
                   {# <a  onclick="return deleteSelExps()" class="btn btn-info" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a> #}
+              </div>
+                
             </div>
         </div>
         <div class="col-md-6">
@@ -83,6 +86,13 @@
 
 <script>
   $(document).ready(function() { 
+
+    // let $table = $("#experiments_table");
+    // let $th_checkbox = $table.find('th input[type="checkbox"]');
+    // let $td_checkboxes = $table.find('td input[type="checkbox"]')
+    // $th_checkbox.checkIfChecked($td_checkboxes);
+    // $td_checkboxes.shiftSelectable();
+
     $("#delete-exps").on("click", function(e) {
       e.preventDefault();
       let selected = getSelected("td input[type='checkbox']:checked");

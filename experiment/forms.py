@@ -75,7 +75,7 @@ class ExperimentAsMultiForm(MultipleForm):
     # protein = forms.CharField(max_length=30)
     # library = forms.ModelChoiceField(queryset=Library.objects.all(),initial=0, required=False)
 
-    """specify library queryset"""
+    """populate form with current values"""
     def __init__(self, user, exp, lib_qs=None, *args, **kwargs):
         super(ExperimentAsMultiForm, self).__init__(*args, **kwargs)
         self.fields['name'] = forms.CharField(max_length=30, initial=getattr(exp,'name'))
@@ -135,14 +135,6 @@ class PlateSetupForm(MultipleForm):
     export_filetype = forms.ChoiceField(choices=filetype_choices)
 
 class PlatesSetupMultiForm(MultipleForm):
-    srcPlateType = forms.ModelChoiceField(queryset=PlateType.objects
-        .filter(isSource=True), 
-        label="Source plate type",
-        initial=0)
-    destPlateType = forms.ModelChoiceField(queryset=PlateType.objects
-        .filter(isSource=False), 
-        label="Destination plate type",
-        initial=0)
 
     subwells = (
         (1,'1'),
@@ -150,12 +142,19 @@ class PlatesSetupMultiForm(MultipleForm):
         (3,'3'),
         )
     # subwell_locations = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple, choices=subwells)
-    subwell_locations = forms.MultipleChoiceField(choices=subwells)
-    # filetype_choices = (
-    #     ('.pdf','PDF'),
-    #     ('.csv','CSV'),
-    #     )
-    # export_filetype = forms.ChoiceField(choices=filetype_choices)
+    # subwell_locations = forms.MultipleChoiceField(choices=subwells)
+
+    def __init__(self,user, exp, *args, **kwargs):
+        super(PlatesSetupMultiForm, self).__init__(*args, **kwargs)
+        self.fields['srcPlateType'] = forms.ModelChoiceField(queryset=PlateType.objects
+            .filter(isSource=True), 
+            label="Source plate type",
+            initial=exp.srcPlateType)
+        self.fields['destPlateType'] = forms.ModelChoiceField(queryset=PlateType.objects
+            .filter(isSource=False), 
+            label="Destination plate type",
+            initial=exp.destPlateType)
+        self.fields['subwell_locations'] = forms.MultipleChoiceField(choices=self.subwells, initial=exp.subwell_locations)
     def clean_subwell_locations(self):
         try:
             self.cleaned_data['subwell_locations']

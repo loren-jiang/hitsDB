@@ -31,7 +31,6 @@ function userConfirm(btn) {
 }
 $( document ).ready(function() {
     $('#url_path').html(buildNavPath());
-
     // $('.btn-danger').click( function(e) {
     //     e.preventDefault();
     //     userConfirm(this);

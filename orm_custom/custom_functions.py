@@ -30,7 +30,17 @@ def bulk_one_to_one_add(throughRel, a_pks, b_pks, a_col_name, b_col_name):
 
 def make_instance_from_dict(instance_model_a_as_dict,model_a):
     try:
-        del instance_model_a_as_dict['id'] #deletes id so we dont copy primary keys
+        del instance_model_a_as_dict['id']
     except KeyError:
         pass
+    # instance_model_a_as_dict.pop('id') #pops id so we dont copy primary keys
+    # print(instance_model_a_as_dict)
     return model_a(**instance_model_a_as_dict)
+
+def copy_instance(instance_of_model_a,instance_of_model_b):
+    for field in instance_of_model_a._meta.fields:
+        if field.primary_key == True:
+            continue  # don't want to clone the PK
+        setattr(instance_of_model_b, field.name, getattr(instance_of_model_a, field.name))
+            # instance_of_model_b.save()
+    return instance_of_model_b

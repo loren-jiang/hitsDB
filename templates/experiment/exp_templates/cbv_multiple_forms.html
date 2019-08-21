@@ -43,7 +43,7 @@
                 <div class="col-6">
                     <div class="jumbotron">
                         <h3>Step 2: Plate setup</h3>
-                        {% if experiment.library %}
+                        {% if current_step > 1 %}
                         <form id="plates-form" method="post">{% csrf_token %}
                             {{ forms.platesform|crispy}}
                             <input type="submit" value="Generate plates">
@@ -57,7 +57,7 @@
                 <div class="col-6">
                     <div class="jumbotron">
                         <h3>Step 3: Soak setup</h3>
-                        {% if experiment.plates_valid %}
+                        {% if current_step > 2 %}
                         <form id="soaks-form" method="post">{% csrf_token %}
                             {{ forms.soaksform|crispy}}
                             <input type="submit" value="Generate soaks">
@@ -70,7 +70,7 @@
                 <div class="col-6">
                     <div class="jumbotron">
                         <h3>Step 4: Plate setup</h3>
-                        {% if experiment.soaks %}
+                        {% if current_step > 3 %}
                         <p>soaks!</p>
                         {% else %}
                         <p> Please complete Step 1.</p>

@@ -9,11 +9,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from .library_views import lib_compounds
 # from .decorators import request_passes_test
 from .decorators import is_users_project
+from orm_custom.custom_functions import make_instance_from_dict, copy_instance
 
-#checks if project is the user's
-def proj_is_users(proj, user):
-    return user.pk == proj.owner.pk
 
+# PROJECT VIEWS ------------------------------------------------------------------
 class ProjectView(LoginRequiredMixin, TemplateView):
     login_url = '/login'
     template_name = 'project.html'
@@ -49,7 +48,6 @@ class ProjectView(LoginRequiredMixin, TemplateView):
 @login_required(login_url="/login")
 def project(request, pk_proj):
     proj = Project.objects.get(pk=pk_proj)
-    # if proj_is_users(proj, request.user):
     form = ExperimentModelForm()
     data = {
                 'experimentsTable': proj.getExperimentsTable(exc=['project']),
@@ -67,11 +65,23 @@ def project(request, pk_proj):
             exp.project = Project.objects.get(id=pk_proj)
             exp.owner = request.user
             exp.save()
-        return redirect('proj',pk=pk_proj)
+        return redirect('proj',pk_proj=pk_proj)
 
     return render(request,'experiment/proj_templates/project.html',data)
     # else:
     #     return HttpResponse("Don't have permission") # should create a request denied template later!
+
+# returns user projects as django tables 2 for home page
+# argument should be request for pagination to work properly
+def get_user_projects(request, exc=[]):
+    user_proj_qs = request.user.projects.all()
+    user_collab_proj_qs = request.user.collab_projects.all()
+    projectsTable = ProjectsTable(data=user_proj_qs.union(user_collab_proj_qs),exclude=exc)
+    RequestConfig(request, paginate={'per_page': 5}).configure(projectsTable)
+    # return {
+    #     'projectsTable': projectsTable,
+    # }
+    return projectsTable
 
 @login_required(login_url="/login")
 def projects(request):
@@ -90,39 +100,6 @@ def projects(request):
                 proj.collaborators.add(c)
         return redirect('projects')
     return render(request, 'experiment/proj_templates/projects.html', data)
-
-@is_users_project
-@login_required(login_url="/login")
-def proj_lib(request, pk_proj, pk_lib):
-    return lib_compounds(request, pk_lib)
-
-@is_users_project
-@login_required(login_url="/login")
-def proj_libraries(request, pk_proj):
-    exps = Experiment.objects.filter(project_id=pk_proj)
-    libs_qs = Library.objects.filter(experiments__in=exps)
-    table=LibrariesTable(libs_qs)
-    RequestConfig(request, paginate={'per_page': 5}).configure(table)
-    data = {
-        'librariesTable': table,
-    }
-    return render(request,'libraries.html', data)
-
-# retrieves the libraries assoc with experiments in a certain proj
-def get_proj_exps_libs(request, pk_proj):
-    exps = Experiment.objects.filter(project_id=pk_proj)
-    libs_qs = Library.objects.filter(experiments__in=exps).union(
-        Library.objects.filter(isTemplate=True))
-    experimentsTable = ExperimentsTable(exps)
-    libsTable = LibrariesTable(libs_qs)
-    RequestConfig(request, paginate={'per_page': 5}).configure(experimentsTable)
-    RequestConfig(request, paginate={'per_page': 5}).configure(libsTable)
-    page_data = {
-            'experimentsTable': experimentsTable,
-            'pk_proj':pk_proj,
-            'librariesTable': libsTable,
-        }
-    return page_data
 
 # edit project fields like name, description, and collaborators (any more?)
 @is_users_project
@@ -175,6 +152,7 @@ def project_edit_simple(request,pk_proj):
     }
     return render(request,'modal_form.html', data)#,{'experiments':})
 
+# delete projects
 @login_required(login_url="/login")
 def delete_projects(request, pks):
     pks = pks.split('_')
@@ -182,12 +160,82 @@ def delete_projects(request, pks):
         if pk: #check if pk is not empty
             try:
                 proj = get_object_or_404(Project, pk=pk)
-                if proj_is_users(proj,request.user):
+                if proj.owner.pk == request.user.pk:
                     proj.delete()
             except:
                 break
     return redirect('projects')
-    
+
+
+# PROJECT Library VIEWS ------------------------------------------------------------------
+@is_users_project
+@login_required(login_url="/login")
+def proj_lib(request, pk_proj, pk_lib):
+    return lib_compounds(request, pk_lib)
+
+@is_users_project
+@login_required(login_url="/login")
+def proj_libs(request, pk_proj):
+    exps = Experiment.objects.filter(project_id=pk_proj)
+    libs_qs = Library.objects.filter(experiments__in=exps)
+    table=LibrariesTable(libs_qs)
+    RequestConfig(request, paginate={'per_page': 5}).configure(table)
+    data = {
+        'librariesTable': table,
+    }
+    return render(request,'libraries.html', data)
+
+# retrieves the libraries assoc with experiments in a certain proj
+def get_proj_exps_libs(request, pk_proj):
+    exps = Experiment.objects.filter(project_id=pk_proj)
+    libs_qs = Library.objects.filter(experiments__in=exps).union(
+        Library.objects.filter(isTemplate=True))
+    experimentsTable = ExperimentsTable(exps)
+    libsTable = LibrariesTable(libs_qs)
+    RequestConfig(request, paginate={'per_page': 5}).configure(experimentsTable)
+    RequestConfig(request, paginate={'per_page': 5}).configure(libsTable)
+    page_data = {
+            'experimentsTable': experimentsTable,
+            'pk_proj':pk_proj,
+            'librariesTable': libsTable,
+        }
+    return page_data
+
+def get_user_libraries(request, exc=[]):
+    user_lib_qs = Library.objects.filter(owner_id=request.user.id)
+    libsTable = LibrariesTable(data=user_lib_qs,exclude=exc)
+    RequestConfig(request, paginate={'per_page': 5}).configure(libsTable)
+    return libsTable
+
+# PROJECT Experment VIEWS ------------------------------------------------------------------
+
+#list all experiments in project
+@is_users_project
+def proj_exps(request, pk_proj):
+    proj = Project.objects.get(id=pk_proj)
+    exps = proj.experiments.filter()
+    data = {
+        'exps':exps,
+    }
+    return render(request, 'experiment/exp_templates/experiments.html', data)
+
+#delete experiments in project
+@login_required(login_url="/login")
+def del_proj_exps(request, pk_proj, pks_exp):
+    pks = pks.split('_')
+    for pk in pks:
+            if pk: #check if pk is not empty
+                try:
+                    exp = get_object_or_404(Experiment, pk=pk)
+                    if (exp.owner.pk == request.user.pk):
+                        exp.delete()
+                except:
+                    break
+    if pk_proj:
+        return redirect('proj',pk_proj)
+    else:
+        return redirect('experiments')
+
 @login_required(login_url="/login")
 def delete_experiments(request, pks, pk_proj=None):
     pks = pks.split('_')
@@ -204,27 +252,12 @@ def delete_experiments(request, pks, pk_proj=None):
     else:
         return redirect('experiments')
 
-# returns user projects as django tables 2 for home page
-# argument should be request for pagination to work properly
-def get_user_projects(request, exc=[]):
-    user_proj_qs = request.user.projects.all()
-    user_collab_proj_qs = request.user.collab_projects.all()
-    projectsTable = ProjectsTable(data=user_proj_qs.union(user_collab_proj_qs),exclude=exc)
-    RequestConfig(request, paginate={'per_page': 5}).configure(projectsTable)
-    # return {
-    #     'projectsTable': projectsTable,
-    # }
-    return projectsTable
-
-def get_user_libraries(request, exc=[]):
-    user_lib_qs = Library.objects.filter(owner_id=request.user.id)
-    libsTable = LibrariesTable(data=user_lib_qs,exclude=exc)
-    RequestConfig(request, paginate={'per_page': 5}).configure(libsTable)
-    return libsTable
+def _get_form(request, formcls, prefix):
+    data = request.POST if prefix in request.POST else None
+    return formcls(data, prefix=prefix)
 
 class NewExp(TemplateView):
     template_name = 'new_experiment.html'
-
     def get(self, request, *args, **kwargs):
         lstLibraries = []
         lstLibCompounds = []
@@ -401,32 +434,5 @@ class NewExp(TemplateView):
                 Soak.objects.bulk_create(list_soaks)
                 go_to_div = "list-crystals"
 
-        # elif cform.is_bound and cform.is_valid():
-        #     form_data = cform.cleaned_data
-
         data = {'aform': aform, 'bform': bform, 'go_to_div': go_to_div,}
         return self.render_to_response(data)
-
-
-# ----------------- HELPER functions --------------------------
-def make_instance_from_dict(instance_model_a_as_dict,model_a):
-    try:
-        del instance_model_a_as_dict['id']
-    except KeyError:
-        pass
-    # instance_model_a_as_dict.pop('id') #pops id so we dont copy primary keys
-    # print(instance_model_a_as_dict)
-    return model_a(**instance_model_a_as_dict)
-
-def copy_instance(instance_of_model_a,instance_of_model_b):
-    for field in instance_of_model_a._meta.fields:
-        if field.primary_key == True:
-            continue  # don't want to clone the PK
-        setattr(instance_of_model_b, field.name, getattr(instance_of_model_a, field.name))
-            # instance_of_model_b.save()
-    return instance_of_model_b
-
-def _get_form(request, formcls, prefix):
-
-    data = request.POST if prefix in request.POST else None
-    return formcls(data, prefix=prefix)

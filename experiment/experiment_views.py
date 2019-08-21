@@ -10,7 +10,7 @@ from forms_custom.multiforms import MultiFormsView
 from django.db.models import Count, F, Value
 
 class MultipleFormsDemoView(MultiFormsView):
-    template_name = "experiment/expTemplates/cbv_multiple_forms.html"
+    template_name = "experiment/exp_templates/cbv_multiple_forms.html"
     form_classes = {
                     'expform': ExperimentAsMultiForm,
                     'platesform': PlatesSetupMultiForm,
@@ -25,10 +25,15 @@ class MultipleFormsDemoView(MultiFormsView):
         # populate form_arguments 
         user = request.user
         pk = kwargs.get('pk', None)
+        exp = user.experiments.get(id=pk)
         self.form_arguments['expform'] = {
                                         'user':user,
                                         'lib_qs':user.libraries.filter(),
-                                        'exp': user.experiments.get(id=pk,)
+                                        'exp': exp
+                                    }
+        self.form_arguments['platesform'] = {
+                                        'user':user,
+                                        'exp': exp
                                     }
         # populate success_urls dictionary with urls
         exp_view_url = reverse_lazy('exp', kwargs={'pk':pk})
@@ -43,8 +48,13 @@ class MultipleFormsDemoView(MultiFormsView):
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
         self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
-        experiment = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-        experiment.update(**cleaned_data)
+        exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
+        exp = exp_qs[0]
+        fields = [key for key in cleaned_data]
+        for field in fields:
+            setattr(exp, field, cleaned_data[field])
+        exp.save(update_fields=fields)
+        # exp_qs.update(**cleaned_data)
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def platesform_form_valid(self, form):
@@ -70,17 +80,18 @@ class MultipleFormsDemoView(MultiFormsView):
     def get_context_data(self, **kwargs):
         pk = self.kwargs.get('pk', None)
         request = self.request
-        experiment = request.user.experiments.prefetch_related('plates','soaks').get(id=pk)
-        soaks_table = experiment.getSoaksTable(exc=[])
+        exp = request.user.experiments.prefetch_related('plates','soaks').get(id=pk)
+        soaks_table = exp.getSoaksTable(exc=[])
         RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
-        src_plates_table = experiment.getSrcPlatesTable(exc=[])
-        dest_plates_table = experiment.getDestPlatesTable(exc=[])
+        src_plates_table = exp.getSrcPlatesTable(exc=[])
+        dest_plates_table = exp.getDestPlatesTable(exc=[])
         context = super(MultiFormsView, self).get_context_data(**kwargs)
-        context['experiment'] = experiment
+        context['experiment'] = exp
         context['src_plates_table'] = src_plates_table
         context['dest_plates_table'] = dest_plates_table
         context['soaks_table'] = soaks_table
-        context['plates_valid'] = experiment.plates_valid
+        context['plates_valid'] = exp.plates_valid
+        context['current_step'] = exp.getCurrentStep
         return context
 
 #checks if project is the user's
@@ -136,7 +147,7 @@ def soaks(request, pk):
 
         'soaks_table': soaks_table,
     }
-    return render(request, 'experiment/expTemplates/soaks_table.html', data)
+    return render(request, 'experiment/exp_templates/soaks_table.html', data)
 
 #views experiment plates as table
 @login_required(login_url="/login")
@@ -148,7 +159,7 @@ def plates(request, pk):
     data = {
         'plates_table': plates_table,
     }
-    return render(request, 'experiment/expTemplates/plates_table.html', data)
+    return render(request, 'experiment/exp_templates/plates_table.html', data)
 
 @login_required(login_url="/login")
 def experiments(request):
@@ -165,7 +176,7 @@ def delete_experiment(request, pk):
     pk_proj = experiment.project.id
     experiment.delete()
     if pk_proj:
-        return redirect('proj',kwargs={'pk':pk_proj})
+        return redirect('proj',pk_proj=pk_proj)
     else:
         return redirect('experiments')
     

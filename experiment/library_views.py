@@ -32,7 +32,7 @@ class UserCompoundsFilterView(SingleTableMixin, FilterView):
 
 @is_users_library
 @login_required(login_url="/login")
-def remove_compounds_from_lib(request, pk_lib):
+def modify_lib_compounds(request, pk_lib):
     if request.method=="POST":
         form = request.POST
         compound_pks = form.getlist('selection') #list of compound pks
@@ -61,7 +61,7 @@ def lib_compounds(request, pk_lib):
     data = {
         'filter': compounds_filter,
         'table':table,
-        'remove_from_lib_url':reverse('remove_compounds_from_lib',kwargs={'pk_lib':pk_lib}),
+        'remove_from_lib_url':reverse('modify_lib_compounds',kwargs={'pk_lib':pk_lib}),
         'btn1_id':'remove_compounds',
         'btn2_id':'deactivate_compounds',
         'btn3_id':'activate_compounds'

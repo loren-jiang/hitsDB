@@ -23,12 +23,10 @@
           </div>
 
           <div class="col-9">
-            <div id="my_table">
+            <div class="modify-table" id="compounds_table">
               <form id="compounds_form" action="{{remove_from_lib_url}}" method="post">
                 {% csrf_token %}
                 {% render_table table %}
-                <!-- <button type="submit" style="display: none" id="remove_from_lib"></button> -->
-                <!-- <button type="submit" style="display: none" id="deactivate_from_lib"></button> -->
               </form>
               
             </div>
@@ -42,12 +40,6 @@
     
   <script>
     $(document).ready(function() {
-      let $table = $("#my_table");
-      let $th_checkbox = $table.find('th input[type="checkbox"]');
-      let $td_checkboxes = $table.find('td input[type="checkbox"]')
-      
-      $th_checkbox.checkIfChecked($td_checkboxes);
-      $td_checkboxes.shiftSelectable();
    
       $("#{{btn1_id}}, #{{btn2_id}}, #{{btn3_id}}").click( function(e) {
         e.preventDefault();
@@ -61,11 +53,6 @@
             .appendTo($form);
           $form.submit();
         }
-        // $("#deactivate_from_lib").click();
-        // let selected = getSelected();
-        // let base_url = "{% url 'delete_projs' '' %}";
-        // base_url = base_url.slice(0, base_url.length-1);
-        // deleteSelected(selected, base_url, "_")
       });  
 
     });

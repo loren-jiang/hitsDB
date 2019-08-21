@@ -3,13 +3,15 @@ from datetime import date
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from import_ZINC.models import Library, Compound
-from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
-from django.db.models.signals import post_save
+from .exp_view_process import formatSoaks, ceiling_div, split_list, getWellIdx, getSubwellIdx
+from django.db.models.signals import post_save, post_init
 from django.dispatch import receiver
 from django.utils.functional import cached_property 
 from orm_custom.custom_functions import bulk_add, bulk_one_to_one_add
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models import Count, F, Value
+from utility_functions import chunk_list, items_at
 
 # Create your models here.
 
@@ -54,6 +56,7 @@ class Experiment(models.Model):
     name = models.CharField(max_length=30)
     library = models.ForeignKey(Library, related_name='experiments',
         on_delete=models.CASCADE, null=True, blank=True)#need to create Library model
+    prev_library = None #prev library to check if library has changed
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='experiments')
     description = models.CharField(max_length=300, blank=True, null=True)
     dateTime = models.DateTimeField(auto_now_add=True)
@@ -70,15 +73,66 @@ class Experiment(models.Model):
         get_latest_by="dateTime"
         # ordering = ['-dateTime']
     
+    @staticmethod
+    def delete_plates_soaks_on_library_change(sender, **kwargs):
+        instance = kwargs.get('instance')
+        created = kwargs.get('created')
+        if instance.prev_library != instance.library or created:
+            instance.plates.all().delete()
+            instance.soaks.all().delete()
+            reset = {'srcPlateType':None, 'destPlateType':None, 'subwell_locations':[]}
+            Experiment.objects.filter(id=instance.id).update(**reset)
+ 
+
+
+    @staticmethod
+    def remember_library(sender, **kwargs):
+        instance = kwargs.get('instance')
+        instance.prev_library = instance.library
+
+    @property
+    def getCurrentStep(self):
+        if self.soaks.count(): #might want to more robust check (e.g. # soaks = # compounds in library)
+            return 4
+        if self.plates_valid:
+            return 3
+        if self.library_valid:
+            return 2
+        return 1
+
+    @property
+    def getTransferPlatePairs(self):
+        pairs = []
+        qs = self.soaks.select_related('src__plate','dest__parentWell__plate'
+            ).annotate(src_plate_id=F('src__plate_id')
+            ).annotate(dest_plate_id=F('dest__parentWell__plate_id'))
+        for s in qs:
+            s.__dict__
+            pair = (s.src_plate_id, s.dest_plate_id)
+            if pair not in pairs:
+                pairs.append(pair)
+        return pairs
+
+    @property 
+    def library_valid(self):
+        return bool(self.library)
+
     @property
     def plates_valid(self):
-        return self.plates.count() > 0 \
-            and self.numSrcPlates == self.expNumSrcPlates() \
-                and self.numDestPlates >= self.expNumDestPlates()
+        try:
+            return self.plates.count() > 0 \
+                and self.numSrcPlates == self.expNumSrcPlates() \
+                    and self.numDestPlates >= self.expNumDestPlates()
+        except AttributeError:
+            return False
 
     @property
     def libCompounds(self):
-        return self.library.compounds.all()
+        try:
+            compounds = self.library.compounds.all()
+            return compounds
+        except AttributeError:
+            return None
 
     @property
     def numSrcPlates(self):
@@ -119,12 +173,14 @@ class Experiment(models.Model):
         list_soaks = [None]*cmpds.count()
         list_src_wells = [w for w in self.getSrcWells.order_by('id')]
         list_dest_subwells = [w for w in self.getDestSubwells.order_by('id')]
-
+        # a = chunk_list(list_dest_subwells, 3)
+        s_w_idxs = list(map(lambda x: x-1, self.subwell_locations))
+        
+        list_dest_subwells = items_at(lst=list_dest_subwells, 
+            chunk_size=self.destPlateType.numSubwells, idxs=s_w_idxs)
         for c in cmpds:
             src_well = list_src_wells[ct]
-            # src_well.compounds.add(c) # too slow and too many queries
             dest_subwell = list_dest_subwells[ct]
-            # dest_subwell.compounds.add(c) # too slow and too many queries
             dest_subwell.hasCrystal = True
             soak = Soak(experiment_id=self.id,src=src_well,dest=dest_subwell, transferCompound=c, 
                 soakOffsetX=soakOffsetX, soakOffsetY=soakOffsetY, transferVol=transferVol)
@@ -267,10 +323,10 @@ class Experiment(models.Model):
 
     def __str__(self):
         return self.name
+        
 
-    class Meta:
-        get_latest_by = "dateTime"
-
+post_save.connect(Experiment.delete_plates_soaks_on_library_change, sender=Experiment)
+post_init.connect(Experiment.remember_library, sender=Experiment)
 
 class CrystalScreen(models.Model):
     name = models.CharField(max_length=100,)
@@ -549,3 +605,9 @@ def enum_well_location(s):
         return 
     else:
         return dic[l] + int(d)
+
+# SIGNALS -----------------------------------------------------
+
+#delete experiment plates and soaks on library change
+post_save.connect(Experiment.delete_plates_soaks_on_library_change, sender=Experiment)
+post_init.connect(Experiment.remember_library, sender=Experiment)
