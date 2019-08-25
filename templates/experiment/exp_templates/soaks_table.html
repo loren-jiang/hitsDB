@@ -5,7 +5,10 @@
 <link href="{% static 'css/soaks.css' %}" rel="stylesheet">
 <div class='container-fluid'>
   <div class='row justify-content-center'>
-    <div class='col-md-5'>
+    <div class='col-md-2'>
+
+    </div>
+    <div class='col-md-4'>
       <!-- {% load django_tables2 %} 
       {% render_table soaks_table %} -->
       
@@ -24,11 +27,14 @@
                 {% endfor %}
               </tr>
 
-              {% for w in by_row %}
+              {% for r in by_row %}
               <tr class="row">
                 <th class="col">{{forloop.counter}}</th>
-                {% for s in w.list %}
-                  <td class="col">{{s.src.name}}</td>
+                {% for w in r.list %}
+                  <td class="col">
+                    <a class="soak" id="src_{{w.src.id}}" pair_id="dest_{{w.dest.id}}">{{w.src.name}}</a>
+                    
+                  </td>
                 {% endfor %}
               </tr>
               {% endfor %}
@@ -40,10 +46,8 @@
            
         {% endfor %}
     </div>
-    <div class='col-md-1'>
-
-    </div>
-    <div class='col-md-5'>
+    
+    <div class='col-md-4'>
        
       
       {% regroup dest_soaks_qs  by plate_id as soaks_list %}
@@ -54,24 +58,35 @@
             <table class="table table-condensed table-borderless">
               {% regroup p.list by well_row as by_row %}
 
+
+              {% regroup by_row.0.list by parent_well as cols %}
+              
+
               <tr class="row">
                 <th class="col"></th>
-                {% for i in by_row.0.list %}
+                {% for i in cols %}
                   <th class="col">{{forloop.counter}}</th>
                 {% endfor %}
               </tr>
 
-              {% for w in by_row %}
+              {% for r in by_row %}
+              {% regroup r.list by parent_well as by_well %}
               <tr class="row">
                 <th class="col">{{forloop.counter}}</th>
-                
-                {% for s in w.list %}
-                  <td class="col">{{s.dest.parentWell.name}}</td>
-                {% endfor %}
+                {% for w in by_well %}
+                      <td class="col">
+                      {% for s in w.list %}
+                        <a class="soak" id="dest_{{s.dest.id}}" pair_id="src_{{s.src.id}}">{{s.dest.id}}</a>
+  
+                      
+                      {% endfor %}
+                      </td>
 
-              </tr>
+                {% endfor %}
+                </tr>
+                
+
               {% endfor %}
-              
             </table>
           </div>
           
@@ -81,5 +96,21 @@
     </div>
   </div>	
 </div>
-
+<style>
+    .soak.active {
+      background: pink;
+    }
+  
+  </style>
+<script>
+$(document).ready(function() {
+  $('.soak').hover(function() {
+    $this = $(this);
+    $this.toggleClass( "active" );
+    pair_id = $this.attr('pair_id');
+    $pair = $("#"+pair_id);
+    $pair.toggleClass( "active" );
+  });
+});
+</script>
 {% endblock %}

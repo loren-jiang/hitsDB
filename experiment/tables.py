@@ -15,13 +15,23 @@ class PlatesTable(tables.Table):
         fields=('name','plateType','upload_well_images',)
 
 class SoaksTable(tables.Table):
-    # transferCompound = tables.Column()
+    transferCompound = tables.Column()
+    srcWell = tables.Column(accessor='src')
+    destSubwell = tables.Column(accessor='dest')
 
-    # def render_transferCompound(self, value):
-    #     return '%s' % value.nameInternal
+    def render_transferCompound(self, value):
+        return '%s' % value.zinc_id
+    
+    def render_srcWell(self, value):
+        return value.id
+
+    def render_destSubwell(self, value):
+        return value.id
+
     class Meta:
         model = Soak 
         template_name = 'django_tables2/bootstrap-responsive.html'
+        fields = ('id','transferCompound','srcWell', 'destSubwell')
 
 class CollaboratorsTable(tables.Table):
     class Meta:
@@ -75,7 +85,21 @@ class ProjectsTable(tables.Table):
 class LibrariesTable(tables.Table):
     name = tables.Column(linkify=('lib',[A('pk')]))
     numCompounds = tables.Column(accessor='numCompounds', empty_values=(), verbose_name="# compounds")
+    modify = tables.Column(verbose_name='', 
+        orderable=False, 
+        empty_values=(),
+        linkify=('lib_edit', [A('pk')]), 
+        # attrs ={'a': {"class": "btn btn-info"} }
+        attrs={'a': {
+                        "data-toggle":"modal", 
+                        "data-target":"#lib_edit_modal",
+                        "class":"lib_edit_url"
+                    }}#shoud be a button to a modal
+        ) 
 
+    def render_modify(self, value):
+        return "Edit"
+        
     class Meta:
         model=Library
         template_name = 'django_tables2/bootstrap-responsive.html'

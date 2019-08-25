@@ -1,5 +1,4 @@
 from django.db import models
-from datetime import date
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from import_ZINC.models import Library, Compound
@@ -14,7 +13,6 @@ from django.db.models import Count, F, Value
 from utility_functions import chunk_list, items_at
 
 # Create your models here.
-
 class Project(models.Model):
     name = models.CharField(max_length=30)
     owner = models.ForeignKey(User, related_name='projects',on_delete=models.CASCADE)
@@ -55,7 +53,7 @@ def defaultSubwellLocations():
 class Experiment(models.Model):
     name = models.CharField(max_length=30)
     library = models.ForeignKey(Library, related_name='experiments',
-        on_delete=models.CASCADE, null=True, blank=True)#need to create Library model
+        on_delete=models.CASCADE)
     prev_library = None #prev library to check if library has changed
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='experiments')
     description = models.CharField(max_length=300, blank=True, null=True)
@@ -72,27 +70,10 @@ class Experiment(models.Model):
     class Meta:
         get_latest_by="dateTime"
         # ordering = ['-dateTime']
-    
-    @staticmethod
-    def delete_plates_soaks_on_library_change(sender, **kwargs):
-        instance = kwargs.get('instance')
-        created = kwargs.get('created')
-        if instance.prev_library != instance.library or created:
-            instance.plates.all().delete()
-            instance.soaks.all().delete()
-            reset = {'srcPlateType':None, 'destPlateType':None, 'subwell_locations':[]}
-            Experiment.objects.filter(id=instance.id).update(**reset)
- 
-
-
-    @staticmethod
-    def remember_library(sender, **kwargs):
-        instance = kwargs.get('instance')
-        instance.prev_library = instance.library
 
     @property
     def getCurrentStep(self):
-        if self.soaks.count(): #might want to more robust check (e.g. # soaks = # compounds in library)
+        if self.soaks_valid: #might want to more robust check (e.g. # soaks = # compounds in library)
             return 4
         if self.plates_valid:
             return 3
@@ -112,6 +93,10 @@ class Experiment(models.Model):
             if pair not in pairs:
                 pairs.append(pair)
         return pairs
+
+    @property 
+    def soaks_valid(self):
+        return self.soaks.count() > 0
 
     @property 
     def library_valid(self):
@@ -323,10 +308,6 @@ class Experiment(models.Model):
 
     def __str__(self):
         return self.name
-        
-
-post_save.connect(Experiment.delete_plates_soaks_on_library_change, sender=Experiment)
-post_init.connect(Experiment.remember_library, sender=Experiment)
 
 class CrystalScreen(models.Model):
     name = models.CharField(max_length=100,)
@@ -548,7 +529,7 @@ class Well(models.Model):
 class SubWell(models.Model):
     #relative to A1 well center
     idx = models.PositiveIntegerField(default=1) #CHANGE TO 0-indexed?
-    xPos = models.DecimalField(max_digits=10, decimal_places=2,default=0) # relative to center of 
+    xPos = models.DecimalField(max_digits=10, decimal_places=2,default=0) # relative to center of well
     yPos = models.DecimalField(max_digits=10, decimal_places=2,default=0)
     maxDropVol = models.DecimalField(max_digits=10, decimal_places=0,default=5.0) #in uL
     minDropVol = models.DecimalField(max_digits=10, decimal_places=0, default=0.5) #in uL
@@ -607,7 +588,21 @@ def enum_well_location(s):
         return dic[l] + int(d)
 
 # SIGNALS -----------------------------------------------------
-
 #delete experiment plates and soaks on library change
-post_save.connect(Experiment.delete_plates_soaks_on_library_change, sender=Experiment)
-post_init.connect(Experiment.remember_library, sender=Experiment)
+@receiver(post_save, sender=Experiment)
+def delete_plates_soaks_on_library_change(sender, instance, created, **kwargs):
+    if instance.prev_library != instance.library or created:
+        instance.plates.all().delete()
+        instance.soaks.all().delete()
+        reset = {'srcPlateType':None, 'destPlateType':None, 'subwell_locations':[]}
+        Experiment.objects.filter(id=instance.id).update(**reset)
+
+@receiver(post_init, sender=Experiment)
+def remember_library(sender, instance, **kwargs):
+    if instance.library_id:
+        instance.prev_library = instance.library_id
+
+
+
+# post_save.connect(Experiment.delete_plates_soaks_on_library_change, sender=Experiment)
+# post_init.connect(Experiment.remember_library, sender=Experiment)

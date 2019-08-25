@@ -7,6 +7,11 @@ from django.contrib.admin.widgets import FilteredSelectMultiple
 from import_ZINC.models import Compound, Library
 from django.core.exceptions import ValidationError
 
+class LibraryForm(forms.ModelForm):
+    class Meta:
+        model = Library
+        fields=("name","description",)
+        
 class MultipleForm(forms.Form):
     action = forms.CharField(max_length=60, widget=forms.HiddenInput())
 
@@ -58,9 +63,6 @@ class ExperimentModelForm(forms.ModelForm):
         fields = ("name", "description", "protein", "library",)
         
 
-    
-        
-
 class SourcePlateForm(forms.ModelForm):
     class Meta:
         model = Plate
@@ -88,13 +90,15 @@ class ExperimentAsMultiForm(MultipleForm):
         self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, 
                 required=False, empty_label="-----", widget=forms.Select)
     
+    # put form validation here 
     def clean(self):
         cd = self.cleaned_data
         cd_copy = cd.copy()
-        exp_model_fields = [getattr(field,'name') for field in  Experiment._meta.get_fields()]
-        exp_model_fields.append("action") #action key necessary for MultiForm processing
+        fields = [k for k in self.fields]
+        # if len(cd['name']) < 3:
+        #     self._errors['name'] = ["Name not greater than 3 chars."]
         for key in cd_copy:
-            if not key in exp_model_fields:
+            if not key in fields:
                 cd.pop(key)
         return cd
 
@@ -144,7 +148,7 @@ class PlatesSetupMultiForm(MultipleForm):
     # subwell_locations = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple, choices=subwells)
     # subwell_locations = forms.MultipleChoiceField(choices=subwells)
 
-    def __init__(self,user, exp, *args, **kwargs):
+    def __init__(self, exp, *args, **kwargs):
         super(PlatesSetupMultiForm, self).__init__(*args, **kwargs)
         self.fields['srcPlateType'] = forms.ModelChoiceField(queryset=PlateType.objects
             .filter(isSource=True), 
@@ -154,29 +158,50 @@ class PlatesSetupMultiForm(MultipleForm):
             .filter(isSource=False), 
             label="Destination plate type",
             initial=exp.destPlateType)
-        self.fields['subwell_locations'] = forms.MultipleChoiceField(choices=self.subwells, initial=exp.subwell_locations)
-    def clean_subwell_locations(self):
-        try:
-            self.cleaned_data['subwell_locations']
-        except KeyError:
-            self.cleaned_data['subwell_locations'] = []
-            raise ValidationError("Please select at least one subwell.")
-        return self.cleaned_data['subwell_locations']
+        subwells = [1]
+        if exp.subwell_locations:
+            subwells = exp.subwell_locations
+        self.fields['subwell_locations'] = forms.MultipleChoiceField(choices=self.subwells, initial=subwells)
+        # self.fields['subwell_locations'] = forms.MultipleChoiceField(choices=self.subwells, initial=subwells, widget=forms.CheckboxSelectMultiple)
 
     def clean(self):
         cd = self.cleaned_data
+        try:
+            if len(cd['subwell_locations']) < 1:
+                self._errors['subwell_locations'] = ["Must select at least one subwell."]
+        except KeyError:
+            raise ValidationError('Must select at least one subwell.')
         cd_copy = cd.copy()
-        exp_model_fields = [getattr(field,'name') for field in  Experiment._meta.get_fields()]
-        exp_model_fields.append("action") #action key necessary for MultiForm processing
+        fields = [k for k in self.fields]
         for key in cd_copy:
-            if not key in exp_model_fields:
+            if not key in fields:
                 cd.pop(key)
         
         return cd
 
 class SoaksSetupMultiForm(MultipleForm):
-    transferVol = forms.IntegerField(initial=25) # in nL
-    #relative to center of subwell
-    soakOffsetX = forms.DecimalField(max_digits=10, decimal_places=2,initial=0)
-    soakOffsetY = forms.DecimalField(max_digits=10, decimal_places=2,initial=0)
+    def __init__(self, exp, *args, **kwargs):
+        super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)
+        transferVol = 25
+        soakOffsetX = 0
+        soakOffsetY = 0
+        if exp.soaks.count():
+            s = exp.soaks.all()[0]
+            transferVol = s.transferVol
+            soakOffsetX = s.soakOffsetX
+            soakOffsetY = s.soakOffsetY
+        self.fields['transferVol'] = forms.IntegerField(initial=transferVol)
+        self.fields['soakOffsetX'] = forms.DecimalField(max_digits=10, decimal_places=2,initial=soakOffsetX)
+        self.fields['soakOffsetY'] = forms.DecimalField(max_digits=10, decimal_places=2,initial=soakOffsetY)
+    
+    def clean(self):
+        cd = self.cleaned_data
+        if cd['transferVol'] <= 0:
+            self._errors['transferVol'] = ["Must be positive."]
+        cd_copy = cd.copy()
+        fields = [k for k in self.fields]
+        for key in cd_copy:
+            if not key in fields:
+                cd.pop(key)
+        return cd
 

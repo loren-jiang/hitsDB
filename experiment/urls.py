@@ -1,7 +1,7 @@
 #experiment/urls.py
 from django.conf.urls import url
 from django.urls import path, re_path
-from . import views, library_views, project_views, experiment_views
+from . import views, library_views, project_views, experiment_views, soak_views
 from django.contrib.auth.models import User
 
 urlpatterns = [
@@ -11,6 +11,7 @@ urlpatterns = [
 
     # --------------- urls to Library views ------------------------------
     # re_path(r'^lib_compounds/(?P<pk_lib>\d+)/$', library_views.lib_compounds, name='lib_compounds'),
+    re_path(r'^libs/(?P<pk_lib>\d+)/edit/$', library_views.lib_edit, name='lib_edit'),
     re_path(r'^libs/(?P<pk_lib>\d+)/$', library_views.lib_compounds, name='lib'),
     re_path(r'^libs/(?P<pk_lib>\d+)/modify_lib_compounds/$', 
         library_views.modify_lib_compounds, name='modify_lib_compounds'),
@@ -20,6 +21,7 @@ urlpatterns = [
 
 
     # --------------- urls to Project views ------------------------------
+    re_path(r'^projs/(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/soaks/$', soak_views.soaks, name='exp_soaks_'),
     re_path(r'^projs/(?P<pk_proj>\d+)/libs/(?P<pk_lib>\d+)/$', project_views.proj_lib, name='proj_lib'),
     re_path(r'^projs/(?P<pk_proj>\d+)/libs/$', project_views.proj_libs, name='proj_libs'),
     re_path(r'^projs/(?P<pk_proj>\d+)/edit/$', project_views.project_edit, name='proj_edit'),
@@ -40,6 +42,7 @@ urlpatterns = [
     re_path(r'^exps/(?P<pk>\d+)/setup/$', experiment_views.MultipleFormsDemoView.as_view(), name='exp_setup'),
 	# re_path(r'^experiments/exp/(?P<pk>\d+)/$', experiment_views.experiment, name='exp'),
     # re_path(r'^exps/(?P<pk>\d+)/soaks_csv_view/$', experiment_views.soaks_csv_view, name='soaks_csv_view'),
+    re_path(r'^exps/(?P<pk>\d+)/soaks_csv_view/all$', experiment_views.soaks_csv_view, name='soaks_csv_view'),
 	re_path(r'^exps/(?P<pk>\d+)/soaks_csv_view/(?P<pk_src_plate>\d+)/(?P<pk_dest_plate>\d+)/$', experiment_views.soaks_csv_view, name='soaks_csv_view'),
     re_path(r'^exps/(?P<pk>\d+)/soaks/$', experiment_views.soaks, name='exp_soaks'),
     re_path(r'^exps/(?P<pk>\d+)/grouped_soaks/$', experiment_views.soaks, name='exp_grouped_soaks'),

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<script src="{% static 'hitsDB/js/modalForm.js' %}"></script>
+
+<div class="modal" id="{{modal_id}}">
+
+</div>
+
+<div class='container-fluid'>
+  <div class='row justify-content-center'>
+    <div class='col-md-6'>
+      {% load django_tables2 %} 
+      {% render_table librariesTable %}
+    </div>
+  </div>	
+</div>
+
+<script>
+$(document).ready(function() {
+  url_class = '{{url_class}}'
+  modal_id = "{{modal_id}}"
+  form_class = "{{form_class}}"
+  setUpModalForm(url_class, modal_id, form_class);
+});
+</script>
+
+{% endblock %}

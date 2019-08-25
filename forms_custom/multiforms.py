@@ -15,7 +15,7 @@ class MultiFormMixin(ContextMixin):
     initial = {}
     prefix = None
     success_url = None
-     
+
     def get_form_arguments(self, form_name):
         return self.form_arguments.get(form_name)
 
@@ -35,7 +35,6 @@ class MultiFormMixin(ContextMixin):
                 'files': self.request.FILES,
             })
         form_arguments = self.get_form_arguments(form_name)
-        print(form_arguments)
         if form_arguments:
             kwargs.update(form_arguments)
         return kwargs
@@ -47,8 +46,13 @@ class MultiFormMixin(ContextMixin):
         else:
             return HttpResponseRedirect(self.get_success_url(form_name))
      
-    def forms_invalid(self, forms):
+    def forms_invalid(self, forms, form_name):
         return self.render_to_response(self.get_context_data(forms=forms))
+        # f = forms[form_name]
+        # self.kwargs.update({'invalid_form':f})
+        # print(f)
+        # print(self.__dict__)
+        # return HttpResponseRedirect(self.get_success_url(form_name))
     
     def get_initial(self, form_name):
         initial_method = 'get_%s_initial' % form_name
@@ -62,7 +66,7 @@ class MultiFormMixin(ContextMixin):
         
     def get_success_url(self, form_name=None):
         return self.success_urls.get(form_name, self.success_url)
-    
+
     def _create_form(self, form_name, form_class):
         form_kwargs = self.get_form_kwargs(form_name)
         form = form_class(**form_kwargs)
@@ -79,6 +83,11 @@ class ProcessMultipleFormsView(ProcessFormView):
     def post(self, request, *args, **kwargs):
         form_classes = self.get_form_classes()
         form_name = request.POST.get('action')
+        # form_names = request.POST.getlist('action')
+        # form_name = None
+        # for name in form_names:
+        #     if name in request.POST:
+        #         form_name = name
         return self._process_individual_form(form_name, form_classes)
         
     def _process_individual_form(self, form_name, form_classes):
@@ -89,7 +98,7 @@ class ProcessMultipleFormsView(ProcessFormView):
         elif form.is_valid():
             return self.forms_valid(forms, form_name)
         else:
-            return self.forms_invalid(forms)
+            return self.forms_invalid(forms, form_name)
  
  
 class BaseMultipleFormsView(MultiFormMixin, ProcessMultipleFormsView):

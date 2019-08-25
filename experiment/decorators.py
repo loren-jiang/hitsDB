@@ -6,7 +6,7 @@ from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import resolve_url
 
-from .models import Project
+from .models import Project, Experiment
 from import_ZINC.models import Library
 
 def request_passes_test(test_func, login_url=None, redirect_field_name=REDIRECT_FIELD_NAME):
@@ -52,6 +52,17 @@ def is_users_library(func):
     def wrap(request, *args, **kwargs):
         lib = Library.objects.get(pk=kwargs['pk_lib'])
         if lib.owner.pk == request.user.pk:
+            return func(request, *args, **kwargs)
+        else:
+            raise PermissionDenied
+    wrap.__doc__ = func.__doc__
+    wrap.__name__ = func.__name__
+    return wrap
+
+def is_users_experiment(func):
+    def wrap(request, *args, **kwargs):
+        exp = Experiment.objects.get(pk=kwargs['pk_exp'])
+        if exp.owner.pk == request.user.pk:
             return func(request, *args, **kwargs)
         else:
             raise PermissionDenied

@@ -25,6 +25,10 @@ class MultipleFormsDemoView(MultiFormsView):
         # populate form_arguments 
         user = request.user
         pk = kwargs.get('pk', None)
+        invalid_form = kwargs.get('invalid_form', None)
+        if invalid_form:
+            self.invalid_form = invalid_form
+
         exp = user.experiments.get(id=pk)
         self.form_arguments['expform'] = {
                                         'user':user,
@@ -32,7 +36,9 @@ class MultipleFormsDemoView(MultiFormsView):
                                         'exp': exp
                                     }
         self.form_arguments['platesform'] = {
-                                        'user':user,
+                                        'exp': exp
+                                    }
+        self.form_arguments['soaksform'] = {
                                         'exp': exp
                                     }
         # populate success_urls dictionary with urls
@@ -43,6 +49,25 @@ class MultipleFormsDemoView(MultiFormsView):
         # call super
         return super(MultipleFormsDemoView, self).setup(request, *args, **kwargs)
 
+    # def get_soaksform_initial(self):
+    #     pk = self.kwargs.get('pk', None)
+    #     exp = Experiment.objects.get(id=pk)
+    #     transferVol = 25
+    #     soakOffsetX = 0
+    #     soakOffsetY = 0
+    #     if exp.soaks.count():
+    #         s = exp.soaks.all()[0]
+    #         transferVol = s.transferVol
+    #         soakOffsetX = s.soakOffsetX
+    #         soakOffsetY = s.soakOffsetY
+    #     data = {
+    #         'action': 'soaksform',
+    #         'transferVol': transferVol,
+    #         'soakOffsetX': soakOffsetX, 
+    #         'soakOffsetY': soakOffsetX,
+    #     }
+    #     return data
+            
     def expform_form_valid(self, form):
         pk = self.kwargs.get('pk', None)
         cleaned_data = form.cleaned_data
@@ -80,18 +105,19 @@ class MultipleFormsDemoView(MultiFormsView):
     def get_context_data(self, **kwargs):
         pk = self.kwargs.get('pk', None)
         request = self.request
-        exp = request.user.experiments.prefetch_related('plates','soaks').get(id=pk)
+        exp = request.user.experiments.prefetch_related('plates','soaks','library').get(id=pk)
         soaks_table = exp.getSoaksTable(exc=[])
         RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
         src_plates_table = exp.getSrcPlatesTable(exc=[])
         dest_plates_table = exp.getDestPlatesTable(exc=[])
         context = super(MultiFormsView, self).get_context_data(**kwargs)
-        context['experiment'] = exp
+        context['exp'] = exp
         context['src_plates_table'] = src_plates_table
         context['dest_plates_table'] = dest_plates_table
         context['soaks_table'] = soaks_table
         context['plates_valid'] = exp.plates_valid
         context['current_step'] = exp.getCurrentStep
+        context['soaks_valid'] = exp.soaks_valid
         return context
 
 #checks if project is the user's
@@ -127,23 +153,24 @@ def experiment(request, pk):
 #views experiment soaks as table
 @login_required(login_url="/login")
 def soaks(request, pk):
-    experiment = Experiment.objects.get(id=pk)
-    # src_plate_ids = [p.id for p in experiment.plates.filter(isSource=True)]
-    soaks_table=experiment.getSoaksTable()
+    exp = Experiment.objects.get(id=pk)
+    # src_plate_ids = [p.id for p in exp.plates.filter(isSource=True)]
+    soaks_table=exp.getSoaksTable()
     RequestConfig(request, paginate={'per_page': 50}).configure(soaks_table)
     data = {
-        'src_soaks_qs' : experiment.soaks.select_related('src__plate')
+        # we could further optimize this by just having on qs with combined annotations if needed
+        'src_soaks_qs' : exp.soaks.select_related('src__plate','dest')
           .annotate(plate_id=F('src__plate_id'))
           .annotate(well_row=F('src__wellRowIdx'))
           .annotate(well_col=F('src__wellColIdx'))
-          .order_by('src__plate_id','well_row'),
+          .order_by('src__plate_id','id'),
 
-        'dest_soaks_qs' : experiment.soaks.select_related('dest__parentWell__plate')
+        'dest_soaks_qs' : exp.soaks.select_related('dest__parentWell__plate','src')
           .annotate(plate_id=F('dest__parentWell__plate_id'))
           .annotate(well_row=F('dest__parentWell__wellRowIdx'))
           .annotate(well_col=F('dest__parentWell__wellColIdx'))
-          .annotate(subwell_idx=F('dest__idx'))
-          .order_by('dest__parentWell__plate_id','subwell_idx','well_row'),
+          .annotate(parent_well=F('dest__parentWell_id'))
+          .order_by('dest__parentWell__plate_id','well_row','id'),
 
         'soaks_table': soaks_table,
     }
@@ -190,7 +217,6 @@ def delete_experiments(request, pks, pk_proj=None):
                 try:
                     exp = get_object_or_404(Experiment, pk=pk)
                     if (exp.owner == request.user):
-                        # print(pk)
                         exp.delete()
                 except:
                     break
@@ -215,10 +241,13 @@ def delete_exp_plates(request, pk):
     return redirect('exp',pk)
 
 # pk is experiment pk
-def soaks_csv_view(request,pk,pk_src_plate, pk_dest_plate):
+def soaks_csv_view(request,pk,pk_src_plate=None, pk_dest_plate=None):
     exp = get_object_or_404(Experiment, pk=pk)
     # dest_plate = get_object_or_404(Plate,pk_plate)
-    qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(
+    qs = qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(
+      ).order_by('id')
+    if pk_dest_plate and pk_src_plate:
+        qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(
       ).filter(src__plate_id=pk_src_plate, dest__parentWell__plate_id=pk_dest_plate)
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment;filename=exp_' + str(exp.id) + '_soaks' +  '.csv'
@@ -433,7 +462,6 @@ def make_instance_from_dict(instance_model_a_as_dict,model_a):
     except KeyError:
         pass
     # instance_model_a_as_dict.pop('id') #pops id so we dont copy primary keys
-    # print(instance_model_a_as_dict)
     return model_a(**instance_model_a_as_dict)
 
 def copy_instance(instance_of_model_a,instance_of_model_b):

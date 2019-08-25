@@ -6,6 +6,7 @@ from import_ZINC.filters import LibCompoundFilter, CompoundFilter
 from django_tables2.views import SingleTableMixin
 from django_filters.views import FilterView
 from .decorators import is_users_library
+from .forms import LibraryForm
 
 @login_required(login_url="/login")
 def user_compounds(request):
@@ -68,6 +69,33 @@ def lib_compounds(request, pk_lib):
         }
     return render(request, 'experiment/lib_templates/lib_compounds.html', data)
 
+@is_users_library
+@login_required(login_url="/login")
+def lib_edit(request, pk_lib):
+    lib = Library.objects.get(pk=pk_lib)
+    init_form_data = {
+        "name":lib.name,
+        "description":lib.description,
+
+    }
+    form = LibraryForm(initial=init_form_data)
+    if request.method == 'POST':
+        form = LibraryForm( request.POST, instance=lib)
+        if request.POST.get('cancel', None):
+            return redirect("libs")
+        if form.is_valid() and form.has_changed():
+            form.save()
+        return redirect("libs")
+
+    data = {
+        "arg":pk_lib,
+        "form":form,
+        "modal_title":"Edit Library",
+        "action":reverse_lazy('lib_edit', kwargs={'pk_lib':pk_lib}), #should be view w/o arg
+        "form_class":"lib_edit_form",
+    }
+    return render(request,'modals/modal_form.html', data)
+
 @login_required(login_url="/login")
 def libraries(request):
     user_libs_qs = request.user.libraries.all()
@@ -78,5 +106,8 @@ def libraries(request):
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
     data = {
         'librariesTable': table,
+        'url_class': "lib_edit_url",
+        'modal_id': "lib_edit_modal",
+        'form_class':"lib_edit_form", # this should match form_class in lib_edit(request, pk_lib) function view
     }
-    return render(request,'libraries.html', data)
+    return render(request,'experiment/lib_templates/libraries.html', data)
