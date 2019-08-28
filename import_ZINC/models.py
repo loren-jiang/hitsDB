@@ -10,6 +10,8 @@ from itertools import compress
 from orm_custom.custom_functions import bulk_add
 from itertools import compress
 from utility_functions import chunks
+from .validators import validate_prefix
+# from django.core.exceptions import ValidationError
 
 # Create your models here.
 class Compound(models.Model): #doesnt need to be unique?
@@ -18,13 +20,14 @@ class Compound(models.Model): #doesnt need to be unique?
     # library = models.ForeignKey(Library, related_name='compounds', on_delete=models.CASCADE, null=True, blank=True)
     #not all smiles have unique zincID, or perhaps vice versa
     wellLocation = models.CharField(max_length=4, null=True, blank=True) # e.g. A01, AB02
-    zinc_id = models.CharField(max_length=30, null=True, blank=True, unique=True)
+    zinc_id = models.CharField(max_length=30, unique=True)#, validators=[validate_prefix("zinc")])
     smiles = models.CharField(max_length=300,null=True, blank=True)
     zincURL = models.URLField(null=True, blank=True)
     molWeight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     concentration = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     purity = models.PositiveSmallIntegerField(default=100, validators=[MaxValueValidator(100), MinValueValidator(0)])
     active = models.BooleanField(default=True)
+
     def __str__(self):
         return self.zinc_id
 
@@ -56,13 +59,13 @@ class Library(models.Model):
         from .serializers import NoSaveCompoundSerializer
         num = len(serialized_data)
         obj_lst = [None for k in range(num)]
-
+    
         for i in range(num):
             data = serialized_data[i]
             fields = NoSaveCompoundSerializer.__dict__['_declared_fields']
             data = { k: data[k] for k in fields }
             serialize = NoSaveCompoundSerializer(data=data)
-            if serialize.is_valid():
+            if serialize.is_valid(raise_exception=True):
                 obj_lst[i]=serialize.save()
 
         compounds_lst = [c for c in obj_lst if c is not None] #filter out None elems just in case

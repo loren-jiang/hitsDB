@@ -1,8 +1,8 @@
 from .views_import import * #common imports for views
 from django_tables2 import RequestConfig
 from import_ZINC.models import Library, Compound
-from .tables import LibrariesTable, CompoundsTable
-from import_ZINC.filters import LibCompoundFilter, CompoundFilter
+from .tables import LibrariesTable, CompoundsTable, ModalEditLibrariesTable, ExperimentsTable
+from import_ZINC.filters import CompoundFilter, LibraryFilter
 from django_tables2.views import SingleTableMixin
 from django_filters.views import FilterView
 from .decorators import is_users_library
@@ -53,13 +53,30 @@ def modify_lib_compounds(request, pk_lib):
 
 @is_users_library
 @login_required(login_url="/login")
-def lib_compounds(request, pk_lib):
-    lib = get_object_or_404(Library, pk=pk_lib)
+def lib(request, pk_lib):
+    # lib = get_object_or_404(Library, pk=pk_lib)
+    lib_qs = Library.objects.filter(id=pk_lib)
+    lib = lib_qs[0]
+    expsTable = ExperimentsTable(data=lib.experiments.all(), exclude=['project', 'library', 'protein','owner','expChecked'],)
     compounds = lib.compounds.filter()
-    compounds_filter = LibCompoundFilter(request.GET, queryset=compounds)
+    compounds_filter = CompoundFilter(request.GET, queryset=compounds)
     table = CompoundsTable(compounds_filter.qs)
     RequestConfig(request, paginate={'per_page': 25}).configure(table)
+
+    url_class = "lib_edit_url"
+    modal_id = "lib_edit_modal"
+    exc = list(ModalEditLibrariesTable.Meta.fields)
+    print("FIELDS : " + repr(exc))
+    libTable = ModalEditLibrariesTable(data=lib_qs, data_target=modal_id, a_class="btn btn-info " + url_class,
+        exclude=exc, attrs={'th': {'id': 'lib_table_header'}})
+
     data = {
+        'lib': lib,
+        'url_class': url_class,
+        'modal_id': modal_id,
+        'form_class':"lib_edit_form", # this should match form_class in lib_edit(request, pk_lib) function view
+        'libTable': libTable,
+        'expsTable': expsTable,
         'filter': compounds_filter,
         'table':table,
         'remove_from_lib_url':reverse('modify_lib_compounds',kwargs={'pk_lib':pk_lib}),
@@ -76,7 +93,7 @@ def lib_edit(request, pk_lib):
     init_form_data = {
         "name":lib.name,
         "description":lib.description,
-
+        "supplier":lib.supplier
     }
     form = LibraryForm(initial=init_form_data)
     if request.method == 'POST':
@@ -85,6 +102,9 @@ def lib_edit(request, pk_lib):
             return redirect("libs")
         if form.is_valid() and form.has_changed():
             form.save()
+        prev = request.META.get('HTTP_REFERER')
+        if prev:
+            return redirect(prev)
         return redirect("libs")
 
     data = {
@@ -102,12 +122,43 @@ def libraries(request):
     # libs_qs = Library.objects.filter(groups__in=request.user.groups.all()).union(
     #     Library.objects.filter(isTemplate=True))
     # table=LibrariesTable(libs_qs)
-    table=LibrariesTable(user_libs_qs)
+    # table=LibrariesTable(user_libs_qs)
+    url_class = "lib_edit_url"
+    modal_id = "lib_edit_modal"
+    libs_filter = LibraryFilter(data=request.GET, queryset=user_libs_qs, request=request)#, user=request.user)
+    table = ModalEditLibrariesTable(data=libs_filter.qs, order_by="id", 
+        data_target=modal_id, a_class="btn btn-info " + url_class)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
     data = {
-        'librariesTable': table,
-        'url_class': "lib_edit_url",
-        'modal_id': "lib_edit_modal",
+        'filter': libs_filter,
+        'table': table,
+        'table_id':"lib_table",
+        'filter_form_id':'lib_filter_form',
+        'table_form_id':'lib_table_form',
+        'url_class': url_class,
+        'modal_id': modal_id,
         'form_class':"lib_edit_form", # this should match form_class in lib_edit(request, pk_lib) function view
+        'form_action_url': reverse_lazy('libs_delete'),
     }
-    return render(request,'experiment/lib_templates/libraries.html', data)
+    return render(request,'experiment/list_delete_table.html', data)
+
+@login_required(login_url="/login")
+def delete_libraries(request):
+    if request.method=="POST":
+        form = request.POST
+        pks_libs = form.getlist('selection') #list of lib pks
+        libs_qs = Library.objects.filter(id__in=pks_libs)
+        libs = [l for l in libs_qs]
+        for l in libs:
+            l.delete()
+        # if form['btn']=="remove_compounds":
+        #     compounds_qs.delete()
+        # if form['btn']=="deactivate_compounds":
+        #     for c in compounds:
+        #         c.active = False
+        #     Compound.objects.bulk_update(compounds, ['active'])
+        # if form['btn']=="activate_compounds":
+        #     for c in compounds:
+        #         c.active = True
+        #     Compound.objects.bulk_update(compounds, ['active'])
+    return redirect('libs')

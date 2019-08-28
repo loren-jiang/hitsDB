@@ -40,9 +40,9 @@ class CollaboratorsTable(tables.Table):
         fields = ("username",)
 
 class ExperimentsTable(tables.Table):
-    name = tables.LinkColumn(viewname='exp', args=[A('pk')])
+    name = tables.Column(linkify=('exp',{'pk_proj':A('project.pk'),'pk_exp':A('pk')}))
     expChecked = tables.CheckBoxColumn(accessor='pk',empty_values=())
-    library = tables.Column(linkify=('lib',[A('pk')]))
+    library = tables.Column(linkify=('lib',[A('library.pk')]))
     project = tables.Column(linkify=('proj',[A('project.pk')]))
 
     def render_dateTime(self, value):
@@ -59,7 +59,8 @@ class ProjectsTable(tables.Table):
     name = tables.Column(linkify=('proj',[A('pk')]))
     expChecked = tables.CheckBoxColumn(accessor='pk',empty_values=(), verbose_name="expChecked")
     collaborators = tables.ManyToManyColumn()
-    experiments = tables.ManyToManyColumn(separator=', ',verbose_name="Experiments",linkify_item=('exp',[A('pk')]))
+    experiments = tables.ManyToManyColumn(separator=', ',verbose_name="Experiments",
+        linkify_item=('exp',{'pk_proj':A('project.pk'),'pk_exp':A('pk')}))
     modify = tables.Column(verbose_name='', 
         orderable=False, 
         empty_values=(),
@@ -84,26 +85,38 @@ class ProjectsTable(tables.Table):
 
 class LibrariesTable(tables.Table):
     name = tables.Column(linkify=('lib',[A('pk')]))
+    id = tables.Column(accessor='id')
     numCompounds = tables.Column(accessor='numCompounds', empty_values=(), verbose_name="# compounds")
-    modify = tables.Column(verbose_name='', 
-        orderable=False, 
-        empty_values=(),
-        linkify=('lib_edit', [A('pk')]), 
-        # attrs ={'a': {"class": "btn btn-info"} }
-        attrs={'a': {
-                        "data-toggle":"modal", 
-                        "data-target":"#lib_edit_modal",
-                        "class":"lib_edit_url"
-                    }}#shoud be a button to a modal
-        ) 
-
-    def render_modify(self, value):
-        return "Edit"
+    selection = tables.CheckBoxColumn(accessor='pk',empty_values=())
         
     class Meta:
         model=Library
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields=('name','numCompounds','supplier')
+        fields=('name','owner','numCompounds','supplier','selection')
+        exclude=('id',)
+
+    
+class ModalEditLibrariesTable(LibrariesTable):
+    def render_modify(self, value):
+        return "Edit"
+
+    def __init__(self, data_target=None, a_class=None, *args, **kwargs):
+        if data_target and a_class:
+            modify = tables.Column(verbose_name='', 
+                orderable=False, 
+                empty_values=(),
+                linkify=('lib_edit', [A('pk')]), 
+                attrs={'a': {
+                                "data-toggle":"modal", 
+                                "data-target":"#" + data_target,
+                                "class":a_class
+                            }}#shoud be a button to a modal
+                ) 
+            kwargs.update({'extra_columns':[('modify',modify)]})
+        super( ModalEditLibrariesTable, self ).__init__(*args, **kwargs)
+
+    class Meta(LibrariesTable.Meta):
+        exclude=()
 
 class CompoundsTable(tables.Table):
     selection = tables.CheckBoxColumn(accessor='pk')
@@ -111,7 +124,7 @@ class CompoundsTable(tables.Table):
     class Meta:
         model=Compound
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields=('zinc_id','smiles','active','selection')
+        fields=('zinc_id','smiles','molWeight','active','selection')
         
 # returns user projects as django tables 2 for home page
 # argument should be request for pagination to work properly
@@ -125,7 +138,7 @@ def get_user_projects(request, exc=[], num_per_page=5):
 def get_user_libraries(request, exc=[], num_per_page=5):
     # user_lib_qs = Library.objects.filter(owner_id=request.user.id)
     user_lib_qs = request.user.libraries.all()
-    libsTable = LibrariesTable(data=user_lib_qs,exclude=exc,orderable=False)
+    libsTable = LibrariesTable(data=user_lib_qs,exclude=exc,orderable=False)    
     RequestConfig(request, paginate={'per_page': num_per_page}).configure(libsTable)
     return libsTable
 

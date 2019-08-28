@@ -7,6 +7,8 @@ from django.db import transaction, DatabaseError
 from itertools import compress
 from orm_custom.custom_functions import bulk_add
 from io import TextIOWrapper
+from django.db import transaction
+from django.core.exceptions import ValidationError
 
 # upload file (.csv or .json), create new library, and import compounds 
 def upload_file(request):
@@ -16,14 +18,24 @@ def upload_file(request):
             f = TextIOWrapper(request.FILES['file'], encoding=request.encoding)
             lib_name = form.cleaned_data['name'] #assumes lib_name is unique
             new_lib = Library(name=lib_name, owner=request.user)
-            new_lib.save()
-
-            relations, created, existed = new_lib.newCompoundsFromFile(f)
-
-            data = {
-                "createdCompounds":created,
-                "exisitingCompounds":existed,
-            }
+            data = {'form':form}
+            # new_lib.save()
+            # try:
+            #     with transaction.atomic():
+            #         thing_that_might_fail()
+            # except SomeError:
+            #     handle_exception()
+            try:
+                with transaction.atomic():
+                    new_lib.save()
+                    relations, created, existed = new_lib.newCompoundsFromFile(f)
+                    data.update = {
+                        "createdCompounds":created,
+                        "exisitingCompounds":existed,
+                    }
+            except Exception as e:
+            # except:
+                data['form']._errors['file'] = [repr(e)]
             return render(request, 'upload_file.html', data)
             # return HttpResponseRedirect('')
     else:

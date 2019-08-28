@@ -1,17 +1,22 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load render_table from django_tables2 %} 
 {% block content %}
 <script src="{% static 'hitsDB/js/modalForm.js' %}"></script>
+<script src="{% static 'hitsDB/js/selectDeleteDj2Table.js' %}"></script>
 
-<div class="modal" id="{{modal_id}}">
-
-</div>
+<div class="modal" id="{{modal_id}}"></div>
 
 <div class='container-fluid'>
   <div class='row justify-content-center'>
     <div class='col-md-6'>
-      {% load django_tables2 %} 
-      {% render_table librariesTable %}
+        <div class="modify-table" id="libraries_table">
+          <form id="libs_form" action="{{delete_libraries_url}}" method="post">
+            {% csrf_token %}
+            {% render_table librariesTable %}
+          </form>
+          <a class="btn btn-danger" role="button" id="remove_libs"> Remove selected </a>
+      </div>
     </div>
   </div>	
 </div>
@@ -22,6 +27,20 @@ $(document).ready(function() {
   modal_id = "{{modal_id}}"
   form_class = "{{form_class}}"
   setUpModalForm(url_class, modal_id, form_class);
+
+  $('#remove_libs').click(function(e) {
+    e.preventDefault();
+    let $form = $("#libs_form");
+        const $this_id = this.id;
+        const msg = "Are you sure?"
+        if (confirm(msg)) {
+          // $("<input />").attr("type","hidden")
+          //   .attr("name","btn")
+          //   .attr("value",$this_id)
+          //   .appendTo($form);
+          $form.submit();
+        }
+  });
 });
 </script>
 

@@ -10,8 +10,8 @@ from django.core.exceptions import ValidationError
 class LibraryForm(forms.ModelForm):
     class Meta:
         model = Library
-        fields=("name","description",)
-        
+        fields=("name","description","supplier",)
+
 class MultipleForm(forms.Form):
     action = forms.CharField(max_length=60, widget=forms.HiddenInput())
 

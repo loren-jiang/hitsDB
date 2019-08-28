@@ -6,7 +6,7 @@ from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, 
 from import_ZINC.models import Library, Compound
 from .forms import ExperimentModelForm, ProjectForm, SimpleProjectForm, PlateSetupForm, ExperimentAsMultiForm
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .library_views import lib_compounds
+from .library_views import lib
 # from .decorators import request_passes_test
 from .decorators import is_users_project
 from orm_custom.custom_functions import make_instance_from_dict, copy_instance
@@ -171,7 +171,7 @@ def delete_projects(request, pks):
 @is_users_project
 @login_required(login_url="/login")
 def proj_lib(request, pk_proj, pk_lib):
-    return lib_compounds(request, pk_lib)
+    return lib(request, pk_lib)
 
 @is_users_project
 @login_required(login_url="/login")

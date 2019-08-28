@@ -8,6 +8,7 @@ from import_ZINC.models import Library, Compound
 from .forms import ExperimentModelForm, PlatesSetupMultiForm, ExperimentAsMultiForm, SoaksSetupMultiForm
 from forms_custom.multiforms import MultiFormsView
 from django.db.models import Count, F, Value
+from .decorators import is_users_experiment 
 
 class MultipleFormsDemoView(MultiFormsView):
     template_name = "experiment/exp_templates/cbv_multiple_forms.html"
@@ -20,11 +21,14 @@ class MultipleFormsDemoView(MultiFormsView):
     success_urls = {}
 
     # overload to process request to properly instantiate multiforms with form arguments and success urls
-    def setup(self, request, *args, **kwargs):
+    def dispatch(self, request, *args, **kwargs):
         # parse the request here ie.
         # populate form_arguments 
         user = request.user
-        pk = kwargs.get('pk', None)
+        pk = kwargs.get('pk_exp', None)
+        # ensure experiment is only accessible by owner
+        if request.user != Experiment.objects.get(id=pk).owner:
+            raise PermissionDenied
         invalid_form = kwargs.get('invalid_form', None)
         if invalid_form:
             self.invalid_form = invalid_form
@@ -42,12 +46,12 @@ class MultipleFormsDemoView(MultiFormsView):
                                         'exp': exp
                                     }
         # populate success_urls dictionary with urls
-        exp_view_url = reverse_lazy('exp', kwargs={'pk':pk})
+        exp_view_url = reverse_lazy('exp', kwargs={'pk_exp':pk})
         self.success_urls['expform'] = exp_view_url
         self.success_urls['platesform'] = exp_view_url
         self.success_urls['soaksform'] = exp_view_url
         # call super
-        return super(MultipleFormsDemoView, self).setup(request, *args, **kwargs)
+        return super(MultipleFormsDemoView, self).dispatch(request, *args, **kwargs)
 
     # def get_soaksform_initial(self):
     #     pk = self.kwargs.get('pk', None)
@@ -69,10 +73,10 @@ class MultipleFormsDemoView(MultiFormsView):
     #     return data
             
     def expform_form_valid(self, form):
-        pk = self.kwargs.get('pk', None)
+        pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
+        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk_exp':pk})
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp = exp_qs[0]
         fields = [key for key in cleaned_data]
@@ -83,27 +87,27 @@ class MultipleFormsDemoView(MultiFormsView):
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def platesform_form_valid(self, form):
-        pk = self.kwargs.get('pk', None)
+        pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
+        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk_exp':pk})
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp_qs.update(**cleaned_data)
         exp_qs[0].generateSrcDestPlates()
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def soaksform_form_valid(self, form):
-        pk = self.kwargs.get('pk', None)
+        pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk':pk})
+        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk_exp':pk})
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         # exp_qs.update(**cleaned_data)
         exp_qs[0].generateSoaks(cleaned_data['transferVol'],cleaned_data['soakOffsetX'],cleaned_data['soakOffsetY'] ) 
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def get_context_data(self, **kwargs):
-        pk = self.kwargs.get('pk', None)
+        pk = self.kwargs.get('pk_exp', None)
         request = self.request
         exp = request.user.experiments.prefetch_related('plates','soaks','library').get(id=pk)
         soaks_table = exp.getSoaksTable(exc=[])
@@ -125,8 +129,10 @@ def experiment_is_users(user, e):
     projects_with_exp = user.projects.filter(experiments__in=[e.id]) 
     return projects_with_exp.count() > 0 
 
+@is_users_experiment
 @login_required(login_url="/login")
-def experiment(request, pk):
+def experiment(request, pk_exp):
+    pk = pk_exp
     experiment = Experiment.objects.select_related(
         'owner').get(id=pk)
     if experiment_is_users(request.user, experiment):
@@ -151,8 +157,10 @@ def experiment(request, pk):
         return HttpResponse("Don't have permission") # should create a request denied template later!
 
 #views experiment soaks as table
+@is_users_experiment
 @login_required(login_url="/login")
-def soaks(request, pk):
+def soaks(request, pk_exp):
+    pk = pk_exp
     exp = Experiment.objects.get(id=pk)
     # src_plate_ids = [p.id for p in exp.plates.filter(isSource=True)]
     soaks_table=exp.getSoaksTable()
@@ -177,8 +185,10 @@ def soaks(request, pk):
     return render(request, 'experiment/exp_templates/soaks_table.html', data)
 
 #views experiment plates as table
+@is_users_experiment
 @login_required(login_url="/login")
-def plates(request, pk):
+def plates(request, pk_exp):
+    pk = pk_exp
     experiment = Experiment.objects.get(id=pk)
     plates_table=experiment.getDestPlatesTable(exc=["id","xPitch","yPitch","plateHeight","plateWidth","plateLength",
         "wellDepth", "xOffsetA1","yOffsetA1","experiment","isSource","isTemplate","isCustom"])
@@ -197,8 +207,10 @@ def experiments(request):
     }
     return render(request,'experiments.html',data)#,{'experiments':})
 
+@is_users_experiment
 @login_required(login_url="/login")
-def delete_experiment(request, pk):
+def delete_experiment(request, pk_exp):
+    pk = pk_exp
     experiment = get_object_or_404(Experiment, pk=pk)
     pk_proj = experiment.project.id
     experiment.delete()
@@ -207,9 +219,9 @@ def delete_experiment(request, pk):
     else:
         return redirect('experiments')
     
-
 @login_required(login_url="/login")
-def delete_experiments(request, pks, pk_proj=None):
+def delete_experiments(request, pks_exp, pk_proj=None):
+    pks = pks_exp
     if pk_proj:
         pks = pks.split('/')
         for pk in pks:
@@ -233,15 +245,18 @@ def delete_experiments(request, pks, pk_proj=None):
                     break
         return redirect('experiments')
 
+@is_users_experiment
 @login_required(login_url="/login")
-def delete_exp_plates(request, pk):
+def delete_exp_plates(request, pk_exp):
+    pk = pk_exp
     exp = get_object_or_404(Experiment, pk=pk)
     for p in exp.plates.all():
         p.delete()
     return redirect('exp',pk)
 
-# pk is experiment pk
-def soaks_csv_view(request,pk,pk_src_plate=None, pk_dest_plate=None):
+@is_users_experiment
+def soaks_csv_view(request,pk_exp ,pk_src_plate=None, pk_dest_plate=None):
+    pk = pk_exp
     exp = get_object_or_404(Experiment, pk=pk)
     # dest_plate = get_object_or_404(Plate,pk_plate)
     qs = qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(

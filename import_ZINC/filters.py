@@ -2,12 +2,35 @@ from django.contrib.auth.models import User, Group
 from import_ZINC.models import Compound, Library
 import django_filters
 
-class LibCompoundFilter(django_filters.FilterSet):
-    class Meta:
-        model = Compound
-        fields = ['zinc_id', 'molWeight', ]
-
 class CompoundFilter(django_filters.FilterSet):
     class Meta:
         model = Compound
-        fields = ['zinc_id', 'molWeight', 'libraries', ]
+        fields = {
+            'zinc_id':['exact','contains' ],
+            'molWeight':['exact', 'gt'],
+        }
+
+def library_users(request):
+    if request is None:
+        return User.objects.none()
+    user = request.user
+    lib_users = User.objects.filter(groups__in=user.groups.all())
+    return lib_users
+
+class LibraryFilter(django_filters.FilterSet):
+    owner = django_filters.ModelChoiceFilter(field_name='owner', queryset=library_users)
+
+    class Meta:
+        model = Library
+        fields={
+            'name':['exact','contains'],
+            'supplier':['exact','contains'],
+            # 'owner':['exact'],
+        }
+ 
+    # def __init__(self, user=None, *args, **kwargs):
+    #         super(LibraryFilter, self).__init__(*args, **kwargs)
+    #         # You need to override the method in the filter's form field
+    #         print(user.groups.all())
+    #         self.filters['owner'].queryset = User.objects.filter(groups__in=user.groups.all())
+    #         # self.filters['thon_group'].field.label_from_instance = lambda obj: obj.user.last_name

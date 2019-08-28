@@ -1,7 +1,6 @@
 function setUpModalForm(urlClass, modalId, formClass) {
     $("." + urlClass).click(function(ev) { // for each edit contact url
         ev.preventDefault(); // prevent navigation
-        console.log('in setUpModalForm');
         var url = $(this).attr('href'); // get the project_edit form href
         $("#" + modalId).load(url, function() { // load the url into the modal
             $(this).modal('show'); // display the modal on url load
