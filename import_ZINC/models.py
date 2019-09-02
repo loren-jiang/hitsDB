@@ -28,9 +28,16 @@ class Compound(models.Model): #doesnt need to be unique?
     purity = models.PositiveSmallIntegerField(default=100, validators=[MaxValueValidator(100), MinValueValidator(0)])
     active = models.BooleanField(default=True)
 
+    def save(self, *args, **kwargs):
+        if self.zinc_id:
+            self.zincURL = self.get_absolute_url()
+        super(Compound, self).save(*args, **kwargs)
+
     def __str__(self):
         return self.zinc_id
 
+    def get_absolute_url(self):
+        return 'https://zinc15.docking.org/substances/' + self.zinc_id + '/'
 
 class Library(models.Model):
     name = models.CharField(max_length=30, unique=True)
@@ -69,7 +76,7 @@ class Library(models.Model):
                 obj_lst[i]=serialize.save()
 
         compounds_lst = [c for c in obj_lst if c is not None] #filter out None elems just in case
-        
+        print(compounds_lst)
         # Greedy solution, but will not support updating compounds in the future
         # compounds_created = Compound.bulk_create(compounds_lst, ignore_conflicts=True)
         
@@ -80,7 +87,6 @@ class Library(models.Model):
         compounds_to_be_created = list(compress(compounds_lst, [not i for i in filt]))
         compounds_existing = list(compress(compounds_lst, filt))
         compounds_created = Compound.objects.bulk_create(compounds_to_be_created, ignore_conflicts=True)
-
         # optionally, we can bulk update here I think...
         return [c for c in compounds_created], [c for c in compounds_existing]
 

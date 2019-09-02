@@ -39,6 +39,8 @@ def modify_lib_compounds(request, pk_lib):
         compound_pks = form.getlist('selection') #list of compound pks
         compounds_qs = Compound.objects.filter(id__in=compound_pks)
         compounds = [c for c in compounds_qs]
+        prev = request.META.get('HTTP_REFERER')
+        print(prev)
         if form['btn']=="remove_compounds":
             compounds_qs.delete()
         if form['btn']=="deactivate_compounds":
@@ -49,11 +51,46 @@ def modify_lib_compounds(request, pk_lib):
             for c in compounds:
                 c.active = True
             Compound.objects.bulk_update(compounds, ['active'])
-    return redirect('lib', pk_lib=pk_lib)
+    # return redirect('lib', pk_lib=pk_lib)
+    return redirect(prev)
+
+# @is_users_library
+# @login_required(login_url="/login")
+# def lib(request, pk_lib):
+#     # lib = get_object_or_404(Library, pk=pk_lib)
+#     lib_qs = Library.objects.filter(id=pk_lib)
+#     lib = lib_qs[0]
+#     expsTable = ExperimentsTable(data=lib.experiments.all(), exclude=['project', 'library', 'protein','owner','expChecked'],)
+#     compounds = lib.compounds.filter()
+#     compounds_filter = CompoundFilter(request.GET, queryset=compounds)
+#     table = CompoundsTable(compounds_filter.qs)
+#     RequestConfig(request, paginate={'per_page': 25}).configure(table)
+
+#     url_class = "lib_edit_url"
+#     modal_id = "lib_edit_modal"
+#     exc = list(ModalEditLibrariesTable.Meta.fields)
+#     libTable = ModalEditLibrariesTable(data=lib_qs, data_target=modal_id, a_class="btn btn-info " + url_class,
+#         exclude=exc, attrs={'th': {'id': 'lib_table_header'}})
+
+#     data = {
+#         'lib': lib,
+#         'url_class': url_class,
+#         'modal_id': modal_id,
+#         'form_class':"lib_edit_form", # this should match form_class in lib_edit(request, pk_lib) function view
+#         'libTable': libTable,
+#         'expsTable': expsTable,
+#         'filter': compounds_filter,
+#         'table':table,
+#         'remove_from_lib_url':reverse('modify_lib_compounds',kwargs={'pk_lib':pk_lib}),
+#         'btn1_id':'remove_compounds',
+#         'btn2_id':'deactivate_compounds',
+#         'btn3_id':'activate_compounds'
+#         }
+#     return render(request, 'experiment/lib_templates/lib_compounds.html', data)
 
 @is_users_library
 @login_required(login_url="/login")
-def lib(request, pk_lib):
+def lib_compounds(request, pk_lib):
     # lib = get_object_or_404(Library, pk=pk_lib)
     lib_qs = Library.objects.filter(id=pk_lib)
     lib = lib_qs[0]
@@ -61,30 +98,48 @@ def lib(request, pk_lib):
     compounds = lib.compounds.filter()
     compounds_filter = CompoundFilter(request.GET, queryset=compounds)
     table = CompoundsTable(compounds_filter.qs)
-    RequestConfig(request, paginate={'per_page': 25}).configure(table)
+    RequestConfig(request, paginate={'per_page': 10}).configure(table)
 
-    url_class = "lib_edit_url"
-    modal_id = "lib_edit_modal"
+    url_class = "compounds_edit_url"
+    modal_id = "compounds_edit_modal"
+
     exc = list(ModalEditLibrariesTable.Meta.fields)
-    print("FIELDS : " + repr(exc))
     libTable = ModalEditLibrariesTable(data=lib_qs, data_target=modal_id, a_class="btn btn-info " + url_class,
         exclude=exc, attrs={'th': {'id': 'lib_table_header'}})
+    buttons = [
+        {'id': 'remove_compounds', 'text': 'Remove Selected','class': 'btn-danger btn-confirm'},
+        {'id': 'deactivate_compounds','text': 'Deactivate Selected','class': 'btn-secondary btn-confirm'},
+        {'id': 'activate_compounds','text': 'Activate Selected','class': 'btn-secondary btn-confirm'},
+        ]
 
     data = {
-        'lib': lib,
-        'url_class': url_class,
-        'modal_id': modal_id,
-        'form_class':"lib_edit_form", # this should match form_class in lib_edit(request, pk_lib) function view
-        'libTable': libTable,
         'expsTable': expsTable,
-        'filter': compounds_filter,
-        'table':table,
-        'remove_from_lib_url':reverse('modify_lib_compounds',kwargs={'pk_lib':pk_lib}),
-        'btn1_id':'remove_compounds',
-        'btn2_id':'deactivate_compounds',
-        'btn3_id':'activate_compounds'
-        }
-    return render(request, 'experiment/lib_templates/lib_compounds.html', data)
+        'lib': lib,
+        'libTable': libTable,
+        'filter': {
+            'filter': compounds_filter, 
+            'form':compounds_filter.form,
+            'filter_id': 'compounds_filter',
+            'filter_form_id': 'compounds_filter_form',
+            },
+        'table': {
+            'table': table,
+            'table_id': 'compounds_table',
+            'table_form_id': 'compounds_table_form',
+            'form_action_url': reverse('modify_lib_compounds', kwargs={'pk_lib':pk_lib}),
+            },
+        'modal': { 
+            'url_class': url_class,
+            'modal_id': modal_id,
+            'form_class': "compounds_edit_form",
+            },
+        'btn': {
+            'buttons': buttons,
+            'json': json.dumps(buttons)
+            },
+    }
+    return render(request, 'experiment/lib_templates/library_compounds.html', data)
+    # return render(request, 'experiment/lib_templates/lib_compounds.html', data)
 
 @is_users_library
 @login_required(login_url="/login")
@@ -129,30 +184,48 @@ def libraries(request):
     table = ModalEditLibrariesTable(data=libs_filter.qs, order_by="id", 
         data_target=modal_id, a_class="btn btn-info " + url_class)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
+    buttons = [
+        {'id': 'delete_libs', 'text': 'Delete Selected','class': 'btn-danger btn-confirm'},
+        {'id': 'new_lib','text': 'New Library','class': 'btn-primary', 'href':reverse('upload_file')},
+        ]
+
     data = {
-        'filter': libs_filter,
-        'table': table,
-        'table_id':"lib_table",
-        'filter_form_id':'lib_filter_form',
-        'table_form_id':'lib_table_form',
-        'url_class': url_class,
-        'modal_id': modal_id,
-        'form_class':"lib_edit_form", # this should match form_class in lib_edit(request, pk_lib) function view
-        'form_action_url': reverse_lazy('libs_delete'),
+        'filter': {
+            'filter': libs_filter, 
+            'form':libs_filter.form,
+            'filter_id': 'lib_filter',
+            'filter_form_id': 'lib_filter_form',
+            },
+        'table': {
+            'table': table,
+            'table_id': 'lib_table',
+            'table_form_id': 'lib_table_form',
+            'form_action_url': reverse_lazy('modify_libs'),
+            },
+        'modal': { # this should match form_class in lib_edit(request, pk_lib) function view
+            'url_class': url_class,
+            'modal_id': modal_id,
+            'form_class': "lib_edit_form",
+            },
+        'btn': {
+            'buttons': buttons,
+            'json': json.dumps(buttons)
+            },
     }
-    return render(request,'experiment/list_delete_table.html', data)
+    return render(request,'experiment/lib_templates/libraries.html', data)
+    # return render(request,'experiment/list_delete_table.html', data)
 
 @login_required(login_url="/login")
-def delete_libraries(request):
+def modify_libraries(request):
     if request.method=="POST":
         form = request.POST
         pks_libs = form.getlist('selection') #list of lib pks
         libs_qs = Library.objects.filter(id__in=pks_libs)
-        libs = [l for l in libs_qs]
-        for l in libs:
-            l.delete()
-        # if form['btn']=="remove_compounds":
-        #     compounds_qs.delete()
+        # libs = [l for l in libs_qs]
+        # for l in libs:
+        #     .delete()
+        if form['btn']=="delete_libs":
+            libs_qs.delete()
         # if form['btn']=="deactivate_compounds":
         #     for c in compounds:
         #         c.active = False

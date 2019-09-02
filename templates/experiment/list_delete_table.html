@@ -23,10 +23,11 @@
   {% endif %}
           <div class="col-9">
             <form id="{{table_form_id}}" action="{{form_action_url}}" method="post" class="form">
-              <div class="modify-table" id="{{ table_id }}">
-                {% csrf_token %}
-                {% render_table table %}
-              </div>
+              {% csrf_token %}
+              {% render_table table %}
+              <!-- <div class="modify-table" id="{{ table_id }}">
+                
+              </div> -->
             </form>
             
             <a class="btn btn-danger" role="button" id="delete_selected"> Deleted selected </a>
@@ -51,9 +52,12 @@
         // $form.attr("action", "{{form_action_url}}");
         // $form.attr("method", "post");
         const msg = "Are you sure?"
-        if (confirm(msg)) {
-          $form.submit();
-        }
+        if (getFormInputData("{{table_form_id}}").length > 0) {
+          if (confirm(msg)) {
+            $form.submit();
+          }
+        };
+        
       });      
 
     });

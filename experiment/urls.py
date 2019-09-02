@@ -11,17 +11,19 @@ urlpatterns = [
 
     # --------------- urls to Library views ------------------------------
     # re_path(r'^home/lib_compounds/(?P<pk_lib>\d+)/$', library_views.lib, name='lib_compounds'),
+    re_path(r'^home/libs/(?P<pk_lib>\d+)/$', library_views.lib_compounds, name='lib'),
     re_path(r'^home/libs/(?P<pk_lib>\d+)/edit/$', library_views.lib_edit, name='lib_edit'),
-    re_path(r'^home/libs/(?P<pk_lib>\d+)/$', library_views.lib, name='lib'),
     re_path(r'^home/libs/(?P<pk_lib>\d+)/modify_lib_compounds/$', 
         library_views.modify_lib_compounds, name='modify_lib_compounds'),
     re_path(r'^home/libs/$', library_views.libraries, name='libs'),
-    re_path(r'^home/libs/delete/$', library_views.delete_libraries, name='libs_delete'),
+    re_path(r'^home/libs/delete/$', library_views.modify_libraries, name='modify_libs'),
     # re_path(r'^home/compounds_search/$', library_views.UserCompoundsFilterView.as_view(), name='user_compounds'),
     re_path(r'^home/compounds_search/$', library_views.user_compounds, name='user_compounds'),
-
+    
 
     # --------------- urls to Project views ------------------------------
+    re_path(r'^home/soaks/(?P<pk_soak>\d+)/edit/$', soak_views.SoakEdit.as_view(), name='soak_edit'),
+    re_path(r'^home/soak/(?P<pk_soak>\d+)/edit/$', soak_views.soak_edit, name='soak__edit'),
     re_path(r'^home/projs/(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/soaks/$', soak_views.soaks, name='exp_soaks_'),
     re_path(r'^home/projs/(?P<pk_proj>\d+)/libs/(?P<pk_lib>\d+)/$', project_views.proj_lib, name='proj_lib'),
     re_path(r'^home/projs/(?P<pk_proj>\d+)/libs/$', project_views.proj_libs, name='proj_libs'),

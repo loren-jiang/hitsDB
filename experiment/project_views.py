@@ -6,7 +6,7 @@ from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, 
 from import_ZINC.models import Library, Compound
 from .forms import ExperimentModelForm, ProjectForm, SimpleProjectForm, PlateSetupForm, ExperimentAsMultiForm
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .library_views import lib
+# from .library_views import lib_compounds
 # from .decorators import request_passes_test
 from .decorators import is_users_project
 from orm_custom.custom_functions import make_instance_from_dict, copy_instance

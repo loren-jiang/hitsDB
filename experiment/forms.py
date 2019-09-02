@@ -1,11 +1,26 @@
 #experiment/forms.py
 from django import forms
 from django.contrib.auth.models import User, Group
-from .models import Experiment, Plate, CrystalScreen, Project, PlateType
+from .models import Experiment, Plate, CrystalScreen, Project, PlateType, Soak
 from django.forms import ModelChoiceField
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from import_ZINC.models import Compound, Library
 from django.core.exceptions import ValidationError
+from crispy_forms.bootstrap import InlineField
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Submit
+
+class SoakForm(forms.ModelForm):
+    class Meta:
+        model = Soak
+        fields = ("transferVol","transferCompound")
+
+    def __init__(self, exp=None, *args, **kwargs):
+        super(SoakForm, self).__init__(*args, **kwargs)
+        if exp:
+            setattr(self.fields["transferCompound"], "queryset", exp.library.compounds.filter())
+            # self.fields['transferCompound'] = forms.ModelChoiceField(queryset=exp.library.compounds.filter(),
+            #     initial=self.instance.transferCompound)
 
 class LibraryForm(forms.ModelForm):
     class Meta:
@@ -46,7 +61,7 @@ class ProjectForm(forms.ModelForm):
         fields=('name','description','collaborators')
 
     def __init__(self, user, *args, **kwargs):
-        super(ProjectForm, self).__init__(*args, **kwargs)
+            
         collab_qs=User.objects.filter(groups__in=user.groups.all()).exclude(id=user.id)    
         # self.fields['collaborators'].queryset = collab_qs
         self.fields['collaborators'] = forms.ModelMultipleChoiceField(

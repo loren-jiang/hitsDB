@@ -5,6 +5,9 @@ from import_ZINC.models import Compound, Library
 from django.contrib.auth.models import User, Group
 from django_tables2 import RequestConfig
 
+class ModifyTable:
+    attrs = {'class': 'table modify-table'}
+
 class PlatesTable(tables.Table):
     upload_well_images = tables.LinkColumn(viewname='well_images_upload', args=[A('pk')], orderable=False, empty_values=())
     def render_upload_well_images(self):
@@ -15,13 +18,12 @@ class PlatesTable(tables.Table):
         fields=('name','plateType','upload_well_images',)
 
 class SoaksTable(tables.Table):
-    transferCompound = tables.Column()
+    transferVol = tables.Column(accessor="transferVol")
+    transferCompound = tables.Column(linkify=True, attrs={'a':{'target':'_blank'}})
     srcWell = tables.Column(accessor='src')
     destSubwell = tables.Column(accessor='dest')
+    selection = tables.CheckBoxColumn(accessor='pk',empty_values=())
 
-    def render_transferCompound(self, value):
-        return '%s' % value.zinc_id
-    
     def render_srcWell(self, value):
         return value.id
 
@@ -31,7 +33,31 @@ class SoaksTable(tables.Table):
     class Meta:
         model = Soak 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('id','transferCompound','srcWell', 'destSubwell')
+        fields = ('id','transferVol','transferCompound','srcWell', 'destSubwell','selection')
+
+class ModalEditSoaksTable(SoaksTable):
+    def render_modify(self, value):
+        return "Edit"
+
+    def __init__(self, data_target=None, a_class=None, *args, **kwargs):
+        if data_target and a_class:
+            modify = tables.Column(verbose_name='', 
+                orderable=False, 
+                empty_values=(),
+                linkify=('soak_edit', [A('pk')]), 
+                attrs={'a': {
+                                "data-toggle":"modal", 
+                                "data-target":"#" + data_target,
+                                "class":a_class
+                            }}#shoud be a button to a modal
+                ) 
+            kwargs.update({'extra_columns':[('modify',modify)]})
+        super( ModalEditSoaksTable, self ).__init__(*args, **kwargs)
+
+    class Meta(SoaksTable.Meta, ModifyTable):
+        exclude=('id',)
+        # attrs = {'class': 'modify-table'}
+        
 
 class CollaboratorsTable(tables.Table):
     class Meta:
@@ -66,11 +92,6 @@ class ProjectsTable(tables.Table):
         empty_values=(),
         linkify=('proj_edit', [A('pk')]), 
         attrs ={'a': {"class": "btn btn-info"} }
-        # attrs={'a': {
-        #                 "data-toggle":"modal", 
-        #                 "data-target":"#projEditModal",
-        #                 "class":"project_edit"
-        #             }}#shoud be a button to a modal
         ) 
     
     def render_dateTime(self, value):
@@ -115,15 +136,16 @@ class ModalEditLibrariesTable(LibrariesTable):
             kwargs.update({'extra_columns':[('modify',modify)]})
         super( ModalEditLibrariesTable, self ).__init__(*args, **kwargs)
 
-    class Meta(LibrariesTable.Meta):
+    class Meta(LibrariesTable.Meta, ModifyTable):
         exclude=()
 
 class CompoundsTable(tables.Table):
     selection = tables.CheckBoxColumn(accessor='pk')
-
-    class Meta:
+    zinc_id = tables.Column(accessor='zinc_id', linkify=True, attrs={'a':{"target":"_blank"}})
+    
+    class Meta(ModifyTable):
         model=Compound
-        template_name = 'django_tables2/bootstrap-responsive.html'
+        # template_name = 'django_tables2/bootstrap-responsive.html'
         fields=('zinc_id','smiles','molWeight','active','selection')
         
 # returns user projects as django tables 2 for home page

@@ -4,11 +4,13 @@
 {% load render_table from django_tables2 %} 
 {% block content %}
 
-  <div class="modal" id="{{modal_id}}"></div>
+  
   <script src="{% static 'hitsDB/js/modalForm.js' %}"></script>
   <script src="{% static 'hitsDB/js/selectDeleteDj2Table.js' %}"></script>
 
   <link href="{% static 'apps/experiment/css/lib.css' %}" rel="stylesheet">
+  
+  <div class="modal" id="{{modal_id}}"></div>
   {% if filter %}
       <div class="container">
         <div class="row">
@@ -45,13 +47,12 @@
           </div>
 
           <div class="col-9">
+
             <div class="modify-table" id="compounds_table">
               <form id="compounds_form" action="{{remove_from_lib_url}}" method="post">
                 {% csrf_token %}
                 {% render_table table %}
               </form>
-              
-
             </div>
           </div>  
         </div>

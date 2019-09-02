@@ -4,7 +4,7 @@
   - modal-title named 'modal_title'
   - form action named 'action' #should be a view ideally
 -->
-
+{% load crispy_forms_tags %}
 {% block content %}
 {{ form.media }}
 
@@ -20,9 +20,7 @@
       <!-- Modal body -->
       <div class="modal-body">
           {% csrf_token %}
-          {% include 'bs4_form.html' with form=form %}
-     
-
+          {{ form | crispy }}
           
       </div>
       

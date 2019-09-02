@@ -3,11 +3,12 @@ from import_ZINC.models import Compound, Library
 import django_filters
 
 class CompoundFilter(django_filters.FilterSet):
+    molWeightLTE = django_filters.NumberFilter("molWeight", lookup_expr="lte", label="MW &le;")
+    molWeightGTE = django_filters.NumberFilter("molWeight", lookup_expr="gte", label="MW &ge;")
     class Meta:
         model = Compound
         fields = {
-            'zinc_id':['exact','contains' ],
-            'molWeight':['exact', 'gt'],
+            'zinc_id':['icontains', ],
         }
 
 def library_users(request):
@@ -19,7 +20,7 @@ def library_users(request):
 
 class LibraryFilter(django_filters.FilterSet):
     owner = django_filters.ModelChoiceFilter(field_name='owner', queryset=library_users)
-
+    
     class Meta:
         model = Library
         fields={

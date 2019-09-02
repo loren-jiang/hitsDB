@@ -18,26 +18,19 @@ def upload_file(request):
             f = TextIOWrapper(request.FILES['file'], encoding=request.encoding)
             lib_name = form.cleaned_data['name'] #assumes lib_name is unique
             new_lib = Library(name=lib_name, owner=request.user)
-            data = {'form':form}
-            # new_lib.save()
-            # try:
-            #     with transaction.atomic():
-            #         thing_that_might_fail()
-            # except SomeError:
-            #     handle_exception()
+            context = {'form':form}
+   
             try:
                 with transaction.atomic():
                     new_lib.save()
                     relations, created, existed = new_lib.newCompoundsFromFile(f)
-                    data.update = {
+                    context.update({
                         "createdCompounds":created,
                         "exisitingCompounds":existed,
-                    }
+                    })
             except Exception as e:
-            # except:
-                data['form']._errors['file'] = [repr(e)]
-            return render(request, 'upload_file.html', data)
-            # return HttpResponseRedirect('')
+                context['form']._errors['file'] = [repr(e)]
+            return render(request, 'upload_file.html', context)
     else:
         form = UploadCompoundsNewLib()
     return render(request, 'upload_file.html', {'form': form})

@@ -64,10 +64,13 @@ $.fn.shiftSelectable = function() {
   });
 };
 // });
-
+function getFormInputData(form_id) {
+  return $('#'+form_id).find('td input:checked')
+}
 $(document).ready(function() {
   $('.modify-table').each((i, el) => {
-    let $table = $(el).find(".table");
+    // let $table = $(el).find(".table");
+    let $table = $(el);
     let $th_checkbox = $table.find('th input[type="checkbox"]');
     let $td_checkboxes = $table.find('td input[type="checkbox"]')
     $th_checkbox.checkIfChecked($td_checkboxes);
