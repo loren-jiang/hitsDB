@@ -9,7 +9,12 @@
 {{ form.media }}
 
 <div class="modal-dialog">
-  <form class="{{form_class}}" method="post" action="{{action}}">
+  {% if use_ajax %}
+  <form class="{{form_class}} ajax_form" method="post" action="{{action}}" enctype="multipart/form-data">
+  {% else %}
+  <form class="{{form_class}}" method="post" action="{{action}}" enctype="multipart/form-data">
+  {% endif %}
+  
     <div class="modal-content">
       <!-- Modal Header -->
       <div class="modal-header">

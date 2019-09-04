@@ -4,7 +4,10 @@
 {% load crispy_forms_tags %}
 {% load render_table from django_tables2 %} 
 
+{% for modal in modals.modals %}
 <div class="modal" id="{{modal.modal_id}}"></div>
+{% endfor %}
+
 {% if filter %}
     <div class="container">
         <div class="row">
@@ -23,7 +26,7 @@
                 {% render_table table.table %}
             </form>
             {% for button in btn.buttons %}
-                <a id="{{button.id}}" href="{{button.href}}" role="button" class="btn {{button.class}}"> {{button.text}} </a>
+                <a id="{{button.id}}" href="{{button.href}}" role="button" class="btn {{button.class}}" msg="{{button.msg}}"> {{button.text}} </a>
             {% endfor %}
             <!-- <a class="btn btn-danger" role="button" id="delete_selected"> Deleted selected </a> -->
         </div>  
@@ -41,18 +44,28 @@
     }
 
     $(document).ready(function() {
-        url_class = "{{modal.url_class}}"
-        modal_id = "{{modal.modal_id}}"
-        form_class = "{{modal.form_class}}"
-        setUpModalForm(url_class, modal_id, form_class);
+        // url_class = "{{modal.url_class}}"
+        // modal_id = "{{modal.modal_id}}"
+        // form_class = "{{modal.form_class}}"
+        modals = JSON.parse('{{modals.json|safe}}');
+        modals.forEach(modal => {
+            setUpModalForm(modal.url_class, modal.modal_id, modal.form_class);
+        });
         buttons_json = '{{btn.json|safe}}';
         buttons = JSON.parse(buttons_json);
         $buttons = $("a.btn-confirm");
         $buttons.click( function(e) {
             btn = $(this)['0'];
             e.preventDefault();
+            let msg = '';
+            if (btn.msg) {
+                // attribute exists
+                msg = btn.msg;
+            } else {
+                // attribute does not exist
+                msg = "Are you sure?"
+            }
             let $form = $("#" + "{{table.table_form_id}}");
-            const msg = "Are you sure?"
             if (getFormInputData("{{table.table_form_id}}").length > 0) {
                 if (confirm(msg)) {
                     $("<input />").attr("type","hidden")

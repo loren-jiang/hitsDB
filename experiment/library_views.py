@@ -107,11 +107,15 @@ def lib_compounds(request, pk_lib):
     libTable = ModalEditLibrariesTable(data=lib_qs, data_target=modal_id, a_class="btn btn-info " + url_class,
         exclude=exc, attrs={'th': {'id': 'lib_table_header'}})
     buttons = [
-        {'id': 'remove_compounds', 'text': 'Remove Selected','class': 'btn-danger btn-confirm'},
+        {'id': 'remove_compounds', 'text': 'Remove Selected','class': 'btn-danger btn-confirm', 'msg':'Remove selected compounds from library?'},
         {'id': 'deactivate_compounds','text': 'Deactivate Selected','class': 'btn-secondary btn-confirm'},
         {'id': 'activate_compounds','text': 'Activate Selected','class': 'btn-secondary btn-confirm'},
         ]
-
+    modals = [
+        {'url_class': url_class, 'modal_id': modal_id, 'form_class': "compounds_edit_form"},
+        {'url_class': 'update_compounds_from_file_url', 'modal_id': 'update_compounds_from_file_modal', 
+        'form_class': "update_compounds_from_file_url_form"},
+        ]
     data = {
         'expsTable': expsTable,
         'lib': lib,
@@ -128,10 +132,9 @@ def lib_compounds(request, pk_lib):
             'table_form_id': 'compounds_table_form',
             'form_action_url': reverse('modify_lib_compounds', kwargs={'pk_lib':pk_lib}),
             },
-        'modal': { 
-            'url_class': url_class,
-            'modal_id': modal_id,
-            'form_class': "compounds_edit_form",
+        'modals': {
+            'modals': modals,
+            'json': json.dumps(modals),
             },
         'btn': {
             'buttons': buttons,
@@ -186,9 +189,13 @@ def libraries(request):
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
     buttons = [
         {'id': 'delete_libs', 'text': 'Delete Selected','class': 'btn-danger btn-confirm'},
-        {'id': 'new_lib','text': 'New Library','class': 'btn-primary', 'href':reverse('upload_file')},
+        {'id': 'new_lib','text': 'New Library','class': 'btn-primary ' + 'new_lib_url', 
+            'href':reverse('upload_file', kwargs={'form_class':"new_lib_form"})},
         ]
-
+    modals = [
+        {'url_class': url_class, 'modal_id': modal_id, 'form_class': "lib_edit_form"},
+        {'url_class': 'new_lib_url', 'modal_id': 'new_lib_modal', 'form_class': "new_lib_form"},
+        ]
     data = {
         'filter': {
             'filter': libs_filter, 
@@ -202,10 +209,9 @@ def libraries(request):
             'table_form_id': 'lib_table_form',
             'form_action_url': reverse_lazy('modify_libs'),
             },
-        'modal': { # this should match form_class in lib_edit(request, pk_lib) function view
-            'url_class': url_class,
-            'modal_id': modal_id,
-            'form_class': "lib_edit_form",
+        'modals': {
+            'modals': modals,
+            'json': json.dumps(modals),
             },
         'btn': {
             'buttons': buttons,

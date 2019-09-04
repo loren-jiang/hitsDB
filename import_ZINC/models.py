@@ -76,7 +76,6 @@ class Library(models.Model):
                 obj_lst[i]=serialize.save()
 
         compounds_lst = [c for c in obj_lst if c is not None] #filter out None elems just in case
-        print(compounds_lst)
         # Greedy solution, but will not support updating compounds in the future
         # compounds_created = Compound.bulk_create(compounds_lst, ignore_conflicts=True)
         
@@ -92,6 +91,7 @@ class Library(models.Model):
 
     # import file (.json or .csv) of compounds
     def newCompoundsFromFile(self, f):
+        self.compounds.all().delete() #delete all library compounds to start from fresh
         chunk_size = 1000
         file_name = f.name
         relations = []

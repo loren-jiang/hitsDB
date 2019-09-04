@@ -27,7 +27,6 @@ def imageGUIView(request, *args, **kwargs):
     # p_well_images = [s_w.well_image for s_w in SubWell.objects.filter(well_in=p.wells.all()).selected_related('well_image')]
     target_well = p.wells.get(name=well_name)
     # s_ws = target_well.subwells.values()
-    print(target_well.subwells.all())
     s_w = target_well.subwells.get(idx=subwell_idx)
     soak = s_w.soak
     soakX = soak.soakOffsetX

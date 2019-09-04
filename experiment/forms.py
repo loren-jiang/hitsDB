@@ -27,6 +27,10 @@ class LibraryForm(forms.ModelForm):
         model = Library
         fields=("name","description","supplier",)
 
+    # def __init__(self, *args, **kwargs):
+        # self.form_class = kwargs.pop("form_class", None)
+        # super(LibraryForm, self).__init__(*args, **kwargs)
+
 class MultipleForm(forms.Form):
     action = forms.CharField(max_length=60, widget=forms.HiddenInput())
 
@@ -61,7 +65,7 @@ class ProjectForm(forms.ModelForm):
         fields=('name','description','collaborators')
 
     def __init__(self, user, *args, **kwargs):
-            
+        super(ProjectForm, self).__init__(*args, **kwargs)
         collab_qs=User.objects.filter(groups__in=user.groups.all()).exclude(id=user.id)    
         # self.fields['collaborators'].queryset = collab_qs
         self.fields['collaborators'] = forms.ModelMultipleChoiceField(

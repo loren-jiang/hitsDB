@@ -145,7 +145,6 @@ class CompoundsTable(tables.Table):
     
     class Meta(ModifyTable):
         model=Compound
-        # template_name = 'django_tables2/bootstrap-responsive.html'
         fields=('zinc_id','smiles','molWeight','active','selection')
         
 # returns user projects as django tables 2 for home page

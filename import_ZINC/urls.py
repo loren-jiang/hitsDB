@@ -5,7 +5,7 @@ from . import views
 from django.contrib.auth.models import User
 
 urlpatterns = [
-    re_path(r'^home/libs/upload_file/$', views.upload_file,
+    re_path(r'^home/libs/upload_file/(?P<form_class>\w+)/$', views.new_lib_from_file,
         name='upload_file'),
 ]   
    	
