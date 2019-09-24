@@ -54,7 +54,7 @@ class Experiment(models.Model):
     name = models.CharField(max_length=30)
     library = models.ForeignKey(Library, related_name='experiments',
         on_delete=models.CASCADE)
-    prev_library = None #prev library to check if library has changed
+    prev_library_id = None #prev library to check if library has changed
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='experiments')
     description = models.CharField(max_length=300, blank=True, null=True)
     dateTime = models.DateTimeField(auto_now_add=True)
@@ -591,7 +591,7 @@ def enum_well_location(s):
 #delete experiment plates and soaks on library change
 @receiver(post_save, sender=Experiment)
 def delete_plates_soaks_on_library_change(sender, instance, created, **kwargs):
-    if instance.prev_library != instance.library or created:
+    if instance.prev_library_id != instance.library.id or created:
         instance.plates.all().delete()
         instance.soaks.all().delete()
         reset = {'srcPlateType':None, 'destPlateType':None, 'subwell_locations':[]}
@@ -599,10 +599,5 @@ def delete_plates_soaks_on_library_change(sender, instance, created, **kwargs):
 
 @receiver(post_init, sender=Experiment)
 def remember_library(sender, instance, **kwargs):
-    if instance.library_id:
-        instance.prev_library = instance.library_id
-
-
-
-# post_save.connect(Experiment.delete_plates_soaks_on_library_change, sender=Experiment)
-# post_init.connect(Experiment.remember_library, sender=Experiment)
+    if instance.library.id:
+        instance.prev_library_id = instance.library.id

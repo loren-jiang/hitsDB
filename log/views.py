@@ -14,19 +14,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
 from django.core.mail import EmailMessage
 
-# MOVED TO EXPERIMENT APP
 # # Create your views here.
-# @login_required(login_url="/login")
-# def user_home(request):
-#     user = request.user
-#     recent_projs = Project.objects.filter(owner=user)[:3]
-#     data = {
-#         'user':user,
-#         'recent_projs':recent_projs,
-#     }
-
-#     return render(request,"user_home.html", data)
-
 
 @login_required(login_url="/login")
 def deactivate_user(request):
@@ -56,32 +44,30 @@ def isValidEmail( email ):
 
 @login_required(login_url="/login")
 def manage_user(request):
-
     user = request.user
     form = EditUserForm(request.POST or None, 
-        initial={'email':user.email})
+        initial={'username':user.username, 'email':user.email})
 
     if request.method == 'POST':
-        # newUsername = request.POST['username']
+        newUsername = request.POST['username']
         newEmail = request.POST['email']
         newPassword = request.POST['password1']
         if form.is_valid():
-
-            # user.username = newUsername
+            user.username = newUsername
             user.email = newEmail
-            user.set_password(newPassword)
+            if newPassword:
+                user.set_password(newPassword)
             user.save()
             messages.success(request,'Account successfully updated.')
             update_session_auth_hash(request, user)
-            # return HttpResponseRedirect('')
-            return redirect(reverse('home')) #change this to view_user.html
+            return HttpResponseRedirect('')
 
-    data = {
+    context = {
         "form": form,
         "user": user,
     }
 
-    return render(request, "manage_user.html", data)
+    return render(request, "log/manage_user.html", context)
 
 # https://medium.com/@frfahim/django-registration-with-confirmation-email-bb5da011e4ef 
 def register(request):
@@ -111,11 +97,11 @@ def register(request):
             email.send()
             messages.success(request, 'Account created. You will receive \
                 a confirmation email to activate your account.')
-            return redirect('register')
+            return HttpResponseRedirect('')
 
     else:
         form = RegistrationForm()
-    return render(request, '../templates/register.html', {'form': form})    
+    return render(request, 'log/register.html', {'form': form})    
 
 def activate(request, uidb64, token):
     try:
@@ -158,9 +144,7 @@ def user_recover(request):
         usernameInput = request.POST['username']
         
         f = RecoverUserForm(request.POST)
-        if f.is_valid():
-            # f.save()
-            
+        if f.is_valid():            
             user = User.objects.get(username=usernameInput)
             current_site = get_current_site(request)
             mail_subject = '[hitsDB] Password reset'  
@@ -183,6 +167,6 @@ def user_recover(request):
 
     else:
         f = RecoverUserForm()
-    data  ={'form': f}
-    return render(request,"user_recover.html", data)
+    context = {'form': f}
+    return render(request,"log/user_recover.html", context)
 

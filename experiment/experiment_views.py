@@ -52,45 +52,26 @@ class MultipleFormsDemoView(MultiFormsView):
         self.success_urls['soaksform'] = exp_view_url
         # call super
         return super(MultipleFormsDemoView, self).dispatch(request, *args, **kwargs)
-
-    # def get_soaksform_initial(self):
-    #     pk = self.kwargs.get('pk', None)
-    #     exp = Experiment.objects.get(id=pk)
-    #     transferVol = 25
-    #     soakOffsetX = 0
-    #     soakOffsetY = 0
-    #     if exp.soaks.count():
-    #         s = exp.soaks.all()[0]
-    #         transferVol = s.transferVol
-    #         soakOffsetX = s.soakOffsetX
-    #         soakOffsetY = s.soakOffsetY
-    #     data = {
-    #         'action': 'soaksform',
-    #         'transferVol': transferVol,
-    #         'soakOffsetX': soakOffsetX, 
-    #         'soakOffsetY': soakOffsetX,
-    #     }
-    #     return data
             
     def expform_form_valid(self, form):
         pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk_exp':pk})
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp = exp_qs[0]
         fields = [key for key in cleaned_data]
         for field in fields:
-            setattr(exp, field, cleaned_data[field])
+            new_field_data = cleaned_data[field]
+            old_field_data = getattr(exp, field)
+            if (new_field_data != old_field_data):
+                setattr(exp, field, new_field_data)
         exp.save(update_fields=fields)
-        # exp_qs.update(**cleaned_data)
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def platesform_form_valid(self, form):
         pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk_exp':pk})
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp_qs.update(**cleaned_data)
         exp_qs[0].generateSrcDestPlates()
@@ -100,7 +81,6 @@ class MultipleFormsDemoView(MultiFormsView):
         pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        self.success_urls[form_name] = reverse_lazy('exp', kwargs={'pk_exp':pk})
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         # exp_qs.update(**cleaned_data)
         exp_qs[0].generateSoaks(cleaned_data['transferVol'],cleaned_data['soakOffsetX'],cleaned_data['soakOffsetY'] ) 

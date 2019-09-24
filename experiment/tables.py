@@ -67,7 +67,7 @@ class CollaboratorsTable(tables.Table):
 
 class ExperimentsTable(tables.Table):
     name = tables.Column(linkify=('exp',{'pk_proj':A('project.pk'),'pk_exp':A('pk')}))
-    expChecked = tables.CheckBoxColumn(accessor='pk',empty_values=())
+    checked = tables.CheckBoxColumn(accessor='pk',empty_values=())
     library = tables.Column(linkify=('lib',[A('library.pk')]))
     project = tables.Column(linkify=('proj',[A('project.pk')]))
 
@@ -77,13 +77,13 @@ class ExperimentsTable(tables.Table):
     class Meta:
         model = Experiment 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('name','project','library', 'dateTime','protein','owner','expChecked')
+        fields = ('name','project','library', 'dateTime','protein','owner','checked')
         empty_text = ("There are no experiments yet...")
 
 class ProjectsTable(tables.Table):
     # name = tables.LinkColumn(viewname='proj', args=[A('pk')])
     name = tables.Column(linkify=('proj',[A('pk')]))
-    expChecked = tables.CheckBoxColumn(accessor='pk',empty_values=(), verbose_name="expChecked")
+    checked = tables.CheckBoxColumn(accessor='pk',empty_values=(), verbose_name="checked")
     collaborators = tables.ManyToManyColumn()
     experiments = tables.ManyToManyColumn(separator=', ',verbose_name="Experiments",
         linkify_item=('exp',{'pk_proj':A('project.pk'),'pk_exp':A('pk')}))
@@ -102,18 +102,18 @@ class ProjectsTable(tables.Table):
     class Meta:
         model = Project 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('name','owner','dateTime','experiments','collaborators','expChecked','modify')
+        fields = ('name','owner','dateTime','experiments','collaborators','checked','modify')
 
 class LibrariesTable(tables.Table):
     name = tables.Column(linkify=('lib',[A('pk')]))
     id = tables.Column(accessor='id')
     numCompounds = tables.Column(accessor='numCompounds', empty_values=(), verbose_name="# compounds")
-    selection = tables.CheckBoxColumn(accessor='pk',empty_values=())
-        
+    checked = tables.CheckBoxColumn(accessor='pk',empty_values=())
+
     class Meta:
         model=Library
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields=('name','owner','numCompounds','supplier','selection')
+        fields=('name','owner','numCompounds','supplier','checked')
         exclude=('id',)
 
     

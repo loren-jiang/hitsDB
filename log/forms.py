@@ -21,8 +21,8 @@ class RegistrationForm(UserCreationForm):
         fields = ("username", "_groups","email", "password1", "password2")
 
 class EditUserForm(forms.ModelForm):
-    password1 = forms.CharField(widget=forms.PasswordInput, label ="New password:")
-    password2 = forms.CharField(widget=forms.PasswordInput, label ="Confirm new password:",
+    password1 = forms.CharField(required=False, widget=forms.PasswordInput, label ="New password:")
+    password2 = forms.CharField(required=False, widget=forms.PasswordInput, label ="Confirm new password:",
     help_text='Passwords must match.')
     
     def clean(self):
@@ -35,7 +35,7 @@ class EditUserForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ('email',)#,'password') to be added
+        fields = ('username','email',)#,'password') to be added
         
 
 class RecoverUserForm(forms.ModelForm):

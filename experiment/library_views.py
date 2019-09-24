@@ -7,6 +7,8 @@ from django_tables2.views import SingleTableMixin
 from django_filters.views import FilterView
 from .decorators import is_users_library
 from .forms import LibraryForm
+from .models import Experiment
+from .querysets import accessible_libs
 
 @login_required(login_url="/login")
 def user_compounds(request):
@@ -53,40 +55,6 @@ def modify_lib_compounds(request, pk_lib):
             Compound.objects.bulk_update(compounds, ['active'])
     # return redirect('lib', pk_lib=pk_lib)
     return redirect(prev)
-
-# @is_users_library
-# @login_required(login_url="/login")
-# def lib(request, pk_lib):
-#     # lib = get_object_or_404(Library, pk=pk_lib)
-#     lib_qs = Library.objects.filter(id=pk_lib)
-#     lib = lib_qs[0]
-#     expsTable = ExperimentsTable(data=lib.experiments.all(), exclude=['project', 'library', 'protein','owner','expChecked'],)
-#     compounds = lib.compounds.filter()
-#     compounds_filter = CompoundFilter(request.GET, queryset=compounds)
-#     table = CompoundsTable(compounds_filter.qs)
-#     RequestConfig(request, paginate={'per_page': 25}).configure(table)
-
-#     url_class = "lib_edit_url"
-#     modal_id = "lib_edit_modal"
-#     exc = list(ModalEditLibrariesTable.Meta.fields)
-#     libTable = ModalEditLibrariesTable(data=lib_qs, data_target=modal_id, a_class="btn btn-info " + url_class,
-#         exclude=exc, attrs={'th': {'id': 'lib_table_header'}})
-
-#     data = {
-#         'lib': lib,
-#         'url_class': url_class,
-#         'modal_id': modal_id,
-#         'form_class':"lib_edit_form", # this should match form_class in lib_edit(request, pk_lib) function view
-#         'libTable': libTable,
-#         'expsTable': expsTable,
-#         'filter': compounds_filter,
-#         'table':table,
-#         'remove_from_lib_url':reverse('modify_lib_compounds',kwargs={'pk_lib':pk_lib}),
-#         'btn1_id':'remove_compounds',
-#         'btn2_id':'deactivate_compounds',
-#         'btn3_id':'activate_compounds'
-#         }
-#     return render(request, 'experiment/lib_templates/lib_compounds.html', data)
 
 @is_users_library
 @login_required(login_url="/login")
@@ -175,12 +143,10 @@ def lib_edit(request, pk_lib):
     return render(request,'modals/modal_form.html', data)
 
 @login_required(login_url="/login")
-def libraries(request):
-    user_libs_qs = request.user.libraries.all()
+def libs(request):
+    # user_libs_qs = request.user.libraries.all()
+    user_libs_qs = accessible_libs(request.user)
     # libs_qs = Library.objects.filter(groups__in=request.user.groups.all()).union(
-    #     Library.objects.filter(isTemplate=True))
-    # table=LibrariesTable(libs_qs)
-    # table=LibrariesTable(user_libs_qs)
     url_class = "lib_edit_url"
     modal_id = "lib_edit_modal"
     libs_filter = LibraryFilter(data=request.GET, queryset=user_libs_qs, request=request)#, user=request.user)

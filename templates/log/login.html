@@ -1,0 +1,60 @@
+{% extends 'base.html' %} 
+{% block title %} Login - {{ block.super }} {% endblock %}
+{% block content %} 
+{% if form.errors%}
+<p>Your username and password didn't match. Please try again.</p>
+{%endif %} 
+{% if next %} 
+{% if user.is_authenticated %}
+<p>Your account doesn't have access to this page. To proceed, please
+    login with an account that has access.
+</p>
+{% else %}
+<p>Please login to see this page.</p>
+{% endif %}
+{% endif %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-4 offset-md-4">
+            <div class="login-panel card">
+                <div class="card-header">
+                    <h3 class="card-title">Please Sign In</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="">
+                        {% csrf_token %}
+                        <p class="bs-component">
+                        <table>
+                            <tr>
+                                <td>{{ form.username.label_tag }}</td>
+                                <td>{{ form.username }}</td>
+                            </tr>
+                            <tr>
+                                <td>{{ form.password.label_tag }}</td>
+                                <td>{{ form.password }}</td>
+                            </tr>
+                        </table>
+                        </p>
+                        <p class="bs-component">
+                        <center>
+                            <input class="btn btn-success btn-sm" type="submit" value="login">
+                        </center>
+                        </p>
+                        <input type="hidden" name="next" value="{{ next }}">
+                    </form>
+                    <p class="bs-component">
+                    <center>
+                        <a href="{% url 'register' %}"><button>Register</button></a>
+                    </center>
+                    <center>
+                        <a href="{% url 'user_recover' %}"> Forgot username / password?</a>
+                    </center>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
+{% block javascript %} 
+{% endblock %}

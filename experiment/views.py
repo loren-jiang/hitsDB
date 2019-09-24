@@ -11,9 +11,9 @@ def is_active(user):
 @login_required(login_url="/login")
 @user_passes_test(is_active)
 def home(request):
-    projectsTable = get_user_projects(request, exc=["owner","id","expChecked"]) #takes in request
-    libsTable = get_user_libraries(request, exc=[])
-    recentExpsTable = get_user_recent_exps(request, exc=['owner','expChecked'])
+    projectsTable = get_user_projects(request, exc=["owner","id","checked"]) #takes in request
+    libsTable = get_user_libraries(request, exc=["checked",])
+    recentExpsTable = get_user_recent_exps(request, exc=["owner","checked"])
 
     data = {
         'user':request.user,

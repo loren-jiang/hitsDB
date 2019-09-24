@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<form method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          {% include 'bs4_form.html' with form=form %}
+          <input type="submit" value="Create" />
+</form>
+<p> zinc_ids created: {{createdCompounds|length}}</p>
+<p> zinc_ids already exists: {{exisitingCompounds|length}}</p>
+{% for c in createdCompounds %}
+	<p>{{c}}</p>
+{% endfor %}
+--------------
+{% for c in exisitingCompounds %}
+	<p>{{c}}</p>
+{% endfor %}
+{% endblock %}
