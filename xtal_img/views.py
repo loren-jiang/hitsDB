@@ -4,15 +4,18 @@ from django.conf import settings
 from botocore.exceptions import ClientError
 from s3.s3utils import myS3Client, myS3Resource, create_presigned_url
 from django.views.generic.edit import FormView
-# from s3.models import PrivateImage
 from s3.forms import ImagesFieldForm, FilesFieldForm
 import logging
 from s3.models import WellImage
+from .models import DropImage
 from experiment.models import Plate
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
 
 # Create your views here.
+
+@login_required(login_url="/login")
 def imageGUIView(request, *args, **kwargs):
     s3 = myS3Resource()
     bucket = s3.Bucket(settings.AWS_STORAGE_BUCKET_NAME)
@@ -24,9 +27,7 @@ def imageGUIView(request, *args, **kwargs):
     subwell_idx = int(file_name.split("_")[1])
     p = get_object_or_404(Plate,id=plate_id)
     p_well_images= p.well_images.all()
-    # p_well_images = [s_w.well_image for s_w in SubWell.objects.filter(well_in=p.wells.all()).selected_related('well_image')]
     target_well = p.wells.get(name=well_name)
-    # s_ws = target_well.subwells.values()
     s_w = target_well.subwells.get(idx=subwell_idx)
     soak = s_w.soak
     soakX = soak.soakOffsetX
@@ -43,19 +44,12 @@ def imageGUIView(request, *args, **kwargs):
 
             if obj_keys:
                 curr_image_key = prefix + str(p_well_images.filter(file_name=file_name)[0].key)
-                # curr_image_key = prefix + str(filter(lambda w_i: w_i['file_name']==file_name, p_well_images)[0].key)
-                # curr_key_idx = obj_keys.index(curr_image_key)
-                # prev_image_key = obj_keys[curr_key_idx-1]
-                # next_image_key = obj_keys[(curr_key_idx+1) % len(obj_keys)]
                 image_url = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, curr_image_key, 4000)
 
                 curr_well_name_idx = file_names.index(file_name)
                 prev_well = file_names[curr_well_name_idx-1]
                 next_well = file_names[(curr_well_name_idx+1)%len(file_names)]
-            data = {
-                # "response": response,
-                # "prev_image_key":prev_image_key,
-                # "next_image_key":next_image_key,
+            context = {
                 "prev_well":prev_well,
                 "image_url":image_url,
                 "next_well":next_well,
@@ -67,7 +61,7 @@ def imageGUIView(request, *args, **kwargs):
                 "soakY" : soakY,
                 "file_names":file_names,
             }
-            return render(request, "xtal_img/imageGUI.html", data)
+            return render(request, "xtal_img/imageGUI.html", context)
         else:
             return HttpResponse("bad request")
 

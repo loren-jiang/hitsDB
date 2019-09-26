@@ -10,19 +10,15 @@ from experiment.models import Plate, Well, SubWell
 import uuid
 
 def upload_path(instance, filename):
-    # p = instance.plate
-    # well_dict = p.wellDict
     return 'private/' +  str(instance.owner.id)+ '/' +str(instance.plate.id)+ '/'+ str(instance.key)
 
 class WellImage(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    # bucket_key = models.CharField(max_length=1000, unique=True, blank=True, null=True) 
     key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
     owner = models.ForeignKey(User, related_name='well_images', on_delete=models.SET_NULL, null=True, blank=True)
     upload = models.ImageField(upload_to=upload_path,storage=PrivateMediaStorage())
     plate = models.ForeignKey(Plate, related_name='well_images', on_delete=models.SET_NULL, null=True, blank=True)
-    file_name = models.CharField(max_length=10)
-    # subwell = models.OneToOneField(SubWell, related_name='image', on_delete=models.SET_NULL, null=True, blank=True)
+    file_name = models.CharField(max_length=10) # e.g. A_01
 
     def __str__(self):
         return self.file_name
@@ -30,22 +26,22 @@ class WellImage(models.Model):
 # contains images appropriately named '[well]_[subwell].jpg' (i.e. 'A01_1.jpg')
 class PrivateFile(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    # bucket_key = models.CharField(max_length=1000)
     key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
     owner = models.ForeignKey(User, related_name='files', on_delete=models.CASCADE)
     upload = models.FileField(upload_to=upload_path,storage=PrivateMediaStorage())
+
 
 class PublicFile(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     upload = models.FileField()
 
 
-class S3PrivateFileField(models.FileField):
-    """
-    A FileField that gives the 'private' ACL to the files it uploads to S3, instead of the default ACL.
-    """
-    def __init__(self, verbose_name=None, name=None, upload_to='', storage=None, **kwargs):
-        if storage is None:
-            storage = get_storage_class()(acl='private')
-        super(S3PrivateFileField, self).__init__(verbose_name=verbose_name,
-                name=name, upload_to=upload_to, storage=storage, **kwargs)
+# class S3PrivateFileField(models.FileField):
+#     """
+#     A FileField that gives the 'private' ACL to the files it uploads to S3, instead of the default ACL.
+#     """
+#     def __init__(self, verbose_name=None, name=None, upload_to='', storage=None, **kwargs):
+#         if storage is None:
+#             storage = get_storage_class()(acl='private')
+#         super(S3PrivateFileField, self).__init__(verbose_name=verbose_name,
+#                 name=name, upload_to=upload_to, storage=storage, **kwargs)

@@ -1,3 +1,4 @@
+
 #turns list into sublists of size n using generator
 def chunks(l, n):
     """Yield successive n-sized chunks from l."""
@@ -25,5 +26,20 @@ def items_at(lst, chunk_size, idxs):
             i += 1
     return out
 
+
 def ceiling_div(x,y):
     return -(-x // y)
+
+def gen_circ_list(lst, num_el):
+    if lst:
+        ret_lst = lst.copy()
+        length = len(lst)
+        num_extra_lsts = ceiling_div(num_el, length) - 1
+        extra_lsts = []
+
+        for j in range(num_extra_lsts):
+            extra_lsts.extend(map(lambda x: x * (j+2), lst))
+
+        ret_lst.extend(extra_lsts)
+        ret_lst = ret_lst[0:num_el]
+        return ret_lst

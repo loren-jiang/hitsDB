@@ -65,6 +65,7 @@ def manage_user(request):
     context = {
         "form": form,
         "user": user,
+        "dont_show_path": True,
     }
 
     return render(request, "log/manage_user.html", context)

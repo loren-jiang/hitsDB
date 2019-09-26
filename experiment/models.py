@@ -10,7 +10,9 @@ from orm_custom.custom_functions import bulk_add, bulk_one_to_one_add
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Count, F, Value
-from utility_functions import chunk_list, items_at
+from utility_functions import chunk_list, items_at, ceiling_div, gen_circ_list
+import string 
+
 
 # Create your models here.
 class Project(models.Model):
@@ -209,7 +211,6 @@ class Experiment(models.Model):
         num_dest_plates = ceiling_div(num_compounds,num_dest_wells * num_subwells)
         src_plates_to_create = [None]*num_src_plates
         dest_plates_to_create = [None]*num_dest_plates
-
         # loop through and create the appropriate number of plates 
         for i in range(num_src_plates):
             src_plates_to_create[i] = Plate(name='src_'+str(i+1),plateType=src_plate_type, 
@@ -323,7 +324,7 @@ class Plate(models.Model):
     plateType = models.ForeignKey('PlateType', related_name='plates', on_delete=models.SET_NULL, null=True, blank=True)
     numCols = models.PositiveIntegerField(default=12)
     numRows = models.PositiveIntegerField(default=8)
-    # numSubwells = models.PositiveIntegerField(default=0) 
+    numSubwells = models.PositiveIntegerField(default=0) 
     # x and y synonmous with row and col respectively
     xPitch = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) # pitch in x direction of wells [mm]
     yPitch = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) # pitch in y direction of wells [mm]
@@ -354,8 +355,9 @@ class Plate(models.Model):
     @property
     def wellDict(self):
         numWells = self.numResWells
-        letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
-            'L', 'M', 'N','O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
+        # letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
+        #     'L', 'M', 'N','O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
+        letters = gen_circ_list(list(string.ascii_uppercase), numWells)
         wellNames = [None] *  numWells
         wellIdx = 0
         for rowIdx in range(self.numRows):
@@ -442,8 +444,9 @@ class PlateType(models.Model):
     @property
     def wellDict(self):
         numWells = self.numResWells
-        letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
-            'L', 'M', 'N','O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
+        # letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
+        #     'L', 'M', 'N','O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
+        letters = gen_circ_list(list(string.ascii_uppercase), numWells)
         wellNames = [None] *  numWells
         wellProps = [None] * numWells
         wellIdx = 0
@@ -506,7 +509,7 @@ class PlateType(models.Model):
         return instance
 
 class Well(models.Model):
-    name = models.CharField(max_length=3) #format should be A01, X10, etc.
+    name = models.CharField(max_length=4) #format should be A01, X10, etc.
     compounds = models.ManyToManyField(Compound, related_name='wells', blank=True) #can a well have more than one compound???
     maxResVol = models.DecimalField(max_digits=10, decimal_places=0)
     minResVol = models.DecimalField(max_digits=10, decimal_places=0)
