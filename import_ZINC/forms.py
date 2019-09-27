@@ -3,6 +3,17 @@ from .models import Library, Compound
 from .validators import validate_file_extension
 from django.core.exceptions import ValidationError
 
+class LibraryForm(forms.ModelForm):
+    description = forms.CharField(required=False, widget=forms.Textarea(), max_length=300)
+    supplier = forms.CharField(required=False, max_length=100)
+    class Meta:
+        model = Library
+        fields=("name","description","supplier",)
+
+    # def __init__(self, *args, **kwargs):
+        # self.form_class = kwargs.pop("form_class", None)
+        # super(LibraryForm, self).__init__(*args, **kwargs)
+
 class UploadCompoundsFromJSON(forms.Form):
     file = forms.FileField()
 
@@ -11,16 +22,16 @@ class UploadCompoundsFromJSON(forms.Form):
         file_name = cd['file']
         return cd
 
-class UploadCompoundsNewLib(forms.ModelForm):
+class UploadCompoundsNewLib(LibraryForm):
     file = forms.FileField(validators=[validate_file_extension], required=False)
     # form_class = "new_lib_form ajax_form"
     def __init__(self, *args, **kwargs):
         self.request = kwargs.pop('request', None) #need to remove 'request' 
         super(UploadCompoundsNewLib, self).__init__(*args, **kwargs)
 
-    class Meta:
-        model = Library
-        fields = ("name","description","supplier")
+    # class Meta:
+    #     model = Library
+    #     fields = ("name","description","supplier")
 
     def clean(self):
         cd = self.cleaned_data
@@ -33,3 +44,26 @@ class UploadCompoundsNewLib(forms.ModelForm):
             # self._errors['name'] = "Library name already exists. Please rename."
             # del cd['library']
         return cd
+
+# class UploadCompoundsNewLib(forms.ModelForm):
+#     file = forms.FileField(validators=[validate_file_extension], required=False)
+#     # form_class = "new_lib_form ajax_form"
+#     def __init__(self, *args, **kwargs):
+#         self.request = kwargs.pop('request', None) #need to remove 'request' 
+#         super(UploadCompoundsNewLib, self).__init__(*args, **kwargs)
+
+#     class Meta:
+#         model = Library
+#         fields = ("name","description","supplier")
+
+#     def clean(self):
+#         cd = self.cleaned_data
+#         lib_name = cd['name']
+#         user = self.request.user
+#         # check if library with lib_name already exists
+#         if user.libraries.filter(name=lib_name).exists():
+#             # ValidationError()
+#             self.add_error('name',forms.ValidationError('Library name already exists.', code='invalid'))
+#             # self._errors['name'] = "Library name already exists. Please rename."
+#             # del cd['library']
+#         return cd

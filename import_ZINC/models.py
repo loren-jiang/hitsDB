@@ -11,13 +11,11 @@ from orm_custom.custom_functions import bulk_add
 from itertools import compress
 from utility_functions import chunks
 from .validators import validate_prefix
-# from django.core.exceptions import ValidationError
 
 # Create your models here.
 class Compound(models.Model): #doesnt need to be unique?
     chemicalName = models.CharField(max_length=300,null=True, blank=True)
     chemicalFormula = models.CharField(max_length=100, default='')
-    # library = models.ForeignKey(Library, related_name='compounds', on_delete=models.CASCADE, null=True, blank=True)
     #not all smiles have unique zincID, or perhaps vice versa
     wellLocation = models.CharField(max_length=4, null=True, blank=True) # e.g. A01, AB02
     zinc_id = models.CharField(max_length=30, unique=True)#, validators=[validate_prefix("zinc")])
@@ -48,7 +46,7 @@ class Library(models.Model):
     groups = models.ManyToManyField(Group, related_name='group_libraries', blank=True)
     owner = models.ForeignKey(User, related_name='libraries', on_delete=models.CASCADE,null=True, blank=True)
     isTemplate = models.BooleanField(default=False)
-    supplier = models.CharField(max_length=100, default='')
+    supplier = models.CharField(max_length=100, null=True, blank=True)
     # library can have many compounds; compound can have many libraries
     compounds = models.ManyToManyField(Compound, related_name='libraries', blank=True)
     active = models.BooleanField(default=True)
@@ -70,6 +68,7 @@ class Library(models.Model):
         for i in range(num):
             data = serialized_data[i]
             fields = NoSaveCompoundSerializer.__dict__['_declared_fields']
+            print(fields)
             data = { k: data[k] for k in fields }
             serialize = NoSaveCompoundSerializer(data=data)
             if serialize.is_valid(raise_exception=True):

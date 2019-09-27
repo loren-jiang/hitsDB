@@ -28,25 +28,28 @@ function setUpModalForm(urlClass, modalId, formClass) {
     });
     $(document).on('submit','.' + formClass + '.ajax_form', function(ev) {
         ev.preventDefault();
+        // let data = $(this).serialize();
+        let data_ = new FormData($(this)[0]);
+        console.log($(this)[0]);
         $.ajax({ 
             type: $(this).attr('method'), 
             url: this.action, 
-            data: $(this).serialize(),
+            data: data_,
             context: this,
             dataType: 'json',
+            processData: false,
+            contentType: false,
             success: function(data, status) {
                 // $('#' + modalId).html(data);
                 location.reload();
             },
             error: function(xhr, ajaxOptions, thrownError) { // on error..
-                // console.log(xhr);
                 console.log(JSON.parse(xhr.responseJSON.errors));
-                // console.log(ajaxOptions);
             }
         });
         return false;
     });
-    console.log(urlClass);
+
     $("." + urlClass).click(function(ev) { // for each edit modal url
         ev.preventDefault(); // prevent navigation
         var url = $(this).attr('href'); // get the project_edit form href

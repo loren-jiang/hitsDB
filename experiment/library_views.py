@@ -121,8 +121,11 @@ def lib_edit(request, pk_lib):
         "description":lib.description,
         "supplier":lib.supplier
     }
+    from import_ZINC.forms import UploadCompoundsNewLib
     form = LibraryForm(initial=init_form_data)
     if request.method == 'POST':
+        print("AJAX")
+        print(request.is_ajax())
         form = LibraryForm( request.POST, instance=lib)
         if request.POST.get('cancel', None):
             return redirect("libs")
@@ -133,14 +136,14 @@ def lib_edit(request, pk_lib):
             return redirect(prev)
         return redirect("libs")
 
-    data = {
+    context = {
         "arg":pk_lib,
         "form":form,
         "modal_title":"Edit Library",
         "action":reverse_lazy('lib_edit', kwargs={'pk_lib':pk_lib}), #should be view w/o arg
         "form_class":"lib_edit_form",
     }
-    return render(request,'modals/modal_form.html', data)
+    return render(request,'modals/modal_form.html', context)
 
 @login_required(login_url="/login")
 def libs(request):
@@ -191,11 +194,12 @@ def libs(request):
 def modify_libraries(request):
     if request.method=="POST":
         form = request.POST
-        pks_libs = form.getlist('selection') #list of lib pks
+        pks_libs = form.getlist('checked') #list of lib pks
         libs_qs = Library.objects.filter(id__in=pks_libs)
         # libs = [l for l in libs_qs]
         # for l in libs:
         #     .delete()
+
         if form['btn']=="delete_libs":
             libs_qs.delete()
         # if form['btn']=="deactivate_compounds":

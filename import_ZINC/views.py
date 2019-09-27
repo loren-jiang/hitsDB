@@ -17,7 +17,7 @@ from django.contrib.auth.decorators import login_required
 # upload file (.csv or .json), create new library, and import compounds 
 def upload_file(request):
     if request.method == 'POST':
-        form = UploadCompoundsNewLib(request.POST, request.FILES, request=request)
+        form = UploadCompoundsNewLib(request.POST, request.FILES,request=request)
         if form.is_valid():
             f = TextIOWrapper(request.FILES['file'], encoding=request.encoding)
             lib_name = form.cleaned_data['name'] #assumes lib_name is unique
@@ -49,16 +49,22 @@ def new_lib_from_file(request, form_class="new_lib_form"):
         "form_class":form_class,
         "use_ajax":True, 
     }
-    if request.method == 'POST' and request.is_ajax():
+    print("IS AJAX!")
+    print(request.is_ajax())
+    if request.method == 'POST':# and request.is_ajax():
         form = UploadCompoundsNewLib(request.POST, request.FILES, request=request)
+        print(form.__dict__)
+        print("FORM VALID")
+        print(form.is_valid())
         if form.is_valid():
             cd = form.cleaned_data
-            file = cd.pop('file')
+            fi = cd.pop('file')
             cd.update({'owner':request.user})
             new_lib = Library(**cd)
-            if file: #if file is not None
-                f = TextIOWrapper(cd.pop('file'), encoding=request.encoding)
+            if fi: #if file is not None
+                f = TextIOWrapper(fi, encoding=request.encoding)
                 try:
+                    print("IN TRY!!!!!!!")
                     with transaction.atomic():
                         new_lib.save()
                         relations, created, existed = new_lib.newCompoundsFromFile(f)
@@ -73,13 +79,9 @@ def new_lib_from_file(request, form_class="new_lib_form"):
                 new_lib.save()            
             data = {'result':'success'}
             return JsonResponse(data, status=200)
-            # prev = request.META.get('HTTP_REFERER')
-            # if prev:
-            #     return redirect(prev)
+
         else:
             data = {'result':'success'}
-            print(form.__dict__)
-            print(form.errors.items())
             data.update({'errors':form.errors.as_json()})
             # return HttpResponse(response, status=400)
             return JsonResponse(data, status=400)
@@ -93,4 +95,3 @@ def new_lib_from_file(request, form_class="new_lib_form"):
 # deletes library compounds and associates new compounds
 def update_library(request):
     pass
-

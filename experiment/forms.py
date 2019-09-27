@@ -23,6 +23,7 @@ class SoakForm(forms.ModelForm):
             #     initial=self.instance.transferCompound)
 
 class LibraryForm(forms.ModelForm):
+    description = forms.CharField(required=False, widget=forms.Textarea(), max_length=300)
     class Meta:
         model = Library
         fields=("name","description","supplier",)
@@ -76,16 +77,17 @@ class ProjectForm(forms.ModelForm):
 
 
 class ExperimentModelForm(forms.ModelForm):
-    description = forms.CharField(widget=forms.Textarea(), max_length=300)
+    description = forms.CharField(required=False, widget=forms.Textarea(), max_length=300)
+    protein = forms.CharField(max_length=100, required=False)
     class Meta:
         model = Experiment
         fields = ("name", "description", "protein", "library",)
         
 
-class SourcePlateForm(forms.ModelForm):
-    class Meta:
-        model = Plate
-        fields = ("formatType",)
+# class SourcePlateForm(forms.ModelForm):
+#     class Meta:
+#         model = Plate
+#         fields = ("formatType",)
 
 # MultiForms -------------------------------------------------------------------------
 
@@ -100,14 +102,14 @@ class ExperimentAsMultiForm(MultipleForm):
     def __init__(self, user, exp, lib_qs=None, *args, **kwargs):
         super(ExperimentAsMultiForm, self).__init__(*args, **kwargs)
         self.fields['name'] = forms.CharField(max_length=30, initial=getattr(exp,'name'))
-        self.fields['description'] = forms.CharField(max_length=300, initial=getattr(exp,'description'))
-        self.fields['protein'] = forms.CharField(max_length=30, initial=getattr(exp,'protein'))
+        self.fields['description'] = forms.CharField(max_length=300, initial=getattr(exp,'description'), required=False)
+        self.fields['protein'] = forms.CharField(max_length=30, initial=getattr(exp,'protein'), required=False)
         lib_id = getattr(exp,'library_id')
         qs = user.libraries.filter()
         if lib_qs:
             qs = lib_qs
         self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, 
-                required=False, empty_label="-----", widget=forms.Select)
+                required=False)
     
     # put form validation here 
     def clean(self):
