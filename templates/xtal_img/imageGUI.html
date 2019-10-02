@@ -9,16 +9,25 @@
 
     <div class="container">
         <div class="row" > 
-            <div class="col" id="well-image-container" >
-                <div >
+            <div class="col" >
+                <div id="well-image-container" >
                     <img id="well-image" src={{image_url}}></img>
+                    
+                    <div id="well-circle">
+                        <svg class="svg-circle" width="50" height="50">
+                            <circle cx="25" cy="25" r="20" stroke="green" stroke-width="4" fill="yellow" fill-opacity="0.0" />
+                        </svg>
+                        
+                     </div>
+                     <div id="soak-circle">
+                        <svg class="svg-circle" width="50" height="50">
+                            <circle cx="25" cy="25" r="20" stroke="red" stroke-width="4" fill="yellow" fill-opacity="0.0" />
+                        </svg>
+                        
+                     </div>
                 </div>
                 
-                <div id="annotationText" width="50" height="50">
-                    <svg id="circle" width="50" height="50">
-                        <circle cx="25" cy="25" r="20" stroke="green" stroke-width="4" fill="yellow" fill-opacity="0.0" />
-                    </svg>
-                </div>
+                
                 <a id="prev-well" class="button" href="/image-gui/{{user_id}}/{{plate_id}}/{{prev_well}}">&lt;&lt; {{prev_well}}</a>
                 <a id="next-well" class="button" href="/image-gui/{{user_id}}/{{plate_id}}/{{next_well}}">{{next_well}}&gt;&gt;</a>
             </div>

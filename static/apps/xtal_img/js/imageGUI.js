@@ -56,7 +56,8 @@ $(document).ready(function(){
         var height = obj.height();
         var width = obj.width();
         var objdiv = $(selector);
-        var circle = $("#circle", objdiv);
+        var circle = $(".svg-circle", objdiv);
+        console.log(circle);
         $(selector).draggable({
           containment: obj,
           drag: function(event, ui) {
@@ -84,7 +85,9 @@ $(document).ready(function(){
         });
       }
     
-      makeDragableCircle('#annotationText', $('#well-image-container'));
+      makeDragableCircle('#well-circle', $('#well-image-container'));
+      makeDragableCircle('#soak-circle', $('#well-image-container'));
+
  });
 
 function navigateWells(e) {

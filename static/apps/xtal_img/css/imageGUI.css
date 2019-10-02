@@ -33,3 +33,19 @@
     height: 200px;
     border: 1px dashed #eee;
   }
+
+.ui-resizable {
+    /* z-index: 5; */
+    position: absolute !important;
+    left: 0px;
+    top: 0px;
+}
+
+.soak-circle {
+    z-index:100;
+}
+
+#circle {
+    max-width: 100%;
+    display: block;
+}
