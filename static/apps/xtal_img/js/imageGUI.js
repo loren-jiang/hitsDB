@@ -1,73 +1,93 @@
 $(document).ready(function(){ 
 
-    $('#well-image').click(function (ev) {
-        
-        console.log(($('#soak-or-well')));
-        if (!($('#soak-or-well')[0].checked)){
-            $('.marker.soak-marker').remove();
-            let color = 'red';
-            let size = 6;
-            mouseX = ev.pageX - $(this).offset().left;
-            mouseY = ev.pageY - $(this).offset().top;
-            // $('#soak-coordinates').html(mouseX + "," + mouseY);
-            coordX = mouseX/$(this).width();
-            coordY = mouseY/$(this).height();
-            $('#well-image-container').append(
-                $('<div class="marker soak-marker"></div>')
-                    .css('position', 'absolute')
-                    .css('top', mouseY - size/2 + 'px')
-                    .css('left', mouseX - size/2 + 'px')
-                    .css('width', size + 'px')
-                    .css('height', size + 'px')
-                    .css('background-color', color)
-            );
-            $('#soak-x').val(coordX);
-            $('#soak-y').val(coordY);
-            console.log(coordX);
-            console.log(coordY);
-        }
-        else {
-            $('.marker.well-marker').remove();
-            let color = 'blue';
-            let size = 6;
-            mouseX = ev.pageX - $(this).offset().left;
-            mouseY = ev.pageY - $(this).offset().top;
-            // $('#soak-coordinates').html(mouseX + "," + mouseY);
-            coordX = mouseX/$(this).width();
-            coordY = mouseY/$(this).height();
-            $('#well-image-container').append(
-                $('<div class="marker well-marker"></div>')
-                    .css('position', 'absolute')
-                    .css('top', mouseY - size/2 + 'px')
-                    .css('left', mouseX - size/2 + 'px')
-                    .css('width', size + 'px')
-                    .css('height', size + 'px')
-                    .css('background-color', color)
-            );
-            $('#well-x').val(coordX);
-            $('#well-y').val(coordY);
-            console.log(coordX);
-            console.log(coordY);
-        }
+    // $('#well-image').click(function (ev) {
+    //     let color;
+    //     let size;
+    //     let marker_class;
+    //     let mouseX = ev.pageX - $(this).offset().left;
+    //     let mouseY = ev.pageY - $(this).offset().top;
+    //     if (!($('#soak-or-well')[0].checked)){
+    //         $('.marker.soak-marker').remove();
+    //         color = 'red';
+    //         size = 6;
+    //         marker_class = 'marker soak-marker';
+    //         coordX = mouseX/$(this).width();
+    //         coordY = mouseY/$(this).height();
+    //         $('#soak-x').val(coordX.toFixed(2));
+    //         $('#soak-y').val(coordY.toFixed(2));
+    //     }
+    //     else {
+    //         $('.marker.well-marker').remove();
+    //         color = 'blue';
+    //         size = 6;
+    //         marker_class = 'marker well-marker';
+    //         coordX = mouseX/$(this).width();
+    //         coordY = mouseY/$(this).height();
+    //         $('#well-x').val(coordX.toFixed(2));
+    //         $('#well-y').val(coordY.toFixed(2));
+    //     }
 
-        
+    //     $('#well-image-container').append(
+    //         $('<div class="' + marker_class + '"></div>')
+    //             .css('position', 'absolute')
+    //             .css('top', mouseY - size/2 + 'px')
+    //             .css('left', mouseX - size/2 + 'px')
+    //             .css('width', size + 'px')
+    //             .css('height', size + 'px')
+    //             .css('background-color', color)
+    //     );
 
 
-    });
+    // });
 
     document.onkeydown = navigateWells;
 
     $('#soak-or-well').change(function(){
-        if(this.checked) {
-            console.log("this");
+        if(!(this.checked)) {
+            $('#which-pick').html("soak");
         }
         else {
-            console.log("that");
+            $('#which-pick').html("well");
         }
     });
+
+    // https://stackoverflow.com/questions/53811350/how-to-make-svg-tag-image-resizable-using-jquery-ui
+    function makeDragableCircle(selector, obj) {
+        var height = obj.height();
+        var width = obj.width();
+        var objdiv = $(selector);
+        var circle = $("#circle", objdiv);
+        $(selector).draggable({
+          containment: obj,
+          drag: function(event, ui) {
+            var cleft = ui.position.left * 100 / width;
+            var top = ui.position.top * 100 / height;
+            $(event.target).attr('data-offsetx', cleft);
+            $(event.target).attr('data-offsety', top);
+          }
+        }).resizable({
+          aspectRatio: 1.0,
+          containment: obj,
+          minWidth: 40,
+          minHeight: 40,
+          resize: function(e, ui) {
+            circle.attr({
+              width: ui.size.width,
+              height: ui.size.height
+            });
+            $("circle", circle).attr({
+              cx: Math.round(ui.size.width / 2) - 2,
+              cy: Math.round(ui.size.height / 2) - 2,
+              r: Math.round(ui.size.width / 2) - 4
+            });
+          }
+        });
+      }
+    
+      makeDragableCircle('#annotationText', $('#well-image-container'));
  });
 
- function navigateWells(e) {
+function navigateWells(e) {
 
     e = e || window.event;
 

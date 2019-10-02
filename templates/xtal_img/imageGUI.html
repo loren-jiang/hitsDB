@@ -1,14 +1,24 @@
 {% extends 'base.html' %}
 {% load staticfiles%}
 {% block content %}
+    <link href="{% static 'css/app.css' %}" rel="stylesheet">
     <link href="{% static 'apps/xtal_img/css/imageGUI.css' %}" rel="stylesheet">
     <script src="{% static 'apps/xtal_img/js/imageGUI.js'%}"></script>
-
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 
     <div class="container">
         <div class="row" > 
-            <div class="col" id="well-image-container">
-                <img id="well-image" src={{image_url}}></img>
+            <div class="col" id="well-image-container" >
+                <div >
+                    <img id="well-image" src={{image_url}}></img>
+                </div>
+                
+                <div id="annotationText" width="50" height="50">
+                    <svg id="circle" width="50" height="50">
+                        <circle cx="25" cy="25" r="20" stroke="green" stroke-width="4" fill="yellow" fill-opacity="0.0" />
+                    </svg>
+                </div>
                 <a id="prev-well" class="button" href="/image-gui/{{user_id}}/{{plate_id}}/{{prev_well}}">&lt;&lt; {{prev_well}}</a>
                 <a id="next-well" class="button" href="/image-gui/{{user_id}}/{{plate_id}}/{{next_well}}">{{next_well}}&gt;&gt;</a>
             </div>
@@ -34,17 +44,26 @@
                             {% endfor %}                 
                         </select>
 
-                        <h5>Toggle Switch</h5>
+                        <h5> Pick coordinates for: <h5 id="which-pick"> soak </h5> </h5> 
                         <label class="switch">
-                        <input id="soak-or-well" type="checkbox">
-                        <div class="slider"></div>
+                            <input id="soak-or-well" type="checkbox">
+                            <div class="slider round"></div>
                         </label>
                     </div>
                     
                 </div>
             </div>
             
+
         </div>
+
+        {% comment %} <div id="mainDiv">
+            <div id="annotationText">
+                <svg id="circle" width="50" height="50">
+                <circle cx="25" cy="25" r="20" stroke="green" stroke-width="4" fill="yellow" fill-opacity="0.0" />
+                </svg>
+            </div>
+        </div> {% endcomment %}
     </div>
     
     
