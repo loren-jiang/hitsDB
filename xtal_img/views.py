@@ -32,8 +32,10 @@ def imageGUIView(request, *args, **kwargs):
     soak = s_w.soak
     soakX = soak.soakOffsetX
     soakY = soak.soakOffsetY
+    targetWellX = soak.targetWellX
+    targetWellY = soak.targetWellY
 
-    def render_view(user_id, plate_id, file_name, soakX, soakY):
+    def render_view(user_id, plate_id, file_name, soakXY, targetWellXY):
         if request.user.id == int(user_id): #users can only see their own images
             file_names = [w.file_name for w in p_well_images]
             prefix = 'media/private/private/' + str(user_id) + '/' + str(plate_id) + '/'
@@ -57,9 +59,12 @@ def imageGUIView(request, *args, **kwargs):
                 "file_name":file_name,
                 "user_id":user_id,
                 "plate_id":plate_id,
-                "soakX" : soakX,
-                "soakY" : soakY,
+                "soakX" : soakXY[0],
+                "soakY" : soakXY[1],
+                "targetWellX" : targetWellXY[0],
+                "targetWellY" : targetWellXY[1],
                 "file_names":file_names,
+                "dont_show_path": True,
             }
             return render(request, "xtal_img/imageGUI.html", context)
         else:
@@ -68,7 +73,13 @@ def imageGUIView(request, *args, **kwargs):
     if request.method == 'POST':
         soak.soakOffsetX = request.POST.get("soak-x",0.00)
         soak.soakOffsetY = request.POST.get("soak-y",0.00)
+        soak.targetWellX = request.POST.get("well-x",0.00)
+        soak.targetWellY = request.POST.get("well-y",0.00)
         soak.save()
-        return render_view(user_id,plate_id,file_name, soakX, soakY)
+        soakX = soak.soakOffsetX
+        soakY = soak.soakOffsetY
+        targetWellX = soak.targetWellX
+        targetWellY = soak.targetWellY
+        return render_view(user_id,plate_id,file_name, (soakX, soakY), (targetWellX, targetWellY))
     else: #request.method == 'GET'
-        return render_view(user_id,plate_id,file_name, soakX, soakY)
+        return render_view(user_id,plate_id,file_name, (soakX, soakY), (targetWellX, targetWellY))

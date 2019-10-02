@@ -123,41 +123,41 @@ class ExperimentAsMultiForm(MultipleForm):
                 cd.pop(key)
         return cd
 
-class PlateSetupForm(MultipleForm):
-    source_plate = forms.ModelChoiceField(queryset=Plate.objects
-        .prefetch_related('wells')
-        .filter(isTemplate=True)
-        .filter(isSource=True), 
-        label="Source plate",
-        initial=0)
-    dest_plate = forms.ModelChoiceField(queryset=Plate.objects
-        .prefetch_related('wells')
-        .filter(isTemplate=True)
-        .filter(isSource=False), 
-        label="Destination plate",
-        initial=0)
-    dest_plate_screen = forms.ModelChoiceField(queryset=CrystalScreen.objects.all(), 
-        required=False,
-        initial=0)
-    experiment = forms.ModelChoiceField(
-        queryset=Experiment.objects
-        .prefetch_related('plates','library__compounds')
-        .order_by('-dateTime'),
-        initial=0, #CHANGE THIS!!!!!!!!!!
-        widget=forms.HiddenInput()
-        )
+# class PlateSetupForm(MultipleForm):
+#     source_plate = forms.ModelChoiceField(queryset=Plate.objects
+#         .prefetch_related('wells')
+#         .filter(isTemplate=True)
+#         .filter(isSource=True), 
+#         label="Source plate",
+#         initial=0)
+#     dest_plate = forms.ModelChoiceField(queryset=Plate.objects
+#         .prefetch_related('wells')
+#         .filter(isTemplate=True)
+#         .filter(isSource=False), 
+#         label="Destination plate",
+#         initial=0)
+#     dest_plate_screen = forms.ModelChoiceField(queryset=CrystalScreen.objects.all(), 
+#         required=False,
+#         initial=0)
+#     experiment = forms.ModelChoiceField(
+#         queryset=Experiment.objects
+#         .prefetch_related('plates','library__compounds')
+#         .order_by('-dateTime'),
+#         initial=0, #CHANGE THIS!!!!!!!!!!
+#         widget=forms.HiddenInput()
+#         )
 
-    crystal_choices = (
-        (1,'Subwell 1'),
-        (2,'Subwell 2'),
-        (3,'Subwell 3'),
-        )
-    crystal_locations = forms.MultipleChoiceField(choices=crystal_choices)
-    filetype_choices = (
-        ('.pdf','PDF'),
-        ('.csv','CSV'),
-        )
-    export_filetype = forms.ChoiceField(choices=filetype_choices)
+#     crystal_choices = (
+#         (1,'Subwell 1'),
+#         (2,'Subwell 2'),
+#         (3,'Subwell 3'),
+#         )
+#     crystal_locations = forms.MultipleChoiceField(choices=crystal_choices)
+#     filetype_choices = (
+#         ('.pdf','PDF'),
+#         ('.csv','CSV'),
+#         )
+#     export_filetype = forms.ChoiceField(choices=filetype_choices)
 
 class PlatesSetupMultiForm(MultipleForm):
 

@@ -25,11 +25,12 @@ class WellImagesUploadView(FormView):
         p = get_object_or_404(Plate, id=kwargs['plate_pk'])
         well_images = p.well_images.filter()
         form = self.get_form(self.get_form_class())
-        data = {
+        context = {
             'form': form,
             'well_images': well_images,
+            'dont_show_path': True,
         }
-        return render(request, './s3/private_images_upload.html', data)
+        return render(request, './s3/private_images_upload.html', context)
 
     def post(self, request, *args, **kwargs):
         p = get_object_or_404(Plate, id=kwargs['plate_pk'])
