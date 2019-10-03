@@ -11,8 +11,19 @@
     cursor: crosshair;
 }
 
+.soak-hidden {
+    display: none !important;
+}
+
+.ui-resizable {
+    position: absolute !important;
+    padding: 0px;
+    display: inline-block;
+}
+
 #well-image-container {
-    padding: 0px !important;
+    padding: 0px;
+    display: inline-block;
 }
 
 .button {
@@ -34,16 +45,12 @@
     border: 1px dashed #eee;
   }
 
-.ui-resizable {
-    /* z-index: 5; */
-    position: absolute !important;
-    left: 0px;
-    top: 0px;
-}
+
 
 .soak-circle {
     z-index:100;
 }
+
 
 #circle {
     max-width: 100%;

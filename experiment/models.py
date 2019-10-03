@@ -569,9 +569,17 @@ class Soak(models.Model):
     soakOffsetY = models.DecimalField(max_digits=10, decimal_places=2,default=0)
     targetWellX = models.DecimalField(max_digits=10, decimal_places=2,default=0)
     targetWellY = models.DecimalField(max_digits=10, decimal_places=2,default=0)
+    targetWellRadius = models.DecimalField(max_digits=10, decimal_places=2,default=0)
+
+    useSoak = models.BooleanField(default=False)
     
-def __str__(self):
-    return "soak_" + str(self.id)
+    @property
+    def soakRadius(self):
+        # returns radius of soak based on some calibration curve of soak volume to radius
+        return self.transferVol
+
+    def __str__(self):
+        return "soak_" + str(self.id)
 
 def createWellDict(numCol, numRow):
     numWells = numRow * numCol

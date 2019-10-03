@@ -40,55 +40,99 @@ $(document).ready(function(){
 
     // });
 
+ });
+
+$(function () {
+
     document.onkeydown = navigateWells;
 
-    $('#soak-or-well').change(function(){
-        if(!(this.checked)) {
-            $('#which-pick').html("soak");
+    $('#use-soak').change(function(){
+        if((this.checked)) {
+            $('#use-soak-indicator').html("yes");
+            $('#soak-circle').removeClass("soak-hidden");
+
         }
         else {
-            $('#which-pick').html("well");
+            $('#use-soak-indicator').html("no");
+            $('#soak-circle').addClass("soak-hidden");
         }
     });
+
+    function drawCircle(selector, obj) {
+        var objdiv = $(selector);
+        objdiv.css('top', "200px");
+        objdiv.css('left', "200px");
+
+
+    }
 
     // https://stackoverflow.com/questions/53811350/how-to-make-svg-tag-image-resizable-using-jquery-ui
     function makeDragableCircle(selector, obj) {
         var height = obj.height();
         var width = obj.width();
+        console.log(height);console.log(width);
+        // console.log(obj.css("height")); console.log(obj.css("width"));
         var objdiv = $(selector);
         var circle = $(".svg-circle", objdiv);
-        console.log(circle);
-        $(selector).draggable({
+        const tarX = selector==='#well-circle' ? '#well-x': '#soak-x';
+        const tarY = selector==='#well-circle' ? '#well-y': '#soak-y';
+        const tarR = selector==='#well-circle' ? '#well-r' : '#transfer-vol';
+        objdiv.draggable({
           containment: obj,
           drag: function(event, ui) {
-            var cleft = ui.position.left * 100 / width;
-            var top = ui.position.top * 100 / height;
+            cleft = ui.position.left * 100 / width;
+            top = ui.position.top * 100 / height;
+            console.log(ui.position);
             $(event.target).attr('data-offsetx', cleft);
             $(event.target).attr('data-offsety', top);
+            r = Math.round($(".svg-circle" , $(event.target)).attr('height') / 2)- 4;
+            const xyr = [ui.position.left + r, ui.position.top + r, r].map( (el)=> Math.round(el));
+            $(tarX).val(xyr[0]);
+            $(tarY).val(xyr[1]);
+            $(tarR).val(xyr[2]);
           }
         }).resizable({
           aspectRatio: 1.0,
           containment: obj,
           minWidth: 40,
           minHeight: 40,
-          resize: function(e, ui) {
+          resize: function(event, ui) {
+            var outer_circle = $(".outer-circle", circle);
+            var inner_circle = $(".inner-circle", circle);
+            const w = ui.size.width;
+            const h = ui.size.height;
+            const cx = Math.round(w / 2) - 2;
+            const cy = Math.round(h / 2) - 2;
+            const r = Math.round(w / 2) - 4;
             circle.attr({
-              width: ui.size.width,
-              height: ui.size.height
+              width: w,
+              height: h,
             });
-            $("circle", circle).attr({
-              cx: Math.round(ui.size.width / 2) - 2,
-              cy: Math.round(ui.size.height / 2) - 2,
-              r: Math.round(ui.size.width / 2) - 4
+       
+            outer_circle.attr({
+              cx: cx,
+              cy: cy,
+              r: r,
             });
+            inner_circle.attr({
+              cx: cx,
+              cy: cy,
+            });
+            const xyr = [ui.position.left + r, ui.position.top + r, r].map( (el)=> Math.round(el));
+            $(tarX).val(xyr[0]);
+            $(tarY).val(xyr[1]);
+            $(tarR).val(xyr[2]);
           }
-        });
-      }
-    
-      makeDragableCircle('#well-circle', $('#well-image-container'));
-      makeDragableCircle('#soak-circle', $('#well-image-container'));
 
- });
+        });
+    }
+    
+
+    makeDragableCircle('#well-circle', $('#well-image-container'));
+    makeDragableCircle('#soak-circle', $('#well-image-container'));
+
+    // drawCircle('#well-circle', $('#well-image-container'));
+});
 
 function navigateWells(e) {
 
@@ -111,10 +155,7 @@ function saveCoordinates() {
 }
 
 function goToWell(user_id, plate_id) {
-    // $( "#sel-well option:selected" ).text();
     let well_name = $('#sel-well').val();
-    // let url = window.location
-    console.log(well_name);
     window.location.replace("/image-gui/"+user_id+'/'+plate_id+'/'+well_name);
     return;
 }
