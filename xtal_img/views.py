@@ -8,11 +8,11 @@ from s3.forms import ImagesFieldForm, FilesFieldForm
 import logging
 from s3.models import WellImage
 # from .models import DropImageS3, DropImage
-from experiment.models import Plate
+from experiment.models import Plate, Soak
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
-from .forms import DropImageUploadForm
+from .forms import DropImageUploadForm, SoakGUIForm
 
 # Create your views here.
 
@@ -21,7 +21,7 @@ def upload_drop_image(request):
         form = DropImageUploadForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            return HttpResponse('')
+            return HttpResponseRedirect('')
     else:
         form = DropImageUploadForm()
     return render(request, 'basic_form.html', {
@@ -32,8 +32,6 @@ def upload_drop_image(request):
 
 @login_required(login_url="/login")
 def s3ImageGUIView(request, *args, **kwargs):
-    s3 = myS3Resource()
-    bucket = s3.Bucket(settings.AWS_STORAGE_BUCKET_NAME)
     plate_id = kwargs['plate_id']
     user_id = kwargs['user_id']
     file_name = kwargs['file_name']
@@ -45,14 +43,17 @@ def s3ImageGUIView(request, *args, **kwargs):
     target_well = p.wells.get(name=well_name)
     s_w = target_well.subwells.get(idx=subwell_idx)
     soak = s_w.soak
-    soakX = soak.soakOffsetX
-    soakY = soak.soakOffsetY
-    transferVol = soak.transferVol
-    targetWellX = soak.targetWellX
-    targetWellY = soak.targetWellY
-    targetWellRadius = soak.targetWellRadius
-    useSoak = soak.useSoak
-    def render_view(user_id, plate_id, file_name, soakXYVol, targetWellXYRadius):
+
+    form = SoakGUIForm(initial={
+        'transferVol':soak.transferVol, 
+        'soakOffsetX':soak.soakOffsetX, 
+        'soakOffsetY':soak.soakOffsetY,
+        'targetWellX':soak.targetWellX,
+        'targetWellY':soak.targetWellY,
+        'targetWellRadius':soak.targetWellRadius,
+        'useSoak':soak.useSoak,})
+
+    def render_view(user_id, plate_id, file_name, soak, form):
         if request.user.id == int(user_id): #users can only see their own images
             file_names = [w.file_name for w in p_well_images]
 
@@ -69,6 +70,10 @@ def s3ImageGUIView(request, *args, **kwargs):
                 curr_well_name_idx = file_names.index(file_name)
                 prev_well = file_names[curr_well_name_idx-1]
                 next_well = file_names[(curr_well_name_idx+1)%len(file_names)]
+
+            soakXYVol = [soak.soakOffsetX, soak.soakOffsetY, soak.transferVol]
+            targetWellXYRadius = [soak.targetWellX, soak.targetWellY, soak.targetWellRadius]
+
             context = {
                 "prev_well":prev_well,
                 "image_url":image_url,
@@ -93,32 +98,25 @@ def s3ImageGUIView(request, *args, **kwargs):
                 "leftWellCircle": targetWellXYRadius[0] - targetWellXYRadius[2],
                 "sideWellCircle":2*targetWellXYRadius[2],
                 "radWellCircle_": (2*targetWellXYRadius[2] - 4) //2,
-                # "use_soak": 
-                # "wellCircleRadius": 
+                'SoakGUIForm':form,
+                "use_soak" : soak.useSoak, 
             }
             return render(request, "xtal_img/imageGUI.html", context)
         else:
             return HttpResponse("bad request")
 
     if request.method == 'POST':
-        soak.soakOffsetX = float(request.POST.get("soak-x",0.00))
-        soak.soakOffsetY = float(request.POST.get("soak-y",0.00))
-        soak.transferVol = float(request.POST.get("transfer-vol", 0.00))
-        soak.targetWellX = float(request.POST.get("well-x",0.00))
-        soak.targetWellY = float(request.POST.get("well-y",0.00))
-        soak.targetWellRadius = float(request.POST.get("well-r", 0.00))
-        print(request.POST.get("use-soak", False))
-        s = soak.save()
-        soakX = soak.soakOffsetX
-        soakY = soak.soakOffsetY
-        transferVol = soak.transferVol
-        targetWellX = soak.targetWellX
-        targetWellY = soak.targetWellY
-        targetWellRadius = soak.targetWellRadius
-        
-        return render_view(user_id,plate_id,file_name, (soakX, soakY, transferVol), (targetWellX, targetWellY, targetWellRadius))
+        form = SoakGUIForm(request.POST)
+        if (form.is_valid()):
+            #process valid form 
+            cleaned_data = form.cleaned_data
+            for k in cleaned_data.keys():
+                setattr(soak, k, cleaned_data.get(k))
+            soak.save()
+            return HttpResponseRedirect('')
+        return render_view(user_id,plate_id,file_name, soak, form)
     else: #request.method == 'GET'
-        return render_view(user_id,plate_id,file_name, (soakX, soakY, transferVol), (targetWellX, targetWellY, targetWellRadius))
+        return render_view(user_id,plate_id,file_name, soak, form)
 
 
 @login_required(login_url="/login")

@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% load staticfiles%}
+{% load crispy_forms_tags %}
+
 {% block content %}
     <link href="{% static 'css/app.css' %}" rel="stylesheet">
     <link href="{% static 'apps/xtal_img/css/imageGUI.css' %}" rel="stylesheet">
@@ -39,7 +41,14 @@
                         <p> {{soakX}},{{soakY}}<br></p>
                         <p>Well coordinates:<br></p>
                         <p> {{targetWellX}},{{targetWellY}}<br></p>
-                        <form id="soak-form" action="" method="post">
+                        <form id="soak-form" action="" method="post"> 
+                            {%csrf_token%} 
+                            {% crispy SoakGUIForm %}
+                            <input type="submit" value="Save">
+                        </form>
+
+
+                        {% comment %} <form id="soak-form" action="" method="post">
                             {% csrf_token %}
                             soak X coord: <input id="soak-x" type="number" step="0.01" name="soak-x" value="{{soakX}}">
                             soak Y coord: <input id="soak-y" type="number" step="0.01" name="soak-y" value="{{soakY}}"><br>
@@ -54,7 +63,7 @@
                             </label>
                             <br>
                             <input type="button" onclick="saveCoordinates()" value="Save">
-                        </form>
+                        </form> {% endcomment %}
                           
                         <select id="sel-well" name="sel-name" onchange="goToWell('{{user_id}}','{{plate_id}}')">
                             {% for f in file_names %}
