@@ -113,7 +113,7 @@ def s3ImageGUIView(request, *args, **kwargs):
             for k in cleaned_data.keys():
                 setattr(soak, k, cleaned_data.get(k))
             soak.save()
-            return HttpResponseRedirect('')
+            # return HttpResponseRedirect('')
         return render_view(user_id,plate_id,file_name, soak, form)
     else: #request.method == 'GET'
         return render_view(user_id,plate_id,file_name, soak, form)

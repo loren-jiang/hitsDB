@@ -1,10 +1,13 @@
 #well-image {
     /* z-index:-1; */
-    border-width: 0px !important;
+    
+    /* border-width: 0px !important; */
     max-width: 500px;
-    height: auto;
+    /* height: auto; */
     position: relative;
-    cursor: crosshair;
+    /* cursor: crosshair; */
+    margin: auto;
+
 }
 
 .marker {
@@ -15,15 +18,17 @@
     display: none !important;
 }
 
-.ui-resizable {
+.ui-resizable, .ui-draggable {
     position: absolute !important;
-    padding: 0px;
-    display: inline-block;
+    display: flex;
 }
 
 #well-image-container {
-    padding: 0px;
-    display: inline-block;
+    position: relative;
+    height: 700px;
+    width: 700px;
+    background-color: aquamarine;
+    display: flex;
 }
 
 .button {

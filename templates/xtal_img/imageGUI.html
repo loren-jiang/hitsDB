@@ -8,7 +8,8 @@
     <script src="{% static 'apps/xtal_img/js/imageGUI.js'%}"></script>
     <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-
+    <br>
+    <br>
     <div class="container">
         <div class="row" > 
             <div class="col" >
@@ -17,14 +18,14 @@
                     {% comment %} <div id="well-circle">  {% endcomment %}
                     <div id="well-circle" style="top: {{topWellCircle}}px; left: {{leftWellCircle}}px">
                         <svg class="svg-circle" width="{{sideWellCircle}}" height="{{sideWellCircle}}">
-                            <circle class="circle outer-circle" cx="{{targetWellRadius}}" cy="{{targetWellRadius}}" r="{{radWellCircle_}}" stroke="green" stroke-width="4" fill="yellow" fill-opacity="0.0" />
+                            <circle class="circle outer-circle" cx="{{targetWellRadius}}" cy="{{targetWellRadius}}" r="{{radWellCircle_}}" stroke="green" stroke-width="4" fill="" fill-opacity="0.0" />
                             <circle class="circle inner-circle" cx="{{targetWellRadius}}" cy="{{targetWellRadius}}" r="1" stroke="green" stroke-width="4" fill="green" fill-opacity="1.0" />
                         </svg>
                         
                      </div>
-                     <div class='{{use_soak|default:"soak-hidden"}}' id="soak-circle" style="top: {{topSoakCircle}}px; left: {{leftSoakCircle}}px">
+                     <div class='{{use_soak|yesno:" ,soak-hidden"}}' id="soak-circle" style="top: {{topSoakCircle}}px; left: {{leftSoakCircle}}px">
                         <svg class="svg-circle" width="{{sideSoakCircle}}" height="{{sideSoakCircle}}">
-                            <circle class="circle outer-circle" cx="{{transferVol}}" cy="{{transferVol}}" r="{{radSoakCircle_}}" stroke="red" stroke-width="4" fill="yellow" fill-opacity="0.0" />
+                            <circle class="circle outer-circle" cx="{{transferVol}}" cy="{{transferVol}}" r="{{radSoakCircle_}}" stroke="red" stroke-width="4" fill="" fill-opacity="0.0" />
                             <circle class="circle inner-circle" cx="{{transferVol}}" cy="{{transferVol}}" r="1" stroke="red" stroke-width="4" fill="red" fill-opacity="1.0" />
                         </svg>
                         
@@ -46,7 +47,7 @@
                             {% crispy SoakGUIForm %}
                             <input type="submit" value="Save">
                         </form>
-
+                        {% comment %} <div id="transferVol-slider"></div> {% endcomment %}
 
                         {% comment %} <form id="soak-form" action="" method="post">
                             {% csrf_token %}
@@ -71,6 +72,8 @@
                             {% endfor %}                 
                         </select>
 
+                        <div id="hotKey-map" >
+                        </div>
                     </div>
                     
                 </div>

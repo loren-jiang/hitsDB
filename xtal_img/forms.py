@@ -4,7 +4,7 @@ from experiment.models import Soak
 
 # crispy form imports
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column
+from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field
 
 class DropImageUploadForm(forms.ModelForm):
     class Meta:
@@ -22,15 +22,18 @@ class SoakGUIForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Row(
-                Column('soakOffsetX', css_class='form-group col-md-4 mb-0'),
-                Column('soakOffsetY', css_class='form-group col-md-4 mb-0'),
-                Column('transferVol', css_class='form-group col-md-4 mb-0'),
+                Field('soakOffsetX', wrapper_class='form-group col-md-4 mb-0', readonly=True),
+                Field('soakOffsetY', wrapper_class='form-group col-md-4 mb-0', readonly=True),
+                Field('transferVol', wrapper_class='form-group col-md-4 mb-0', readonly=True),
                 css_class='form-row'
             ),
+            Div(
+                css_id='transferVol-slider'
+            ),
             Row(
-                Column('targetWellX', css_class='form-group col-md-4 mb-0'),
-                Column('targetWellY', css_class='form-group col-md-4 mb-0'),
-                Column('targetWellRadius', css_class='form-group col-md-4 mb-0'),
+                Field('targetWellX', wrapper_class='form-group col-md-4 mb-0', readonly=True),
+                Field('targetWellY', wrapper_class='form-group col-md-4 mb-0', readonly=True),
+                Field('targetWellRadius', wrapper_class='form-group col-md-4 mb-0', readonly=True),
                 css_class='form-row'
             ),
             # Row(
@@ -38,5 +41,6 @@ class SoakGUIForm(forms.ModelForm):
             #     css_class='switch'
             # ),
             'useSoak',
+            
             # Submit('submit', 'Save')
         )
