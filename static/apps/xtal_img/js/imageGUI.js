@@ -2,14 +2,33 @@
 $(function () {
 const DATA = window.guiData;
 console.log(DATA);  
+
+volToRadius = {
+25:253.321158221462,
+50: 342.37358898872,
+75:	403.046819015466,
+100:	450.639209935708,
+125:	490.459462773306,
+150:	525.043938845047,
+175:	555.822491083968,
+200:	583.688916410496,
+225:	609.243144617917,
+250:	632.909438068353,
+};
+
 const pix_to_um = 2.77; //conversion factor 2.77 µm/pixel at full size
 const um_to_pix = 1/pix_to_um;
 
 const scaling_factor = 2.45; //1024 px / 418 px 
 
-const convertPixToUm = (xyr) => xyr.map(e => (e*scaling_factor*pix_to_um).toFixed(2));
-const convertUmToPix = (xyr) => xyr.map(e => (e*um_to_pix/scaling_factor).toFixed(2));
+const roundNPlaces = (num, n) => Math.round(num * Math.pow(10, n)) / Math.pow(10, n);
+const convertPixToUm = (xyr) => xyr.map(e => roundNPlaces(e*scaling_factor*pix_to_um, 2));
+const convertUmToPix = (xyr) => xyr.map(e => roundNPlaces(e*um_to_pix/scaling_factor, 2));
 
+
+// const volumeToRadius = (vol) => {
+
+// };
 const wCircData = {
   t_w_c: DATA.topWellCircle*um_to_pix/scaling_factor,
   l_w_c: DATA.leftWellCircle*um_to_pix/scaling_factor,
@@ -112,7 +131,11 @@ const sCircData = {
     });
   };
 
-  const getSoakXYR = () => ( [$('#id_soakOffsetX').val(), $('#id_soakOffsetY').val(), $('#id_transferVol').val()] );
+  const getSoakXYR = () => {
+    return [$('#id_soakOffsetX').val(), $('#id_soakOffsetY').val(), $('#id_transferVol').val()].map(e=>parseFloat(e));
+  };
+    
+    
   
   const setSoakXYR = (XYR) => {
     let xyr = convertPixToUm(XYR);
@@ -161,7 +184,26 @@ const sCircData = {
     // tar[2].val(xyr[2]);
     setTargetValues(tar, xyr);
   };
-  
+
+  const onSliderTrigger = (slider, add_or_minus)=>{      
+    slider.trigger('moveSlider',[add_or_minus]);
+    const xyr = getSoakXYR(); //in um
+    const XYR = convertUmToPix(xyr); //in pixels
+    const circle = $(".svg-circle", $('#soak-circle'));
+    const position = circle.parent('#soak-circle').position();
+    const R1 = getCircleRadius( circle.attr("width") );
+    const R2 = XYR[2];
+    console.log(R1);
+    console.log(R2);
+    const delta = R2 - R1;
+    console.log(XYR);
+    console.log(delta);
+    // const new_xyr = convertPixToUm([XYR[0] + delta, XYR[1] + delta, R2]);
+    
+    setSoakXYR([XYR[0] + delta, XYR[1] + delta, R2]);
+    resizeCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-4] );
+  };
+
   const hotKeyMap = {
     '77': {keyCode:'m', desc:'Next well', func: (slider)=>$('#prev-well')[0].click()},
     '78': {keyCode:'n', desc:'Previous well', func: (slider)=>$('#next-well')[0].click()},
@@ -169,39 +211,8 @@ const sCircData = {
     '88': {keyCode:'x', desc:'Use Soak', func: (slider)=>{
         const checkbox = $('#id_useSoak');
         checkbox.prop("checked", !checkbox.prop("checked")).change(); }},
-
-    '188':{keyCode:',', desc:'Decrease transfer vol', func: (slider)=>{      
-          slider.trigger('moveSlider',['-']);
-          const xyr = getSoakXYR().map(e=>parseInt(e)); //in um
-          const XYR = convertUmToPix(xyr); //in pixels
-
-          const circle = $(".svg-circle", $('#soak-circle'));
-          const position = circle.parent('#soak-circle').position();
-          const r1 = getCircleRadius( circle.attr("width") );
-          const r2 = XYR[2];
-          const delta = r2 - r1;
-
-          const new_xyr = convertPixToUm([XYR[0] + delta, XYR[1] + delta, r2]);
-          setSoakXYR(new_xyr);
-
-          resizeCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-4] );
-        }},
-    '190': {keyCode:'.', desc:'Increase transfer vol', func: (slider)=>{
-          slider.trigger('moveSlider',['+']);
-          const xyr = getSoakXYR().map(e=>parseInt(e)); //in um
-          const XYR = convertUmToPix(xyr); //in pixels
-
-          const circle = $(".svg-circle", $('#soak-circle'));
-          const position = circle.parent('#soak-circle').position();
-          const r1 = getCircleRadius( circle.attr("width") );
-          const r2 = XYR[2];
-          const delta = r2 - r1;
-
-          const new_xyr = convertPixToUm([XYR[0] + delta, XYR[1] + delta, r2]);
-          setSoakXYR(new_xyr);
-          
-          resizeCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-4] );
-          }},
+    '188':{keyCode:',', desc:'Decrease transfer vol', func: (slider) => onSliderTrigger(slider, '-')},
+    '190': {keyCode:'.', desc:'Increase transfer vol', func: (slider) => onSliderTrigger(slider, '+')},
 
   };
 
@@ -282,9 +293,9 @@ const sCircData = {
       
   }
   function makeSlider(sel, other_sel) { 
-    const step = 10;
-    const min = 10;
-    const max = 100;
+    const step = 25;
+    const min = 25;
+    const max = 250;
     const num_steps = (max-min)/step;
     const slider = $(sel);
     slider.slider({
@@ -297,7 +308,7 @@ const sCircData = {
         const new_val =ui.value / step * 25;
         $(other_sel).val(new_val);
         const circle = $(".svg-circle", $('#soak-circle'));
-        resizeCircleSVG(circle, [new_val*2, new_val*2] , [new_val,new_val, new_val-4] );
+        resizeCircleSVG(circle, [new_val*2, new_val*2] , [new_val, new_val, new_val-4] );
       },  
     });
     
