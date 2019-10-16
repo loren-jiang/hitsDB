@@ -27,7 +27,7 @@ class SoakGUIForm(forms.ModelForm):
                 Field('transferVol', wrapper_class='form-group col-md-4 mb-0', readonly=True),
                 css_class='form-row'
             ),
-            Div(
+            Row(
                 css_id='transferVol-slider'
             ),
             Row(
@@ -41,6 +41,5 @@ class SoakGUIForm(forms.ModelForm):
             #     css_class='switch'
             # ),
             'useSoak',
-            
-            # Submit('submit', 'Save')
         )
+        self.helper.add_input(Submit('submit', 'Save'))

@@ -9,11 +9,14 @@ import logging
 from s3.models import WellImage
 # from .models import DropImageS3, DropImage
 from experiment.models import Plate, Soak
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.http import HttpResponse, HttpResponseRedirect
 from django.contrib.auth.decorators import login_required
 from .forms import DropImageUploadForm, SoakGUIForm
+import copy 
 
+import json
+from django.core.serializers.json import DjangoJSONEncoder
 # Create your views here.
 
 def upload_drop_image(request):
@@ -35,7 +38,6 @@ def s3ImageGUIView(request, *args, **kwargs):
     plate_id = kwargs['plate_id']
     user_id = kwargs['user_id']
     file_name = kwargs['file_name']
-
     well_name = file_name.split("_")[0]
     subwell_idx = int(file_name.split("_")[1])
     p = get_object_or_404(Plate,id=plate_id)
@@ -52,28 +54,26 @@ def s3ImageGUIView(request, *args, **kwargs):
         'targetWellY':soak.targetWellY,
         'targetWellRadius':soak.targetWellRadius,
         'useSoak':soak.useSoak,})
+    
+    obj_keys = [w.key for w in p_well_images]
+    file_names = [w.file_name for w in p_well_images]
+    prefix = 'media/private/private/' + str(user_id) + '/' + str(plate_id) + '/'
+
+    def get_prev_next_well(arr, f_n):
+        i = arr.index(f_n)
+        prv = arr[i-1]
+        nxt = arr[(i+1)%len(arr)]
+        return (prv, nxt)
 
     def render_view(user_id, plate_id, file_name, soak, form):
-        if request.user.id == int(user_id): #users can only see their own images
-            file_names = [w.file_name for w in p_well_images]
 
-            prefix = 'media/private/private/' + str(user_id) + '/' + str(plate_id) + '/'
+        if request.user.id == int(user_id): #users can only see their own images
             # obj_keys = []
             # for obj in bucket.objects.filter(Prefix=prefix): 
             #     # check that the object key belongs to the requesting user
             #     obj_keys.append(obj.key)
-            obj_keys = [well.key for well in p_well_images]
-            if obj_keys:
-                curr_image_key = prefix + str(p_well_images.filter(file_name=file_name)[0].key)
-                image_url = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, curr_image_key, 4000)
-
-                curr_well_name_idx = file_names.index(file_name)
-                prev_well = file_names[curr_well_name_idx-1]
-                next_well = file_names[(curr_well_name_idx+1)%len(file_names)]
-
             soakXYVol = [soak.soakOffsetX, soak.soakOffsetY, soak.transferVol]
             targetWellXYRadius = [soak.targetWellX, soak.targetWellY, soak.targetWellRadius]
-
             context = {
                 "prev_well":prev_well,
                 "image_url":image_url,
@@ -101,9 +101,17 @@ def s3ImageGUIView(request, *args, **kwargs):
                 'SoakGUIForm':form,
                 "use_soak" : soak.useSoak, 
             }
+            guiData = copy.deepcopy(context)
+            guiData.pop('SoakGUIForm')
+            context["guiData"] = json.dumps(guiData, cls=DjangoJSONEncoder)
             return render(request, "xtal_img/imageGUI.html", context)
         else:
             return HttpResponse("bad request")
+
+    if obj_keys:
+        curr_image_key = prefix + str(p_well_images.filter(file_name=file_name)[0].key)
+        image_url = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, curr_image_key, 4000)
+        (prev_well, next_well) = get_prev_next_well(file_names, file_name)
 
     if request.method == 'POST':
         form = SoakGUIForm(request.POST)
@@ -113,7 +121,15 @@ def s3ImageGUIView(request, *args, **kwargs):
             for k in cleaned_data.keys():
                 setattr(soak, k, cleaned_data.get(k))
             soak.save()
-            # return HttpResponseRedirect('')
+            # go to next well ion successful form submit
+            arr_url = request.get_full_path().split('/')
+            arr_url[len(arr_url) - 2] = next_well
+            new_url = '/'.join(arr_url)
+            if (request.POST.get('nextWellOnSave')):
+                return redirect(new_url)
+            else:
+                return render_view(user_id,plate_id,file_name, soak, form)
+
         return render_view(user_id,plate_id,file_name, soak, form)
     else: #request.method == 'GET'
         return render_view(user_id,plate_id,file_name, soak, form)

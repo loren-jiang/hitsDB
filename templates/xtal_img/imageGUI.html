@@ -3,33 +3,48 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+
+    <script>
+        // Loading the data for use in JS components here
+        (function () {
+            window.guiData = JSON.parse('{{ guiData|safe }}');
+        }());
+    </script>
+
     <link href="{% static 'css/app.css' %}" rel="stylesheet">
     <link href="{% static 'apps/xtal_img/css/imageGUI.css' %}" rel="stylesheet">
     <script src="{% static 'apps/xtal_img/js/imageGUI.js'%}"></script>
     <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+        
+
+
+
     <br>
     <br>
+
+
     <div class="container">
         <div class="row" > 
             <div class="col" >
                 <div id="well-image-container" >
                     <img id="well-image" src={{image_url}}></img>
                     {% comment %} <div id="well-circle">  {% endcomment %}
-                    <div id="well-circle" style="top: {{topWellCircle}}px; left: {{leftWellCircle}}px">
+                    {% comment %} <div id="well-circle" style="display: None; top: {{topWellCircle}}px; left: {{leftWellCircle}}px">
                         <svg class="svg-circle" width="{{sideWellCircle}}" height="{{sideWellCircle}}">
                             <circle class="circle outer-circle" cx="{{targetWellRadius}}" cy="{{targetWellRadius}}" r="{{radWellCircle_}}" stroke="green" stroke-width="4" fill="" fill-opacity="0.0" />
                             <circle class="circle inner-circle" cx="{{targetWellRadius}}" cy="{{targetWellRadius}}" r="1" stroke="green" stroke-width="4" fill="green" fill-opacity="1.0" />
                         </svg>
                         
                      </div>
-                     <div class='{{use_soak|yesno:" ,soak-hidden"}}' id="soak-circle" style="top: {{topSoakCircle}}px; left: {{leftSoakCircle}}px">
+                     <div class='{{use_soak|yesno:" ,soak-hidden"}}' id="soak-circle" style="display: None; top: {{topSoakCircle}}px; left: {{leftSoakCircle}}px">
                         <svg class="svg-circle" width="{{sideSoakCircle}}" height="{{sideSoakCircle}}">
                             <circle class="circle outer-circle" cx="{{transferVol}}" cy="{{transferVol}}" r="{{radSoakCircle_}}" stroke="red" stroke-width="4" fill="" fill-opacity="0.0" />
                             <circle class="circle inner-circle" cx="{{transferVol}}" cy="{{transferVol}}" r="1" stroke="red" stroke-width="4" fill="red" fill-opacity="1.0" />
                         </svg>
                         
-                     </div>
+                     </div> {% endcomment %}
                 </div>
                 
                 <a id="prev-well" class="button" href="/image-gui/{{user_id}}/{{plate_id}}/{{prev_well}}">&lt;&lt; {{prev_well}}</a>
@@ -45,34 +60,31 @@
                         <form id="soak-form" action="" method="post"> 
                             {%csrf_token%} 
                             {% crispy SoakGUIForm %}
-                            <input type="submit" value="Save">
+                            <span>
+                                Next well on save
+                                <input type="checkbox" name="nextWellOnSave" id="nextWellOnSave" Checked><br>  
+                            </span>
+                            
+                            {% comment %} <input type="submit" value="Save"> {% endcomment %}
                         </form>
                         {% comment %} <div id="transferVol-slider"></div> {% endcomment %}
-
-                        {% comment %} <form id="soak-form" action="" method="post">
-                            {% csrf_token %}
-                            soak X coord: <input id="soak-x" type="number" step="0.01" name="soak-x" value="{{soakX}}">
-                            soak Y coord: <input id="soak-y" type="number" step="0.01" name="soak-y" value="{{soakY}}"><br>
-                            transfer volume: <input id="transfer-vol" type="number" step="0.01" name="transfer-vol" value="{{transferVol}}"> <br>
-                            well X coord: <input id="well-x" type="number" step="0.01" name="well-x" value="{{targetWellX}}">
-                            well Y coord: <input id="well-y" type="number" step="0.01" name="well-y" value="{{targetWellY}}"><br>
-                            well radius: <input id="well-r" type="number" step="0.01" name="well-r" value="{{targetWellRadius}}"> <br>
-                            <h5> Use soak: <h5 id="use-soak-indicator"> no </h5> </h5> 
-                            <label class="switch">
-                                <input name="use-soak" id="use-soak" type="checkbox" {% if use_soak %}checked="checked"{% endif %}>
-                                <div class="slider round"></div>
-                            </label>
-                            <br>
-                            <input type="button" onclick="saveCoordinates()" value="Save">
-                        </form> {% endcomment %}
                           
-                        <select id="sel-well" name="sel-name" onchange="goToWell('{{user_id}}','{{plate_id}}')">
+                        <select id="sel-well" name="sel-name">
                             {% for f in file_names %}
-                            <option value="{{f}}"> {{f}} </option>
+                                {% if f == file_name %}
+                                    <option value="{{f}}" selected="selected"> {{f}} </option>
+                                {% else %}
+                                    <option value="{{f}}"> {{f}} </option>
+                                {% endif %}
                             {% endfor %}                 
-                        </select>
+                        </select> <br>
+                          
 
-                        <div id="hotKey-map" >
+                        <div>
+                            <table>
+                                <h5> Hotkey mapping </h5>
+                                <tbody id="hotKey-map" > </tbody>
+                            </table>
                         </div>
                     </div>
                     

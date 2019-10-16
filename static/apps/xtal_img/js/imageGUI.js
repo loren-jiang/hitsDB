@@ -1,5 +1,59 @@
 
 $(function () {
+const DATA = window.guiData;
+console.log(DATA);  
+const pix_to_um = 2.77; //conversion factor 2.77 µm/pixel at full size
+const um_to_pix = 1/pix_to_um;
+
+const scaling_factor = 2.45; //1024 px / 418 px 
+
+const convertPixToUm = (xyr) => xyr.map(e => (e*scaling_factor*pix_to_um).toFixed(2));
+const convertUmToPix = (xyr) => xyr.map(e => (e*um_to_pix/scaling_factor).toFixed(2));
+
+const wCircData = {
+  t_w_c: DATA.topWellCircle*um_to_pix/scaling_factor,
+  l_w_c: DATA.leftWellCircle*um_to_pix/scaling_factor,
+  s_w_c: DATA.sideWellCircle*um_to_pix/scaling_factor,
+  t_w_r: DATA.targetWellRadius*um_to_pix/scaling_factor,
+  r_w_c: DATA.radWellCircle_*um_to_pix/scaling_factor,
+};
+
+const sCircData = {
+  t_s_c: DATA.topSoakCircle*um_to_pix/scaling_factor,
+  l_s_c: DATA.leftSoakCircle*um_to_pix/scaling_factor,
+  s_s_c: DATA.sideSoakCircle*um_to_pix/scaling_factor,
+  t_s_r: DATA.transferVol*um_to_pix/scaling_factor,
+  r_s_c: DATA.radSoakCircle_*um_to_pix/scaling_factor,
+};
+
+  $('#well-image-container').append(
+    `                    <div id="well-circle" style="display: None; top: ${wCircData.t_w_c}px; left: ${wCircData.l_w_c}px">
+    <svg class="svg-circle" width="${wCircData.s_w_c}" height="${wCircData.s_w_c}">
+        <circle class="circle outer-circle" cx="${wCircData.t_w_r}" cy="${wCircData.t_w_r}" r="${wCircData.r_w_c}" stroke="green" stroke-width="4" fill="" fill-opacity="0.0" />
+        <circle class="circle inner-circle" cx="${wCircData.t_w_r}" cy="${wCircData.t_w_r}" r="1" stroke="green" stroke-width="4" fill="green" fill-opacity="1.0" />
+    </svg>
+    
+ </div>
+ <div class="${DATA.use_soak ? '' : 'soak-hidden'}" id="soak-circle" style="display: None; top: ${sCircData.t_s_c}px; left: ${sCircData.l_s_c}px">
+    <svg class="svg-circle" width="${sCircData.s_s_c}" height="${sCircData.s_s_c}">
+        <circle class="circle outer-circle" cx="${sCircData.t_s_r}" cy="${sCircData.t_s_r}" r="${sCircData.r_s_c}" stroke="red" stroke-width="4" fill="" fill-opacity="0.0" />
+        <circle class="circle inner-circle" cx="${sCircData.t_s_r}" cy="${sCircData.t_s_r}" r="1" stroke="red" stroke-width="4" fill="red" fill-opacity="1.0" />
+    </svg>
+    
+ </div>`
+  );
+
+
+  $('#soak-form').submit(function(event)  {
+    const input = $('#nextWellOnSave');
+    const checked = input.is(':checked') ? input.is(':checked') : '';
+    $("<input />").attr("type", "hidden")
+          .attr("name", "nextWellOnSave")
+          .attr("value", checked)
+          .appendTo(this);
+  }
+  );
+
   const getCircleXY = (w) => {
     //t -> top
     //l -> left
@@ -30,11 +84,7 @@ $(function () {
     const pos = circle.position();
     const btm_corner = [pos.left + w + delta, pos.top + w + delta];
     const container_w = container.width(); 
-    console.log(pos);
-    console.log(w);
-    console.log(delta);
-    console.log(btm_corner);
-    console.log(container_w);
+
     if (btm_corner[0] > container_w || btm_corner[1] > container_w) {
       return true;
     }
@@ -43,7 +93,7 @@ $(function () {
     }
   };
 
-  const drawCircleSVG = (circle, w_h, cx_cy_r) => {
+  const resizeCircleSVG = (circle, w_h, cx_cy_r) => {
     const outer_circle = $(".outer-circle", circle);
     const inner_circle = $(".inner-circle", circle);
     circle.attr({
@@ -65,76 +115,92 @@ $(function () {
   const getSoakXYR = () => ( [$('#id_soakOffsetX').val(), $('#id_soakOffsetY').val(), $('#id_transferVol').val()] );
   
   const setSoakXYR = (XYR) => {
-    $('#id_soakOffsetX').val(XYR[0]);
-    $('#id_soakOffsetY').val(XYR[1]);
-    $('#id_transferVol').val(XYR[2]);
+    let xyr = convertPixToUm(XYR);
+    xyr[2] = Math.round( xyr[2] );
+    const targets = [$('#id_soakOffsetX'), $('#id_soakOffsetY'), $('#id_transferVol')];
+    setTargetValues(targets, xyr);
+    // $('#id_soakOffsetX').val(xyr[0]);
+    // $('#id_soakOffsetY').val(xyr[1]);
+    // $('#id_transferVol').val(xyr[2]);
     return true;
   };
   
+  const setWellXYR = (XYR) => {
+    const xyr = convertPixToUm(XYR);
+    const targets = [$('#id_targetWellX'), $('#id_targetWellY'), $('#id_targetWellRadius')];
+    setTargetValues(targets, xyr);
+    return true;
+  };
+
+  const setTargetValues = (targets, values) => {
+    targets[0].val(values[0]);
+    targets[1].val(values[1]);
+    targets[2].val(values[2]);
+    return true;
+  };
+
   const resizeCircle = (circle, tar) => function(event, ui) {
     var outer_circle = $(".outer-circle", circle);
     var inner_circle = $(".inner-circle", circle);
     const w = ui.size.width;
     const h = ui.size.height;
-    // console.log("Comparing w and h");
-    // console.log(w); console.log(h);
-    // console.log(circle.attr('width'));
-    // console.log(circle.attr('height'));
 
-    // const cx = Math.round(w / 2) - 2;
-    // const cy = Math.round(h / 2) - 2;
-    // const r = Math.round(w / 2) - 4;
     const c_x_y = getCircleXY(w);
     const r_ = getStrokeCircleRadius(w, 4);
     const r = getCircleRadius(w);
 
-    drawCircleSVG(circle, [w,h], [c_x_y[0], c_x_y[1], r_]);
+    resizeCircleSVG(circle, [w,h], [c_x_y[0], c_x_y[1], r_]);
 
     const x_y = getCircleXYFromTopLeft(ui.position.left, ui.position.top, w);
-    const xyr = [x_y[0], x_y[1], r];
-
+    const XYR = [x_y[0], x_y[1], r]; // in pixels
+    const xyr = convertPixToUm(XYR);
+    console.log(xyr);
     // const xyr = [ui.position.left + r, ui.position.top + r, r].map( (el)=> Math.round(el));
-    tar[0].val(xyr[0]);
-    tar[1].val(xyr[1]);
-    tar[2].val(xyr[2]);
+    // tar[0].val(xyr[0]);
+    // tar[1].val(xyr[1]);
+    // tar[2].val(xyr[2]);
+    setTargetValues(tar, xyr);
   };
+  
   const hotKeyMap = {
-    '77': {key:'m', desc:'Previous well', func: (slider)=>$('#prev-well')[0].click()},
-    '78': {keyCode:'n', desc:'Next well', func: (slider)=>$('#next-well')[0].click()},
-    '83': {keyCode:'s', desc:'Save', func: (slider)=>$('#soak-form').submit()},
+    '77': {keyCode:'m', desc:'Next well', func: (slider)=>$('#prev-well')[0].click()},
+    '78': {keyCode:'n', desc:'Previous well', func: (slider)=>$('#next-well')[0].click()},
+    '83': {keyCode:'s', desc:'Save', func: (slider)=>$('#soak-form').find('#submit-id-submit').click()},
     '88': {keyCode:'x', desc:'Use Soak', func: (slider)=>{
         const checkbox = $('#id_useSoak');
         checkbox.prop("checked", !checkbox.prop("checked")).change(); }},
 
     '188':{keyCode:',', desc:'Decrease transfer vol', func: (slider)=>{      
           slider.trigger('moveSlider',['-']);
-          const XYR = getSoakXYR().map(e=>parseInt(e));
+          const xyr = getSoakXYR().map(e=>parseInt(e)); //in um
+          const XYR = convertUmToPix(xyr); //in pixels
+
           const circle = $(".svg-circle", $('#soak-circle'));
           const position = circle.parent('#soak-circle').position();
           const r1 = getCircleRadius( circle.attr("width") );
           const r2 = XYR[2];
           const delta = r2 - r1;
-          // console.log(XYR);
-          // console.log(delta);
-          setSoakXYR([XYR[0] + delta, XYR[1] + delta, r2]);
-          drawCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-4] );
 
-          // drawCircleSVG(circle, [w, w], [x_y[0], x_y[1], r] );
+          const new_xyr = convertPixToUm([XYR[0] + delta, XYR[1] + delta, r2]);
+          setSoakXYR(new_xyr);
+
+          resizeCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-4] );
         }},
     '190': {keyCode:'.', desc:'Increase transfer vol', func: (slider)=>{
           slider.trigger('moveSlider',['+']);
-          const XYR = getSoakXYR().map(e=>parseInt(e));
+          const xyr = getSoakXYR().map(e=>parseInt(e)); //in um
+          const XYR = convertUmToPix(xyr); //in pixels
+
           const circle = $(".svg-circle", $('#soak-circle'));
           const position = circle.parent('#soak-circle').position();
           const r1 = getCircleRadius( circle.attr("width") );
           const r2 = XYR[2];
           const delta = r2 - r1;
-          // console.log(XYR);
-          // console.log(delta);
-          setSoakXYR([XYR[0] + delta, XYR[1] + delta, r2]);
-          drawCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-4] );
 
-          // drawCircleSVG(circle, [w, w], [x_y[0], x_y[1], r] );
+          const new_xyr = convertPixToUm([XYR[0] + delta, XYR[1] + delta, r2]);
+          setSoakXYR(new_xyr);
+          
+          resizeCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-4] );
           }},
 
   };
@@ -143,13 +209,8 @@ $(function () {
     //http://gcctech.org/csc/javascript/javascript_keycodes.htm
     e = e || window.event;
     const slider = $('#transferVol-slider');
-
-    
-
     // perform nav function 
     hotKeyMap[e.keyCode].func(slider);
-
-  
   }
   
   // submits soak coordinates form
@@ -169,7 +230,6 @@ $(function () {
       if((this.checked)) {
           $('#use-soak-indicator').html("yes");
           $('#soak-circle').removeClass("soak-hidden");
-
       }
       else {
           $('#use-soak-indicator').html("no");
@@ -177,20 +237,19 @@ $(function () {
       }
   });
 
-  function drawCircle(selector, obj) {
-      var objdiv = $(selector);
-      objdiv.css('top', "200px");
-      objdiv.css('left', "200px");
-
-
-  }
+  $('#sel-well').change(function() {
+    const curr_url = window.location.href;
+    let split_url = curr_url.split('/');
+    split_url[split_url.length - 2] = this.value;
+    let joined_url = split_url.join('/');
+    window.location.href = joined_url;
+  });
 
   // https://stackoverflow.com/questions/53811350/how-to-make-svg-tag-image-resizable-using-jquery-ui
   function makeUICircle(selector, obj, canDrag, canResize) {
-      var height = obj.height();
-      var width = obj.width();
       var objdiv = $(selector);
       var circle = $(".svg-circle", objdiv);
+      objdiv.show();
       const tarX = $(selector==='#well-circle' ? '#id_targetWellX': '#id_soakOffsetX');
       const tarY = $(selector==='#well-circle' ? '#id_targetWellY': '#id_soakOffsetY');
       const tarR = $(selector==='#well-circle' ? '#id_targetWellRadius' : '#id_transferVol');
@@ -198,19 +257,11 @@ $(function () {
         objdiv.draggable({
         containment: obj,
         drag: function(event, ui) {
-          // cleft = ui.position.left * 100 / width;
-          // top = ui.position.top * 100 / height;
-          // console.log(ui.position);
-          // $(event.target).attr('data-offsetx', cleft);
-          // $(event.target).attr('data-offsety', top);
-          // const circle = $(".svg-circle" , $(event.target));
           w = circle.attr('width');
           r = getCircleRadius(w);
-          
-          // r = Math.round(circle.attr('width') / 2)- 4;
           x_y = getCircleXYFromTopLeft(ui.position.left, ui.position.top, w);
-          // console.log(x_y);
-          xyr = [x_y[0], x_y[1], r];
+          XYR = [x_y[0], x_y[1], r]; //in pixels
+          xyr = convertPixToUm(XYR);
           tarX.val(xyr[0]);
           tarY.val(xyr[1]);
           tarR.val(xyr[2]);
@@ -240,14 +291,13 @@ $(function () {
       step: step,
       min: min,
       max: max,
+      disabled:true, 
       value: $(other_sel).val() * step / 25,
       slide: function( event, ui ) {
         const new_val =ui.value / step * 25;
         $(other_sel).val(new_val);
-
         const circle = $(".svg-circle", $('#soak-circle'));
-        // console.log(circleOutsideContainer($('#soak-circle'), $('#well-image-container')));
-        drawCircleSVG(circle, [new_val*2, new_val*2] , [new_val,new_val, new_val-4] );
+        resizeCircleSVG(circle, [new_val*2, new_val*2] , [new_val,new_val, new_val-4] );
       },  
     });
     
@@ -259,9 +309,7 @@ $(function () {
       const currVal = slider.slider("value");      
       const newVal = inc_or_dec==='+' ?  (currVal + step <= max ? currVal + step: max) : (currVal - step >= min ? currVal - step: min);
       const delta = inc_or_dec==='+' ? 25 : -25;
-      if (circleWillBeOutsideContainer($('#soak-circle'), $('#well-image-container'), delta*2)) {
-
-      } else{
+      if (!(circleWillBeOutsideContainer($('#soak-circle'), $('#well-image-container'), delta*2))) {
         $(other_sel).val(newVal / step * 25);
         slider.slider("value", newVal);
       }
@@ -270,61 +318,25 @@ $(function () {
   }
 
   makeSlider("#transferVol-slider",'#id_transferVol');
-  
   makeUICircle('#well-circle', $('#well-image-container'), true, true);
   makeUICircle('#soak-circle', $('#well-image-container'), true, false);
+  // makeUICircle('#well-circle_', $('#well-image-container'), true, true);
+  // makeUICircle('#soak-circle_', $('#well-image-container'), true, false);
 
-  $('#hotKey-map').text(
-    "m -> next well \n n -> prev well \n s -> save \n x -> use soak \n . -> inc soak vol \n  -> dec soak vol"
+  var hotkey_tbody = $('#hotKey-map');
+  var tbody_html = '';
+  for (var i = 0; i < Object.keys(hotKeyMap).length; i++) {
+      var tr = "<tr>";
+      var key = Object.keys(hotKeyMap)[i];
+
+      tr += "<td>" + hotKeyMap[key].keyCode + "</td>" + "<td>" + hotKeyMap[key].desc + "</td></tr>";
+
+      /* We add the table row to the table body */
+      tbody_html += tr;
+  };
+
+  hotkey_tbody.html(
+    tbody_html
   );
 
-  // $('#well-image').click(()=>{
-  //   console.log("clcked");
-  // })
 });
-
-
-
-// $(document).ready(function(){ 
-
-//     // $('#well-image').click(function (ev) {
-//     //     let color;
-//     //     let size;
-//     //     let marker_class;
-//     //     let mouseX = ev.pageX - $(this).offset().left;
-//     //     let mouseY = ev.pageY - $(this).offset().top;
-//     //     if (!($('#soak-or-well')[0].checked)){
-//     //         $('.marker.soak-marker').remove();
-//     //         color = 'red';
-//     //         size = 6;
-//     //         marker_class = 'marker soak-marker';
-//     //         coordX = mouseX/$(this).width();
-//     //         coordY = mouseY/$(this).height();
-//     //         $('#soak-x').val(coordX.toFixed(2));
-//     //         $('#soak-y').val(coordY.toFixed(2));
-//     //     }
-//     //     else {
-//     //         $('.marker.well-marker').remove();
-//     //         color = 'blue';
-//     //         size = 6;
-//     //         marker_class = 'marker well-marker';
-//     //         coordX = mouseX/$(this).width();
-//     //         coordY = mouseY/$(this).height();
-//     //         $('#well-x').val(coordX.toFixed(2));
-//     //         $('#well-y').val(coordY.toFixed(2));
-//     //     }
-
-//     //     $('#well-image-container').append(
-//     //         $('<div class="' + marker_class + '"></div>')
-//     //             .css('position', 'absolute')
-//     //             .css('top', mouseY - size/2 + 'px')
-//     //             .css('left', mouseX - size/2 + 'px')
-//     //             .css('width', size + 'px')
-//     //             .css('height', size + 'px')
-//     //             .css('background-color', color)
-//     //     );
-
-
-//     // });
-
-//  });

@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'storages',
     'crispy_forms',
     'django_filters',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -74,6 +75,11 @@ ROOT_URLCONF = 'hitsDB.urls'
 #     'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
 #     # '...
 # }
+
+GRAPH_MODELS = {
+  'all_applications': True,
+  'group_models': True,
+}
 
 TEMPLATES = [
     {

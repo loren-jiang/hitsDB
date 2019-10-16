@@ -563,7 +563,7 @@ class Soak(models.Model):
     dest = models.OneToOneField(SubWell, on_delete=models.CASCADE,null=True, blank=True, related_name='soak',)
     src = models.OneToOneField(Well, on_delete=models.CASCADE,null=True, blank=True, related_name='soak',)
     transferCompound = models.ForeignKey(Compound, on_delete=models.CASCADE,null=True, blank=True, related_name='soaks',)
-    transferVol = models.PositiveIntegerField(default=25) # in nL
+    transferVol = models.DecimalField(max_digits=10, decimal_places=2, default=25) # in nL
     #relative to center of subwell
     soakOffsetX = models.DecimalField(max_digits=10, decimal_places=2,default=0)
     soakOffsetY = models.DecimalField(max_digits=10, decimal_places=2,default=0)
