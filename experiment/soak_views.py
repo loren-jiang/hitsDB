@@ -1,4 +1,4 @@
-from .views_import import * #common imports for views
+from hitsDB.views_import import * #common imports for views
 from .models import Experiment, Soak
 from .filters import SoakFilter
 from django_tables2 import RequestConfig

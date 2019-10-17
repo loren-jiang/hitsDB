@@ -1,4 +1,4 @@
-from .views_import import * #common imports for views
+from hitsDB.views_import import * #common imports for views
 from .models import Experiment, Plate, Well, SubWell, Soak, Project
 from .tables import SoaksTable, ExperimentsTable, LibrariesTable, ProjectsTable
 from django_tables2 import RequestConfig

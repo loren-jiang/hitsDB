@@ -1,65 +1,73 @@
 
 $(function () {
-const DATA = window.guiData;
-console.log(DATA);  
 
-volToRadius = {
-25:253.321158221462,
-50: 342.37358898872,
-75:	403.046819015466,
-100:	450.639209935708,
-125:	490.459462773306,
-150:	525.043938845047,
-175:	555.822491083968,
-200:	583.688916410496,
-225:	609.243144617917,
-250:	632.909438068353,
-};
+  //DATA which is needed by gui
+  const DATA = window.guiData;
+  console.log(DATA);  
 
-const pix_to_um = 2.77; //conversion factor 2.77 µm/pixel at full size
-const um_to_pix = 1/pix_to_um;
-
-const scaling_factor = 2.45; //1024 px / 418 px 
-
-const roundNPlaces = (num, n) => Math.round(num * Math.pow(10, n)) / Math.pow(10, n);
-const convertPixToUm = (xyr) => xyr.map(e => roundNPlaces(e*scaling_factor*pix_to_um, 2));
-const convertUmToPix = (xyr) => xyr.map(e => roundNPlaces(e*um_to_pix/scaling_factor, 2));
+  const volToRadius = (x) => {
+    const coeff = [
+      6.1417074854930405e1, 
+      1.0073950737908067e1,
+      -1.2531131468153611e-1,
+      9.1304741996519126e-4,
+      -3.2477314052641414e-6,
+      4.4142610214669469e-9
+    ];
+    return coeff.reduce((sum, e, i) =>  sum + e*Math.pow(x, i));
+  };
 
 
-// const volumeToRadius = (vol) => {
+  //GLOBAL CONSTANTS 
+  const PIX_TO_UM = 2.77; //conversion factor 2.77 µm/pixel at full size
+  const UM_TO_PIX = 1/PIX_TO_UM;
+  const STROKE_WIDTH = 4; // pixels
+  const IMG_SCALE = 2.45; //1024 px / 418 px 
 
-// };
+  const SOAK_INPUTS = ['#id_soakOffsetX','#id_soakOffsetY', '#id_transferVol'];
+  const WELL_INPUTS = ['#id_targetWellX','#id_targetWellY', '#id_targetWellRadius'];
+  
+  const IMG_CONTAINER_DIM = [$('#well-image-container').width(), $('#well-image-container').height()];
+  const IMG_DIM = [$('#well-image').width(), $('#well-image').height()];
+
+  const roundNPlaces = (num, n) => Math.round(num * Math.pow(10, n)) / Math.pow(10, n);
+  const convertPixToUm = (xyr) => xyr.map(e => roundNPlaces(e*IMG_SCALE*PIX_TO_UM, 2));
+  const convertUmToPix = (xyr) => xyr.map(e => roundNPlaces(e*UM_TO_PIX/IMG_SCALE, 2));
+
+  const getJQuery = (selectors) => selectors.map(s => $(s));
+
 const wCircData = {
-  t_w_c: DATA.topWellCircle*um_to_pix/scaling_factor,
-  l_w_c: DATA.leftWellCircle*um_to_pix/scaling_factor,
-  s_w_c: DATA.sideWellCircle*um_to_pix/scaling_factor,
-  t_w_r: DATA.targetWellRadius*um_to_pix/scaling_factor,
-  r_w_c: DATA.radWellCircle_*um_to_pix/scaling_factor,
+  t_w_c: DATA.topWellCircle*UM_TO_PIX/IMG_SCALE,
+  l_w_c: DATA.leftWellCircle*UM_TO_PIX/IMG_SCALE,
+  s_w_c: DATA.sideWellCircle*UM_TO_PIX/IMG_SCALE,
+  t_w_r: DATA.targetWellRadius*UM_TO_PIX/IMG_SCALE,
+  r_w_c: DATA.radWellCircle_*UM_TO_PIX/IMG_SCALE - STROKE_WIDTH,
 };
 
 const sCircData = {
-  t_s_c: DATA.topSoakCircle*um_to_pix/scaling_factor,
-  l_s_c: DATA.leftSoakCircle*um_to_pix/scaling_factor,
-  s_s_c: DATA.sideSoakCircle*um_to_pix/scaling_factor,
-  t_s_r: DATA.transferVol*um_to_pix/scaling_factor,
-  r_s_c: DATA.radSoakCircle_*um_to_pix/scaling_factor,
+  t_s_c: DATA.topSoakCircle*UM_TO_PIX/IMG_SCALE,
+  l_s_c: DATA.leftSoakCircle*UM_TO_PIX/IMG_SCALE,
+  s_s_c: DATA.sideSoakCircle*UM_TO_PIX/IMG_SCALE,
+  t_s_r: DATA.transferVol*UM_TO_PIX/IMG_SCALE,
+  r_s_c: DATA.radSoakCircle_*UM_TO_PIX/IMG_SCALE - STROKE_WIDTH,
 };
 
   $('#well-image-container').append(
-    `                    <div id="well-circle" style="display: None; top: ${wCircData.t_w_c}px; left: ${wCircData.l_w_c}px">
-    <svg class="svg-circle" width="${wCircData.s_w_c}" height="${wCircData.s_w_c}">
-        <circle class="circle outer-circle" cx="${wCircData.t_w_r}" cy="${wCircData.t_w_r}" r="${wCircData.r_w_c}" stroke="green" stroke-width="4" fill="" fill-opacity="0.0" />
-        <circle class="circle inner-circle" cx="${wCircData.t_w_r}" cy="${wCircData.t_w_r}" r="1" stroke="green" stroke-width="4" fill="green" fill-opacity="1.0" />
-    </svg>
-    
- </div>
- <div class="${DATA.use_soak ? '' : 'soak-hidden'}" id="soak-circle" style="display: None; top: ${sCircData.t_s_c}px; left: ${sCircData.l_s_c}px">
-    <svg class="svg-circle" width="${sCircData.s_s_c}" height="${sCircData.s_s_c}">
-        <circle class="circle outer-circle" cx="${sCircData.t_s_r}" cy="${sCircData.t_s_r}" r="${sCircData.r_s_c}" stroke="red" stroke-width="4" fill="" fill-opacity="0.0" />
-        <circle class="circle inner-circle" cx="${sCircData.t_s_r}" cy="${sCircData.t_s_r}" r="1" stroke="red" stroke-width="4" fill="red" fill-opacity="1.0" />
-    </svg>
-    
- </div>`
+    `
+    <div id="well-circle" style="display: None; top: ${wCircData.t_w_c}px; left: ${wCircData.l_w_c}px">
+      <svg class="svg-circle" width="${wCircData.s_w_c}" height="${wCircData.s_w_c}">
+          <circle class="circle outer-circle" cx="${wCircData.t_w_r}" cy="${wCircData.t_w_r}" r="${wCircData.r_w_c}" stroke="green" stroke-width="${STROKE_WIDTH}" fill="" fill-opacity="0.0" />
+          <circle class="circle inner-circle" cx="${wCircData.t_w_r}" cy="${wCircData.t_w_r}" r="1" stroke="green" stroke-width="${STROKE_WIDTH}" fill="green" fill-opacity="1.0" />
+      </svg>
+      
+    </div>
+    <div class="${DATA.use_soak ? '' : 'soak-hidden'}" id="soak-circle" style="display: None; top: ${sCircData.t_s_c}px; left: ${sCircData.l_s_c}px">
+      <svg class="svg-circle" width="${sCircData.s_s_c}" height="${sCircData.s_s_c}">
+          <circle class="circle outer-circle" cx="${sCircData.t_s_r}" cy="${sCircData.t_s_r}" r="${sCircData.r_s_c}" stroke="red" stroke-width="${STROKE_WIDTH}" fill="" fill-opacity="0.0" />
+          <circle class="circle inner-circle" cx="${sCircData.t_s_r}" cy="${sCircData.t_s_r}" r="1" stroke="red" stroke-width="${STROKE_WIDTH}" fill="red" fill-opacity="1.0" />
+      </svg>
+    </div>
+    `
   );
 
 
@@ -131,77 +139,84 @@ const sCircData = {
     });
   };
 
+
   const getSoakXYR = () => {
-    return [$('#id_soakOffsetX').val(), $('#id_soakOffsetY').val(), $('#id_transferVol').val()].map(e=>parseFloat(e));
+    return getJQuery(SOAK_INPUTS).map(e=>parseFloat(e.val()));
   };
     
     
   
   const setSoakXYR = (XYR) => {
+    /**
+     * sets soak input fields
+     * `XYR`, array of x-coord, y-coord, and radius in um to be set
+    */
     let xyr = convertPixToUm(XYR);
     xyr[2] = Math.round( xyr[2] );
-    const targets = [$('#id_soakOffsetX'), $('#id_soakOffsetY'), $('#id_transferVol')];
-    setTargetValues(targets, xyr);
-    // $('#id_soakOffsetX').val(xyr[0]);
-    // $('#id_soakOffsetY').val(xyr[1]);
-    // $('#id_transferVol').val(xyr[2]);
+    setTargetValues(getJQuery(SOAK_INPUTS), xyr);
     return true;
   };
   
   const setWellXYR = (XYR) => {
-    const xyr = convertPixToUm(XYR);
-    const targets = [$('#id_targetWellX'), $('#id_targetWellY'), $('#id_targetWellRadius')];
-    setTargetValues(targets, xyr);
+    /**
+     * sets well input fields
+     * `XYR`, array of x-coord, y-coord, and radius in um to be set
+    */
+    setTargetValues(getJQuery(WELL_INPUTS), convertPixToUm(XYR));
     return true;
   };
 
   const setTargetValues = (targets, values) => {
-    targets[0].val(values[0]);
-    targets[1].val(values[1]);
-    targets[2].val(values[2]);
-    return true;
+    /**
+     * returns True if values set, else if not
+     * `targets`, array of jQiery objects; should be DOM input fields of the soak or well
+     * `values`, array of values to be set 
+    */
+    try {
+      targets[0].val(values[0]);
+      targets[1].val(values[1]);
+      targets[2].val(values[2]);
+      return true;
+    }
+    catch(err) {
+      return false;
+    }    
   };
 
   const resizeCircle = (circle, tar) => function(event, ui) {
     var outer_circle = $(".outer-circle", circle);
     var inner_circle = $(".inner-circle", circle);
-    const w = ui.size.width;
-    const h = ui.size.height;
+    const W = ui.size.width;
+    const H = ui.size.height;
 
-    const c_x_y = getCircleXY(w);
-    const r_ = getStrokeCircleRadius(w, 4);
-    const r = getCircleRadius(w);
+    const C_X_Y = getCircleXY(W);
+    const R_ = getStrokeCircleRadius(W, STROKE_WIDTH);
+    const R = getCircleRadius(W);
 
-    resizeCircleSVG(circle, [w,h], [c_x_y[0], c_x_y[1], r_]);
+    resizeCircleSVG(circle, [W,H], [C_X_Y[0], C_X_Y[1], R_]);
 
-    const x_y = getCircleXYFromTopLeft(ui.position.left, ui.position.top, w);
-    const XYR = [x_y[0], x_y[1], r]; // in pixels
+    const X_Y = getCircleXYFromTopLeft(ui.position.left, ui.position.top, W);
+    const XYR = [X_Y[0], X_Y[1], R]; // in pixels
     const xyr = convertPixToUm(XYR);
-    console.log(xyr);
-    // const xyr = [ui.position.left + r, ui.position.top + r, r].map( (el)=> Math.round(el));
-    // tar[0].val(xyr[0]);
-    // tar[1].val(xyr[1]);
-    // tar[2].val(xyr[2]);
     setTargetValues(tar, xyr);
   };
 
   const onSliderTrigger = (slider, add_or_minus)=>{      
     slider.trigger('moveSlider',[add_or_minus]);
     const xyr = getSoakXYR(); //in um
+    xyr[2] = volToRadius(xyr[2]);
     const XYR = convertUmToPix(xyr); //in pixels
     const circle = $(".svg-circle", $('#soak-circle'));
     const position = circle.parent('#soak-circle').position();
     const R1 = getCircleRadius( circle.attr("width") );
     const R2 = XYR[2];
-    console.log(R1);
-    console.log(R2);
+  
     const delta = R2 - R1;
-    console.log(XYR);
-    console.log(delta);
+
     // const new_xyr = convertPixToUm([XYR[0] + delta, XYR[1] + delta, R2]);
     
     setSoakXYR([XYR[0] + delta, XYR[1] + delta, R2]);
-    resizeCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-4] );
+    resizeCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-STROKE_WIDTH] );
   };
 
   const hotKeyMap = {
@@ -221,7 +236,10 @@ const sCircData = {
     e = e || window.event;
     const slider = $('#transferVol-slider');
     // perform nav function 
-    hotKeyMap[e.keyCode].func(slider);
+    if (hotKeyMap[e.keyCode]) {
+      hotKeyMap[e.keyCode].func(slider);
+    }
+      
   }
   
   // submits soak coordinates form
@@ -261,21 +279,18 @@ const sCircData = {
       var objdiv = $(selector);
       var circle = $(".svg-circle", objdiv);
       objdiv.show();
-      const tarX = $(selector==='#well-circle' ? '#id_targetWellX': '#id_soakOffsetX');
-      const tarY = $(selector==='#well-circle' ? '#id_targetWellY': '#id_soakOffsetY');
-      const tarR = $(selector==='#well-circle' ? '#id_targetWellRadius' : '#id_transferVol');
+      const targets = selector==='#well-circle' ? getJQuery(WELL_INPUTS) : getJQuery(SOAK_INPUTS);
       if (canDrag) {
         objdiv.draggable({
         containment: obj,
         drag: function(event, ui) {
-          w = circle.attr('width');
-          r = getCircleRadius(w);
-          x_y = getCircleXYFromTopLeft(ui.position.left, ui.position.top, w);
-          XYR = [x_y[0], x_y[1], r]; //in pixels
+          W = circle.attr('width');
+          R = getCircleRadius(W);
+          R_ = getStrokeCircleRadius(W, STROKE_WIDTH);
+          X_Y = getCircleXYFromTopLeft(ui.position.left, ui.position.top, W); //in pixels
+          XYR = [X_Y[0], X_Y[1], R]; //in pixels
           xyr = convertPixToUm(XYR);
-          tarX.val(xyr[0]);
-          tarY.val(xyr[1]);
-          tarR.val(xyr[2]);
+          setTargetValues(targets, xyr);
         }
       });
     }
@@ -287,7 +302,7 @@ const sCircData = {
         minWidth: 40,
         minHeight: 40,
         // ghost: true,
-        resize: resizeCircle(circle, [tarX, tarY, tarR]),
+        resize: resizeCircle(circle, targets),
       });
     }
       
@@ -308,7 +323,7 @@ const sCircData = {
         const new_val =ui.value / step * 25;
         $(other_sel).val(new_val);
         const circle = $(".svg-circle", $('#soak-circle'));
-        resizeCircleSVG(circle, [new_val*2, new_val*2] , [new_val, new_val, new_val-4] );
+        resizeCircleSVG(circle, [new_val*2, new_val*2] , [new_val, new_val, new_val-STROKE_WIDTH] );
       },  
     });
     
@@ -321,7 +336,7 @@ const sCircData = {
       const newVal = inc_or_dec==='+' ?  (currVal + step <= max ? currVal + step: max) : (currVal - step >= min ? currVal - step: min);
       const delta = inc_or_dec==='+' ? 25 : -25;
       if (!(circleWillBeOutsideContainer($('#soak-circle'), $('#well-image-container'), delta*2))) {
-        $(other_sel).val(newVal / step * 25);
+        $(other_sel).val(newVal);
         slider.slider("value", newVal);
       }
       

@@ -9,21 +9,26 @@
 <script src="{% static 'apps/experiment/js/experiment.js' %}"></script>
 <script src="{% static 'hitsDB/js/multiform.js' %}"></script>
 
-<div id="exp-container" class="container multiform">
-    <div class="row">
+<div id="exp-container" class="container-fluid multiform">
+    <div class="row justify-content-center">
 
-        <div class="col-3">
+        <div class="col-2">
         <div id="exp-info" class="jumbotron">
             <h3> {{ exp.name }}</h3>
             <p> Created: {{ exp.dateTime }}</p>
-            <p> Protein: {{ exp.protein }}</p>
+            {% comment %} <p> Protein: {{ exp.protein }}</p>
             <p> Description: {{ exp.description }}</p>
             <p> Library: 
                 {% if exp.library %}
                 <a href="{% url 'lib' exp.library.id %}">{{ exp.library }}</a> 
                 {% endif %}
-            </p> 
-            <a id='delete-exp' class='btn btn-danger' role='button' href="{% url 'delete_exp' exp.pk %}"> Delete experiment </a> 
+            </p>  {% endcomment %}
+            <form id="exp-form" method="post">{% csrf_token %}
+                {{ forms.expform|crispy}}
+                <button type="submit" class="btn btn-info">Save</button>   
+                <a id='delete-exp' class='btn btn-danger' role='button' href="{% url 'delete_exp' exp.pk %}"> Delete </a>                          
+            </form>
+            
         </div>
 
         <div id="exp-plates">
@@ -32,9 +37,9 @@
         </div>  
         </div>
 
-        <div class="col-9">
+        <div class="col-8">
             <div class="row">
-                <div class="col-6">
+                {% comment %} <div class="col">
                     <div class="jumbotron">
                         <h3>Step 1: Experiment setup</h3>
                         <form id="exp-form" method="post">{% csrf_token %}
@@ -42,8 +47,8 @@
                             <button type="submit" class="btn btn-info">Save</button>                            
                         </form>
                     </div>
-                </div>
-                <div class="col-6">
+                </div> {% endcomment %}
+                <div class="col">
                     <div class="jumbotron">
                         <h3>Step 2: Plate setup</h3>
                         {% if current_step > 1 %}
@@ -60,7 +65,7 @@
                     </div>
                 </div> 
 
-                <div class="col-6">
+                <div class="col">
                     <div class="jumbotron">
                         <h3>Step 3: Soak setup</h3>
                         {% if current_step > 2 %}
@@ -72,14 +77,13 @@
                                 <a role="button" class="btn btn-info" href="{% url 'exp_soaks' exp.pk %}">View soaks</a>
                                 {% endif %}
                             </span>
-                            
                         </form> 
                         {% else %}
                         <p> Please complete Step 2.</p>
                         {% endif %}
                     </div>
                 </div>
-                <div class="col-6">
+                <div class="col">
                     <div class="jumbotron">
                         <h3>Step 4: Plate setup</h3>
                         {% if current_step > 3 %}

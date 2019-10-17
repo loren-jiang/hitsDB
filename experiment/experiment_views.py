@@ -1,4 +1,4 @@
-from .views_import import * #common imports for views
+from hitsDB.views_import import * #common imports for views
 from .models import Experiment, Plate, Well, SubWell, Soak, Project
 from .tables import SoaksTable, ExperimentsTable
 from django_tables2 import RequestConfig
@@ -10,8 +10,8 @@ from forms_custom.multiforms import MultiFormsView
 from django.db.models import Count, F, Value
 from .decorators import is_users_experiment 
 
-class MultipleFormsDemoView(MultiFormsView):
-    template_name = "experiment/exp_templates/cbv_multiple_forms.html"
+class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
+    template_name = "experiment/exp_templates/exp_main.html"
     form_classes = {
                     'expform': ExperimentAsMultiForm,
                     'platesform': PlatesSetupMultiForm,
@@ -115,26 +115,26 @@ def experiment(request, pk_exp):
     pk = pk_exp
     experiment = Experiment.objects.select_related(
         'owner').get(id=pk)
-    if experiment_is_users(request.user, experiment):
-        soaks_table = experiment.getSoaksTable(exc=[])
-        RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
-        src_plates_table = experiment.getSrcPlatesTable(exc=[])
-        dest_plates_table = experiment.getDestPlatesTable(exc=[])
-        
-        # formattedSoaks = experiment.formattedSoaks(soaks_qs) #played around with caching
-        context = {
-            'show_path' : True,
-            'pkUser': request.user.id,
-            'experiment': experiment,
-            'pkOwner': experiment.owner.id,
-            'src_plates_table': src_plates_table,
-            'dest_plates_table': dest_plates_table,
-            # 'plates' : formattedSoaks, #rendering the plate grids takes too long and isn't useful; maybe we should just list plates?
-            'soaks_table': soaks_table,
-        }
-        return render(request,'experiment.html', context)
-    else:
-        return HttpResponse("Don't have permission") # should create a request denied template later!
+    # if experiment_is_users(request.user, experiment):
+    soaks_table = experiment.getSoaksTable(exc=[])
+    RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
+    src_plates_table = experiment.getSrcPlatesTable(exc=[])
+    dest_plates_table = experiment.getDestPlatesTable(exc=[])
+    
+    # formattedSoaks = experiment.formattedSoaks(soaks_qs) #played around with caching
+    context = {
+        'show_path' : True,
+        'pkUser': request.user.id,
+        'experiment': experiment,
+        'pkOwner': experiment.owner.id,
+        'src_plates_table': src_plates_table,
+        'dest_plates_table': dest_plates_table,
+        # 'plates' : formattedSoaks, #rendering the plate grids takes too long and isn't useful; maybe we should just list plates?
+        'soaks_table': soaks_table,
+    }
+    return render(request,'experiment.html', context)
+    # else:
+    #     return HttpResponse("Don't have permission") # should create a request denied template later!
 
 #views experiment soaks as table
 @is_users_experiment

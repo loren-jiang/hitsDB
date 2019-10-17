@@ -75,13 +75,16 @@ class Experiment(models.Model):
 
     @property
     def getCurrentStep(self):
-        if self.soaks_valid: #might want to more robust check (e.g. # soaks = # compounds in library)
+        conds = [bool(self), self.library_valid, self.plates_valid, self.soaks_valid]
+        if any(conds[0:4]): #might want to more robust check (e.g. # soaks = # compounds in library)
             return 4
-        if self.plates_valid:
+        if any(conds[0:3]):
             return 3
-        if self.library_valid:
+        if any(conds[0:2]):
             return 2
-        return 1
+        if any(conds[0:1]):
+            return 1
+        return 0
 
     @property
     def getTransferPlatePairs(self):

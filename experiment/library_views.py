@@ -1,4 +1,4 @@
-from .views_import import * #common imports for views
+from hitsDB.views_import import * #common imports for views
 from django_tables2 import RequestConfig
 from import_ZINC.models import Library, Compound
 from .tables import LibrariesTable, CompoundsTable, ModalEditLibrariesTable, ExperimentsTable

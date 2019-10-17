@@ -1,4 +1,4 @@
-from .views_import import * #common imports for views
+from hitsDB.views_import import * #common imports for views
 from experiment.tables import get_user_projects, get_user_libraries, get_user_recent_exps
 # from django.views.generic.detail import DetailView
 from django.views.generic.edit import UpdateView

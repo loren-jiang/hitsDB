@@ -14,15 +14,21 @@ from django.urls import reverse_lazy
 from django.conf import settings 
 import os
 from experiment.models import Plate
+from experiment.decorators import is_dest_plate
+from hitsDB.views_import import *
 
 #loads well images with corresponding model instance and associated plate id and user id 
 class WellImagesUploadView(FormView):
     form_class = ImagesFieldForm
     template_name = './s3/private_images_upload.html'  # Replace with your template.
-    success_url = '/'  # Replace with your URL or reverse().
+    # success_url = '/'  # Replace with your URL or reverse().
     
+    @method_decorator(is_dest_plate)
+    def dispatch(self, *args, **kwargs):
+        return super(WellImagesUploadView, self).dispatch(*args, **kwargs)
+
     def get(self, request, *args, **kwargs):
-        p = get_object_or_404(Plate, id=kwargs['plate_pk'])
+        p = get_object_or_404(Plate, id=kwargs['pk_plate'])
         well_images = p.well_images.filter()
         form = self.get_form(self.get_form_class())
         context = {
@@ -33,7 +39,7 @@ class WellImagesUploadView(FormView):
         return render(request, './s3/private_images_upload.html', context)
 
     def post(self, request, *args, **kwargs):
-        p = get_object_or_404(Plate, id=kwargs['plate_pk'])
+        p = get_object_or_404(Plate, id=kwargs['pk_plate'])
         if p.experiment.owner == request.user: #only the appropriate user can upload images 
             p.well_images.filter().delete() #delete well images associated with plate before uploading new ones
             form_class = self.get_form_class()
