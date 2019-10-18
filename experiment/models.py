@@ -68,6 +68,7 @@ class Experiment(models.Model):
         models.PositiveSmallIntegerField(blank=True, null=True, validators=[MaxValueValidator(3), MinValueValidator(1)]),
         size=3, default=defaultSubwellLocations
         )
+    plateData = JSONField(default=dict)
 
     class Meta:
         get_latest_by="dateTime"
@@ -202,31 +203,49 @@ class Experiment(models.Model):
     #create the source plate and dest plates given the library size
     # num_subwells should be lte to dest_plate_type.numSubwells
     def generateSrcDestPlates(self):
-        # exp_compounds = self.library.compounds.order_by('id')
-        self.plates.all().delete() #start from fresh 
-        src_plate_type = self.srcPlateType
-        dest_plate_type = self.destPlateType
-        num_compounds = self.libCompounds.count()
-        num_subwells = len(self.subwell_locations)
-        num_src_wells = src_plate_type.numCols * src_plate_type.numRows
-        num_dest_wells = dest_plate_type.numCols * dest_plate_type.numRows
-        num_src_plates = ceiling_div(num_compounds,num_src_wells)
-        num_dest_plates = ceiling_div(num_compounds,num_dest_wells * num_subwells)
-        src_plates_to_create = [None]*num_src_plates
-        dest_plates_to_create = [None]*num_dest_plates
-        # loop through and create the appropriate number of plates 
-        for i in range(num_src_plates):
-            src_plates_to_create[i] = Plate(name='src_'+str(i+1),plateType=src_plate_type, 
-                experiment_id=self.id, isSource=True, plateIdxExp=i+1)
-            # src_plates_to_create[i].save()
-        for i in range(num_dest_plates):
-            dest_plates_to_create[i] = Plate(name='dest_'+str(i+1),plateType=dest_plate_type, 
-                experiment_id=self.id,isSource=False, plateIdxExp=i+1)
-            # dest_plates_to_create[i].save()
-        plates = Plate.objects.bulk_create(src_plates_to_create + dest_plates_to_create) #bulk create Plate objects
-        for p in plates:
-            p.createPlateWells()
-        return 
+        try:
+            # exp_compounds = self.library.compounds.order_by('id')
+            self.plates.all().delete() #start from fresh 
+            src_plate_type = self.srcPlateType
+            dest_plate_type = self.destPlateType
+            num_compounds = self.libCompounds.count()
+            num_subwells = len(self.subwell_locations)
+            num_src_wells = src_plate_type.numCols * src_plate_type.numRows
+            num_dest_wells = dest_plate_type.numCols * dest_plate_type.numRows
+            num_src_plates = ceiling_div(num_compounds,num_src_wells)
+            num_dest_plates = ceiling_div(num_compounds,num_dest_wells * num_subwells)
+            src_plates_to_create = [None]*num_src_plates
+            dest_plates_to_create = [None]*num_dest_plates
+            # loop through and create the appropriate number of plates 
+            for i in range(num_src_plates):
+                src_plates_to_create[i] = Plate(name='src_'+str(i+1),plateType=src_plate_type, 
+                    experiment_id=self.id, isSource=True, plateIdxExp=i+1)
+                # src_plates_to_create[i].save()
+            for i in range(num_dest_plates):
+                dest_plates_to_create[i] = Plate(name='dest_'+str(i+1),plateType=dest_plate_type, 
+                    experiment_id=self.id,isSource=False, plateIdxExp=i+1)
+                # dest_plates_to_create[i].save()
+            plates = Plate.objects.bulk_create(src_plates_to_create + dest_plates_to_create) #bulk create Plate objects
+            for p in plates:
+                p.createPlateWells() # bulk_create doesn't send signals so need to call explicitly
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+    def makePlates(self, num_plates, plate_type):
+        try:
+            plates_to_create = [None] * num_plates
+            for i in range(num_plates):
+                plates_to_create[i] = Plate(plateType=plate_type, 
+                    experiment_id=self.id,isSource=plate_type.isSource, plateIdxExp=i+1)
+            plates = Plate.objects.bulk_create(plates_to_create)
+            for p in plates:
+                p.createPlateWells()
+            return plates
+        except Exception as e:
+            print(e)
+            return False
 
     def formattedSoaks(self, qs_soaks,
                     s_num_rows=16, s_num_cols = 24, 
@@ -322,31 +341,14 @@ class CrystalScreen(models.Model):
         return self.name
 
 class Plate(models.Model):
-    name = models.CharField(max_length=30, default="plate_name") #do I need unique?
-    # formatType = models.CharField(max_length=100, null=True, blank=True)
-    plateType = models.ForeignKey('PlateType', related_name='plates', on_delete=models.SET_NULL, null=True, blank=True)
-    # numCols = models.PositiveIntegerField(default=12)
-    # numRows = models.PositiveIntegerField(default=8)
-    # numSubwells = models.PositiveIntegerField(default=0) 
-    # x and y synonmous with row and col respectively
-    # xPitch = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) # pitch in x direction of wells [mm]
-    # yPitch = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) # pitch in y direction of wells [mm]
-    # plateHeight = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) # height of plate
-    # plateWidth = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) #width of plate
-    # plateLength = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
-    # wellDepth = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
-    # xOffsetA1 = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) #x postion of center of well A1 relative to top left corner of plate
-    # yOffsetA1 = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True) #y postion of center of well A1 relative to top left corner of plate
-    # experiments can have multiple plates, but plates can only have one experiment
+    plateType = models.ForeignKey('PlateType', related_name='plates', on_delete=models.SET_NULL, null=True)
     experiment = models.ForeignKey(Experiment, related_name='plates', on_delete=models.CASCADE, null=True, blank=True)
     isSource = models.BooleanField(default=False) #is it a source plate? if not, it's a dest plate
-    # isTemplate = models.BooleanField(default=False,null=True, blank=True) #is it a template we want build plates from?
-    # isCustom = models.BooleanField(default=False, null=True, blank=True) #is it a custom plate that the user modified (e.g. custom well offsets)
-    # index of plate in certain experiment (needed for echo instruction generation)
     plateIdxExp = models.PositiveIntegerField(default=1,null=True, blank=True)
     dataSheetURL = models.URLField(max_length=200, null=True, blank=True)
     echoCompatible = models.BooleanField(default=False, null=True, blank=True)
-    
+    rockMakerId = models.PositiveIntegerField(unique=True, null=True, blank=True)
+
     def get_absolute_url(self):
         return "/plate/%i/" % self.id
         
@@ -361,35 +363,14 @@ class Plate(models.Model):
     @property 
     def numResWells(self):
         if self.plateType:
-            return self.numCols * self.numRows
-
-    @property
-    def wellDict(self):
-        numWells = self.numResWells
-        # letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
-        #     'L', 'M', 'N','O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
-        letters = gen_circ_list(list(string.ascii_uppercase), numWells)
-        wellNames = [None] *  numWells
-        wellIdx = 0
-        for rowIdx in range(self.numRows):
-          for colIdx in range(self.numCols):
-            let = letters[rowIdx]
-            num = str(colIdx + 1)
-            if (len(num)==1):
-                num = "0" + num
-            s = let + num
-            wellNames[wellIdx] = s
-            wellIdx += 1
-        return dict(zip(wellNames, range(numWells))) 
-
-    def __str__(self):
-        return self.name
+            return self.plateType.numCols * self.plateType.numRows
 
     class Meta:
         ordering = ('id',)
-    
+        unique_together = ('plateIdxExp', 'isSource', 'experiment')
+
+    # creates appropriate wells for plate instance
     def createPlateWells(self):
-        # creates appropriate wells for plate instance
         wells = None
         plateType = self.plateType
         wellDict = plateType.wellDict
@@ -401,7 +382,6 @@ class Plate(models.Model):
                 wellRowIdx = well_props['wellRowIdx']
                 wellColIdx = well_props['wellColIdx']
 
-                # self.wells.create(name=key, maxResVol=130, minResVol=10)
                 well_lst[wellIdx] = Well(name=key, wellIdx=wellIdx, wellRowIdx=wellRowIdx, wellColIdx=wellColIdx,
                     maxResVol=130, minResVol=10, plate_id=self.pk)
 
@@ -424,10 +404,18 @@ def createPlateWells(sender, instance, created, **kwargs):
 
 class PlateType(models.Model):
     name = models.CharField(max_length=30, default="",unique=True) 
-    numCols = models.PositiveIntegerField(default=12)
-    numRows = models.PositiveIntegerField(default=8)
+    numCols = models.PositiveIntegerField(default=12, 
+        validators=[
+            MaxValueValidator(99),
+            MinValueValidator(12)
+        ])
+    numRows = models.PositiveIntegerField(default=8, 
+        validators=[
+            MaxValueValidator(99),
+            MinValueValidator(8)
+        ])
     isSource = models.BooleanField(default=False) #is it a source plate? if not, it's a dest plate
-    numSubwells = models.PositiveIntegerField(default=0) 
+    numSubwells = models.PositiveIntegerField(default=0) # num subwells per well
     # x and y synonmous with row and col respectively
     xPitch = models.DecimalField(max_digits=10, decimal_places=3) # pitch in x direction of wells [mm]
     yPitch = models.DecimalField(max_digits=10, decimal_places=3) # pitch in y direction of wells [mm]
@@ -451,31 +439,14 @@ class PlateType(models.Model):
     @property 
     def numResWells(self):
         return self.numCols * self.numRows
+    
+    @property
+    def numSubwellsTotal(self):
+        return self.numResWells * self.numSubwells
 
     @property
     def wellDict(self):
-        numWells = self.numResWells
-        # letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
-        #     'L', 'M', 'N','O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
-        letters = gen_circ_list(list(string.ascii_uppercase), numWells)
-        wellNames = [None] *  numWells
-        wellProps = [None] * numWells
-        wellIdx = 0
-        for rowIdx in range(self.numRows):
-          for colIdx in range(self.numCols):
-            let = letters[rowIdx]
-            num = str(colIdx + 1)
-            if (len(num)==1):
-                num = "0" + num
-            s = let + num
-            wellNames[wellIdx] = s
-            wellProps[wellIdx] = {
-                'wellIdx':wellIdx,
-                'wellRowIdx':rowIdx,
-                'wellColIdx':colIdx,
-            }
-            wellIdx += 1
-        return dict(zip(wellNames, wellProps))
+        return createWellDict(self.numRows, self.numCols)
 
     def __str__(self):
         return self.name
@@ -534,13 +505,14 @@ class Well(models.Model):
 
     @property
     def numSubwells(self):
-        return len(self.subwells)
+        return self.subwells.count()
 
     def __str__(self):
         return "plate_" + str(self.plate.id) + "_" + self.name
 
     class Meta:
         ordering = ('wellIdx',)
+        unique_together = ('plate', 'name',) #ensure that each plate has unique well names
 
 class SubWell(models.Model):
     #relative to A1 well center
@@ -552,13 +524,15 @@ class SubWell(models.Model):
     parentWell = models.ForeignKey(Well,on_delete=models.CASCADE, related_name='subwells',null=True, blank=True)
     compounds = models.ManyToManyField(Compound, related_name='subwells', blank=True)
     protein = models.CharField(max_length=100, default="")
-    hasCrystal = models.BooleanField(default=False)
+    hasCrystal = models.BooleanField(default=True)
+    willSoak = models.BooleanField(default=True)
 
     def __str__(self):
         return repr(self.parentWell) + "Subwell_" + str(self.idx)
 
     class Meta:
         ordering = ('idx',)
+        unique_together = ('parentWell', 'idx',) #ensure that each plate has unique well names
 
 class Soak(models.Model):
     experiment = models.ForeignKey(Experiment,on_delete=models.CASCADE,null=True, blank=True, related_name='soaks',)
@@ -584,34 +558,43 @@ class Soak(models.Model):
     def __str__(self):
         return "soak_" + str(self.id)
 
-def createWellDict(numCol, numRow):
-    numWells = numRow * numCol
-    letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 
-        'L', 'M', 'N','O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
 
+# HELPER FUNCTIONS -----------------------------------------------------
+
+def createWellDict(numRows, numCols):
+    numWells = numRows * numCols
+    letters = gen_circ_list(list(string.ascii_uppercase), numWells)
     wellNames = [None] *  numWells
-
+    wellProps = [None] * numWells
     wellIdx = 0
-    for colIdx in range(numCol):
-      for rowIdx in range(numRow):
-        s = letters[rowIdx] + str(colIdx + 1)
-        wellNames[wellIdx] = s
-        wellIdx += 1
+    for rowIdx in range(numRows):
+        for colIdx in range(numCols):
+            let = letters[rowIdx]
+            num = str(colIdx + 1)
+            if (len(num)==1):
+                num = "0" + num
+            s = let + num
+            wellNames[wellIdx] = s
+            wellProps[wellIdx] = {
+                'wellIdx':wellIdx,
+                'wellRowIdx':rowIdx,
+                'wellColIdx':colIdx,
+            }
+            wellIdx += 1
+    return dict(zip(wellNames, wellProps))
 
-    return dict(zip(wellNames, range(numWells)))
+# def enum_well_location(s):
+#     # format needs to be [letter][0-9][0-9]
+#     letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
+#                 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
+#     lettersRange = range(len(letters))
+#     dic = dict(zip(letters, lettersRange))
+#     l, d = s[0], s[0:2]
 
-def enum_well_location(s):
-    # format needs to be [letter][0-9][0-9]
-    letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
-                'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
-    lettersRange = range(len(letters))
-    dic = dict(zip(letters, lettersRange))
-    l, d = s[0], s[0:2]
-
-    if len(s) != 3:
-        return 
-    else:
-        return dic[l] + int(d)
+#     if len(s) != 3:
+#         return 
+#     else:
+#         return dic[l] + int(d)
 
 # SIGNALS -----------------------------------------------------
 #delete experiment plates and soaks on library change

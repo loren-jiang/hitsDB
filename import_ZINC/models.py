@@ -68,13 +68,13 @@ class Library(models.Model):
         for i in range(num):
             data = serialized_data[i]
             fields = NoSaveCompoundSerializer.__dict__['_declared_fields']
-            print(fields)
             data = { k: data[k] for k in fields }
             serialize = NoSaveCompoundSerializer(data=data)
             if serialize.is_valid(raise_exception=True):
                 obj_lst[i]=serialize.save()
 
         compounds_lst = [c for c in obj_lst if c is not None] #filter out None elems just in case
+
         # Greedy solution, but will not support updating compounds in the future
         # compounds_created = Compound.bulk_create(compounds_lst, ignore_conflicts=True)
         
@@ -105,10 +105,7 @@ class Library(models.Model):
             rows = f.chunks(chunk_size)
 
         for chunk in rows:
-            if is_csv:
-                chunk_serialized = chunk
-            else:
-                chunk_serialized = json.loads(chunk)
+            chunk_serialized = chunk if is_csv else json.loads(chunk) 
             compounds_to_create, compounds_existing = self.insertCompoundsFromChunk(chunk_serialized)
             lib = self
             LibCompoundRelation = Library.compounds.through

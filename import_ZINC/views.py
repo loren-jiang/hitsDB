@@ -49,13 +49,8 @@ def new_lib_from_file(request, form_class="new_lib_form"):
         "form_class":form_class,
         "use_ajax":True, 
     }
-    print("IS AJAX!")
-    print(request.is_ajax())
     if request.method == 'POST':# and request.is_ajax():
         form = UploadCompoundsNewLib(request.POST, request.FILES, request=request)
-        print(form.__dict__)
-        print("FORM VALID")
-        print(form.is_valid())
         if form.is_valid():
             cd = form.cleaned_data
             fi = cd.pop('file')
