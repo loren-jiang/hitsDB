@@ -186,6 +186,8 @@ MEDIA_DIRECTORY = '/media/'
 # STATIC_URL = S3_URL + STATIC_DIRECTORY
 MEDIA_URL = S3_URL + MEDIA_DIRECTORY
 
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',
 }

@@ -7,7 +7,14 @@ from botocore.exceptions import ClientError
 from .s3utils import PrivateMediaStorage
 from django.contrib.auth.models import User
 from experiment.models import Plate, Well, SubWell
+from django.core.files.storage import FileSystemStorage
+
 import uuid
+
+fs = FileSystemStorage(location='media/')
+
+def upload_local_path(instance, filename):
+        return 'local/' +  str(instance.owner.id)+ '/' +str(instance.plate.id)+ '/'+ str(instance.file_name)
 
 def upload_path(instance, filename):
     return 'private/' +  str(instance.owner.id)+ '/' +str(instance.plate.id)+ '/'+ str(instance.key)
@@ -16,12 +23,17 @@ class WellImage(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
     owner = models.ForeignKey(User, related_name='well_images', on_delete=models.SET_NULL, null=True, blank=True)
-    upload = models.ImageField(upload_to=upload_path,storage=PrivateMediaStorage())
+    upload = models.ImageField(upload_to=upload_path,storage=PrivateMediaStorage(), null=True, blank=True)
     plate = models.ForeignKey(Plate, related_name='well_images', on_delete=models.SET_NULL, null=True, blank=True)
     file_name = models.CharField(max_length=10) # e.g. A_01
+    useS3 = models.BooleanField(default=True)
+    local_upload = models.ImageField(upload_to=upload_local_path,storage=fs, null=True, blank=True)
 
     def __str__(self):
         return self.file_name
+
+    class Meta:
+        ordering = ('file_name',)
 
 # contains images appropriately named '[well]_[subwell].jpg' (i.e. 'A01_1.jpg')
 class PrivateFile(models.Model):

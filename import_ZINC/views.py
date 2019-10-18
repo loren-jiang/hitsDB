@@ -59,7 +59,6 @@ def new_lib_from_file(request, form_class="new_lib_form"):
             if fi: #if file is not None
                 f = TextIOWrapper(fi, encoding=request.encoding)
                 try:
-                    print("IN TRY!!!!!!!")
                     with transaction.atomic():
                         new_lib.save()
                         relations, created, existed = new_lib.newCompoundsFromFile(f)

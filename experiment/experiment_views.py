@@ -185,7 +185,7 @@ def experiments(request):
     data = {
         'experimentsTable': experimentsTable,
     }
-    return render(request,'experiments.html',data)#,{'experiments':})
+    return render(request,'experiment/exp_templates/experiments.html',data)#,{'experiments':})
 
 @is_users_experiment
 @login_required(login_url="/login")

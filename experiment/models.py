@@ -77,13 +77,13 @@ class Experiment(models.Model):
     @property
     def getCurrentStep(self):
         conds = [bool(self), self.library_valid, self.plates_valid, self.soaks_valid]
-        if any(conds[0:4]): #might want to more robust check (e.g. # soaks = # compounds in library)
+        if all(conds[0:4]): #might want to more robust check (e.g. # soaks = # compounds in library)
             return 4
-        if any(conds[0:3]):
+        if all(conds[0:3]):
             return 3
-        if any(conds[0:2]):
+        if all(conds[0:2]):
             return 2
-        if any(conds[0:1]):
+        if all(conds[0:1]):
             return 1
         return 0
 
@@ -236,8 +236,9 @@ class Experiment(models.Model):
     def makePlates(self, num_plates, plate_type):
         try:
             plates_to_create = [None] * num_plates
+            name_prefix = 'src_' if plate_type.isSource else 'dest_'
             for i in range(num_plates):
-                plates_to_create[i] = Plate(plateType=plate_type, 
+                plates_to_create[i] = Plate(name=name_prefix+str(i+1),plateType=plate_type, 
                     experiment_id=self.id,isSource=plate_type.isSource, plateIdxExp=i+1)
             plates = Plate.objects.bulk_create(plates_to_create)
             for p in plates:
@@ -332,7 +333,7 @@ class Experiment(models.Model):
     def __str__(self):
         return self.name
 
-class CrystalScreen(models.Model):
+class Ingredient(models.Model):
     name = models.CharField(max_length=100,)
     manufacturer = models.CharField(max_length=100, default='')
     date_dispensed = models.DateField(default=timezone.now, blank=True)
@@ -341,6 +342,7 @@ class CrystalScreen(models.Model):
         return self.name
 
 class Plate(models.Model):
+    name = models.CharField(default='', null=True, blank=True, max_length=20)
     plateType = models.ForeignKey('PlateType', related_name='plates', on_delete=models.SET_NULL, null=True)
     experiment = models.ForeignKey(Experiment, related_name='plates', on_delete=models.CASCADE, null=True, blank=True)
     isSource = models.BooleanField(default=False) #is it a source plate? if not, it's a dest plate
@@ -498,7 +500,7 @@ class Well(models.Model):
     maxResVol = models.DecimalField(max_digits=10, decimal_places=0)
     minResVol = models.DecimalField(max_digits=10, decimal_places=0)
     plate = models.ForeignKey(Plate, on_delete=models.CASCADE, related_name='wells',null=True, blank=True)
-    crystal_screen = models.ForeignKey(CrystalScreen, on_delete=models.CASCADE,related_name='wells',null=True, blank=True)
+    screen_ingredients = models.ManyToManyField(Ingredient, related_name='wells',null=True, blank=True)
     wellIdx = models.PositiveIntegerField(default=0)
     wellRowIdx = models.PositiveIntegerField(default=0)
     wellColIdx = models.PositiveIntegerField(default=0)

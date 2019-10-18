@@ -1,7 +1,7 @@
 #experiment/forms.py
 from django import forms
 from django.contrib.auth.models import User, Group
-from .models import Experiment, Plate, CrystalScreen, Project, PlateType, Soak
+from .models import Experiment, Plate, Ingredient, Project, PlateType, Soak
 from django.forms import ModelChoiceField
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from import_ZINC.models import Compound, Library
@@ -136,7 +136,7 @@ class ExperimentAsMultiForm(MultipleForm):
 #         .filter(isSource=False), 
 #         label="Destination plate",
 #         initial=0)
-#     dest_plate_screen = forms.ModelChoiceField(queryset=CrystalScreen.objects.all(), 
+#     dest_plate_screen = forms.ModelChoiceField(queryset=Ingredient.objects.all(), 
 #         required=False,
 #         initial=0)
 #     experiment = forms.ModelChoiceField(

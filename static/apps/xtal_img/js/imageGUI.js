@@ -220,8 +220,8 @@ const sCircData = {
   };
 
   const hotKeyMap = {
-    '77': {keyCode:'m', desc:'Next well', func: (slider)=>$('#prev-well')[0].click()},
-    '78': {keyCode:'n', desc:'Previous well', func: (slider)=>$('#next-well')[0].click()},
+    '77': {keyCode:'m', desc:'Next well', func: (slider)=>$('#next-well')[0].click()},
+    '78': {keyCode:'n', desc:'Previous well', func: (slider)=>$('#prev-well')[0].click()},
     '83': {keyCode:'s', desc:'Save', func: (slider)=>$('#soak-form').find('#submit-id-submit').click()},
     '88': {keyCode:'x', desc:'Use Soak', func: (slider)=>{
         const checkbox = $('#id_useSoak');

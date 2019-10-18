@@ -14,7 +14,6 @@ fs = FileSystemStorage(location='media/')
 def upload_local_path(instance, filename):
         return 'local/' +  str(instance.owner.id)+ '/' +str(instance.plate.id)+ '/'+ str(instance.well_name)
 
-
 class DropImageS3(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket

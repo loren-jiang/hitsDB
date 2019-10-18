@@ -17,11 +17,7 @@ class PrivateImageUploadForm(forms.ModelForm):
 
 class ImagesFieldForm(forms.Form):
     image_field = forms.ImageField(widget=forms.ClearableFileInput(attrs={'multiple': True}))
-
-    # def clean(self):
-    #     cd = self.cleaned_data
-    #     images = cd.get('image_field')
-    #     return cd
+    use_local = forms.BooleanField(required=False)
 
 class FilesFieldForm(forms.Form):
     file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': True}))

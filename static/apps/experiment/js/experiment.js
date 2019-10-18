@@ -14,6 +14,14 @@ function confirmLibraryChange(lib_pk) {
     });
 }
 
+function initCurrentStep(step) {
+
+    const s = parseInt(step) - 1;
+    const selector = `#v-pills-tab a:nth-child(${s})`;
+    console.log($('#v-pills-tab a:nth-child(3)'));
+    $(selector).tab('show');
+}
+
 $(document).ready(function() {
     
     $('#delete-exp').on('click', function(e) {
@@ -25,4 +33,6 @@ $(document).ready(function() {
             e.preventDefault();
         }
     });
+
+
 });

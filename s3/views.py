@@ -21,8 +21,10 @@ from hitsDB.views_import import *
 class WellImagesUploadView(FormView):
     form_class = ImagesFieldForm
     template_name = './s3/private_images_upload.html'  # Replace with your template.
-    # success_url = '/'  # Replace with your URL or reverse().
     
+    def get_success_url(self):
+        return '/'
+
     @method_decorator(is_dest_plate)
     def dispatch(self, *args, **kwargs):
         return super(WellImagesUploadView, self).dispatch(*args, **kwargs)
@@ -48,7 +50,10 @@ class WellImagesUploadView(FormView):
             if form.is_valid():
                 for f in files:
                     file_name = f.name.split('.')[0] #just get the file name, not the extension
-                    new_file = WellImage(upload=f, owner=request.user, plate=p, file_name=file_name)
+                    if form.cleaned_data['use_local']:
+                        new_file = WellImage(local_upload=f, owner=request.user, plate=p, file_name=file_name, useS3=False)
+                    else:
+                        new_file = WellImage(upload=f, owner=request.user, plate=p, file_name=file_name, useS3=True)
                     new_file.save()
                 return self.form_valid(form)
             else:
