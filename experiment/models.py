@@ -10,9 +10,15 @@ from orm_custom.custom_functions import bulk_add, bulk_one_to_one_add
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Count, F, Value
-from utility_functions import chunk_list, items_at, ceiling_div, gen_circ_list
-import string 
-
+from utility_functions import chunk_list, items_at, ceiling_div, gen_circ_list, \
+    PIX_TO_UM, UM_TO_PIX, IMG_SCALE, VolumeToRadius, RadiusToVolume, \
+        mapUmToPix, mapPixToUm
+import string
+from datetime import datetime
+from django.utils.timezone import make_aware
+from s3.s3utils import PrivateMediaStorage
+from s3.models import PrivateFile, PrivateFileJSON
+import json 
 
 # Create your models here.
 class Project(models.Model):
@@ -52,6 +58,10 @@ class Project(models.Model):
 def defaultSubwellLocations():
     return list([1])
 
+
+def exp_init_upload_path(instance, filename):
+    return str(instance.owner.id)+ '/init_data_files/' + str(instance.id) 
+
 class Experiment(models.Model):
     name = models.CharField(max_length=30)
     library = models.ForeignKey(Library, related_name='experiments',
@@ -63,20 +73,37 @@ class Experiment(models.Model):
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)
     srcPlateType = models.ForeignKey('PlateType', null=True, blank=True, on_delete=models.CASCADE, related_name='experiments_src') #only one src plate type per experiment
-    destPlateType = models.ForeignKey('PlateType', null=True, blank=True, on_delete=models.CASCADE,related_name='experiments_dest') #noly one dest plate type per experiment
+    destPlateType = models.ForeignKey('PlateType', null=True, blank=True, on_delete=models.CASCADE, related_name='experiments_dest') #noly one dest plate type per experiment
     subwell_locations = ArrayField(
         models.PositiveSmallIntegerField(blank=True, null=True, validators=[MaxValueValidator(3), MinValueValidator(1)]),
         size=3, default=defaultSubwellLocations
         )
-    plateData = JSONField(default=dict)
-
+    initDataJSON = JSONField(default=dict)
+    init_data_file = models.FileField(upload_to=exp_init_upload_path,storage=PrivateMediaStorage(), blank=True, null=True)
+    initData = models.OneToOneField(PrivateFileJSON, null=True, blank=True, on_delete=models.CASCADE, related_name='experiment')
+    prev_initData_id = None #prev library to check if initData file has changed
+    
     class Meta:
         get_latest_by="dateTime"
         # ordering = ['-dateTime']
 
+    @property 
+    def initData_valid(self):
+        """
+        Checks if self.initData exists and has all the right initialization data
+        """
+        return bool(self.initData)
+
     @property
     def getCurrentStep(self):
-        conds = [bool(self), self.library_valid, self.plates_valid, self.soaks_valid]
+        """
+        Gets the current step of the experiment; used for rendering main experiment view
+        """
+        cond0 = bool(self)
+        cond1 = self.library_valid and self.initData_valid
+        cond2 = self.plates_valid
+        cond3 = self.soaks_valid
+        conds = [cond0, cond1, cond2, cond3] # cond1 corresponds to step 1
         if all(conds[0:4]): #might want to more robust check (e.g. # soaks = # compounds in library)
             return 4
         if all(conds[0:3]):
@@ -89,6 +116,9 @@ class Experiment(models.Model):
 
     @property
     def getTransferPlatePairs(self):
+        """
+        TODO: add doc string
+        """
         pairs = []
         qs = self.soaks.select_related('src__plate','dest__parentWell__plate'
             ).annotate(src_plate_id=F('src__plate_id')
@@ -108,7 +138,7 @@ class Experiment(models.Model):
     def library_valid(self):
         return bool(self.library)
 
-    @property
+    @property #TODO: rewrite this to not use expNumSrcPlates() and expNumDestPlates()
     def plates_valid(self):
         try:
             return self.plates.count() > 0 \
@@ -233,34 +263,67 @@ class Experiment(models.Model):
             print(e)
             return False
 
-    def makePlates(self, num_plates, plate_type):
+    def makePlates(self, num_plates, plate_type, plates_init_data=None):
         try:
             plates_to_create = [None] * num_plates
             name_prefix = 'src_' if plate_type.isSource else 'dest_'
-            for i in range(num_plates):
-                plates_to_create[i] = Plate(name=name_prefix+str(i+1),plateType=plate_type, 
-                    experiment_id=self.id,isSource=plate_type.isSource, plateIdxExp=i+1)
-            plates = Plate.objects.bulk_create(plates_to_create)
-            for p in plates:
-                p.createPlateWells()
-            return plates
+            if plates_init_data:
+                pass
+            else:
+                for i in range(num_plates):
+                    plates_to_create[i] = Plate(name=name_prefix+str(i+1),plateType=plate_type, 
+                        experiment_id=self.id,isSource=plate_type.isSource, plateIdxExp=i+1)
+                plates = Plate.objects.bulk_create(plates_to_create)
+                
+                for p in plates:
+                    p.createPlateWells()
+                return plates
         except Exception as e:
             print(e)
             return False
+
+    def createPlatesSoaksFromInitDataJSON(self, plate_type):
+        exp = self
+        if exp.plates.filter().exists():
+            exp.plates.filter().delete()
+        init_data_plates = exp.initDataJSON.items()
+        lst_plates = exp.makePlates(len(init_data_plates), plate_type)
+        soaks = []
+        for i, (plate_id, plate_data) in enumerate(init_data_plates):
+            id = plate_data.pop("plate_id", None) 
+            date_time = plate_data.pop("date_time", None)
+            plate = lst_plates[i]
+            plate.rockMakerId = plate_id
+            plate.dateTime = make_aware(datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f'))
+            plate.save()
+
+            # loop through well keys and create soaks w/ appropriate data
+            for j, (well_key, well_data) in enumerate(plate_data.items()):
+                well_name, s_w_idx = well_key.split('_')
+                well = plate.wells.filter(name=well_name)[0]
+                s_w = well.subwells.get(idx=s_w_idx) 
+                soaks.append(Soak(
+                    experiment_id = exp.id,
+                    dest_id = s_w.id, 
+                    drop_x = well_data['drop_x'] * PIX_TO_UM, 
+                    drop_y = well_data['drop_y'] * PIX_TO_UM,
+                    drop_radius = well_data['drop_radius'] * PIX_TO_UM,
+                    well_x =  well_data['well_x'] * PIX_TO_UM, 
+                    well_y =  well_data['well_y'] * PIX_TO_UM,
+                    well_radius =  well_data['well_radius'] * PIX_TO_UM,
+                    soakOffsetX =  well_data['well_x'] * PIX_TO_UM,
+                    soakOffsetY = well_data['well_y'] * PIX_TO_UM,
+                    # soakVolume = ,
+                    useSoak= True
+                ))    
+        soaks = Soak.objects.bulk_create(soaks)  
+        return soaks
 
     def formattedSoaks(self, qs_soaks,
                     s_num_rows=16, s_num_cols = 24, 
                     d_num_rows=8, d_num_cols=12, d_num_subwells=3):
         num_src_plates = self.numSrcPlates
         num_dest_plates = self.numDestPlates
-        # if (num_src_plates != 0 and num_dest_plates!= 0):
-        #     src_plate = src_plates[0]
-        #     dest_plate = dest_plates[0]
-        #     s_num_rows = src_plate.numRows 
-        #     s_num_cols = src_plate.numCols
-        #     d_num_rows = dest_plate.numRows
-        #     d_num_cols = dest_plate.numCols
-        #     d_
             
         s_num_wells = s_num_rows * s_num_cols
         d_num_wells = d_num_rows * d_num_cols
@@ -316,6 +379,9 @@ class Experiment(models.Model):
             ).prefetch_related('transferCompound',).order_by('id')
         return SoaksTable(qs, exclude=exc)
 
+    def getDestPlatesGUITable(self, exc=[]):
+        from .tables import DestPlatesForGUITable
+        return DestPlatesForGUITable(self.plates.filter(isSource=False), exclude=exc)
     # takes in exc list of column names to exclude
     def getSrcPlatesTable(self, exc=[]):
         from .tables import PlatesTable
@@ -350,6 +416,7 @@ class Plate(models.Model):
     dataSheetURL = models.URLField(max_length=200, null=True, blank=True)
     echoCompatible = models.BooleanField(default=False, null=True, blank=True)
     rockMakerId = models.PositiveIntegerField(unique=True, null=True, blank=True)
+    dateTime = models.DateTimeField(null=True, blank=True)
 
     def get_absolute_url(self):
         return "/plate/%i/" % self.id
@@ -455,43 +522,49 @@ class PlateType(models.Model):
 
     @classmethod
     def createEchoSourcePlate(cls):
-        instance = cls(
-            name="Echo 384-well source plate",
-            numRows=16,
-            numCols=24,
-            xPitch = 4.5,
-            yPitch = 4.5,
-            plateLength = 127.76,
-            plateWidth = 85.48,
-            plateHeight = 10.48,
-            xOffsetA1 = 12.13,
-            yOffsetA1 = 8.99,
-            echoCompatible=True,
-            isSource=True,
-            dataSheetURL=''
-        )
-        instance.save()
+        try: 
+            instance = cls(
+                name="Echo 384-well source plate",
+                numRows=16,
+                numCols=24,
+                xPitch = 4.5,
+                yPitch = 4.5,
+                plateLength = 127.76,
+                plateWidth = 85.48,
+                plateHeight = 10.48,
+                xOffsetA1 = 12.13,
+                yOffsetA1 = 8.99,
+                echoCompatible=True,
+                isSource=True,
+                dataSheetURL=''
+            )
+            instance.save()
+        except:
+            pass
         return instance
 
     @classmethod
     def create96MRC3DestPlate(cls):
-        instance = cls(
-            name="Swiss MRC-3 96 well microplate",
-            numRows=8,
-            numCols=12,
-            numSubwells = 3,
-            xPitch = 9,
-            yPitch = 9,
-            plateLength = 127.5,
-            plateWidth = 85.3,
-            plateHeight = 11.7,
-            xOffsetA1 = 16.1,
-            yOffsetA1 = 8.9,
-            echoCompatible=True,
-            isSource=False,
-            dataSheetURL=''
-        )
-        instance.save()
+        try:
+            instance = cls(
+                name="Swiss MRC-3 96 well microplate",
+                numRows=8,
+                numCols=12,
+                numSubwells = 3,
+                xPitch = 9,
+                yPitch = 9,
+                plateLength = 127.5,
+                plateWidth = 85.3,
+                plateHeight = 11.7,
+                xOffsetA1 = 16.1,
+                yOffsetA1 = 8.9,
+                echoCompatible=True,
+                isSource=False,
+                dataSheetURL=''
+            )
+            instance.save()
+        except:
+            pass
         return instance
 
 class Well(models.Model):
@@ -500,7 +573,7 @@ class Well(models.Model):
     maxResVol = models.DecimalField(max_digits=10, decimal_places=0)
     minResVol = models.DecimalField(max_digits=10, decimal_places=0)
     plate = models.ForeignKey(Plate, on_delete=models.CASCADE, related_name='wells',null=True, blank=True)
-    screen_ingredients = models.ManyToManyField(Ingredient, related_name='wells',null=True, blank=True)
+    screen_ingredients = models.ManyToManyField(Ingredient, related_name='wells', blank=True)
     wellIdx = models.PositiveIntegerField(default=0)
     wellRowIdx = models.PositiveIntegerField(default=0)
     wellColIdx = models.PositiveIntegerField(default=0)
@@ -527,10 +600,10 @@ class SubWell(models.Model):
     compounds = models.ManyToManyField(Compound, related_name='subwells', blank=True)
     protein = models.CharField(max_length=100, default="")
     hasCrystal = models.BooleanField(default=True)
-    willSoak = models.BooleanField(default=True)
+    useSoak = models.BooleanField(default=False)
 
     def __str__(self):
-        return repr(self.parentWell) + "Subwell_" + str(self.idx)
+        return repr(self.parentWell) + "_" + str(self.idx)
 
     class Meta:
         ordering = ('idx',)
@@ -542,23 +615,59 @@ class Soak(models.Model):
     dest = models.OneToOneField(SubWell, on_delete=models.CASCADE,null=True, blank=True, related_name='soak',)
     src = models.OneToOneField(Well, on_delete=models.CASCADE,null=True, blank=True, related_name='soak',)
     transferCompound = models.ForeignKey(Compound, on_delete=models.CASCADE,null=True, blank=True, related_name='soaks',)
-    transferVol = models.DecimalField(max_digits=10, decimal_places=2, default=25) # in nL
-    #relative to center of subwell
+    
     soakOffsetX = models.DecimalField(max_digits=10, decimal_places=2,default=0)
     soakOffsetY = models.DecimalField(max_digits=10, decimal_places=2,default=0)
-    targetWellX = models.DecimalField(max_digits=10, decimal_places=2,default=0)
-    targetWellY = models.DecimalField(max_digits=10, decimal_places=2,default=0)
-    targetWellRadius = models.DecimalField(max_digits=10, decimal_places=2,default=0)
+    soakVolume = models.DecimalField(max_digits=10, decimal_places=2, default=25) # in nL
+
+    drop_x = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
+    drop_y = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
+    drop_radius = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
+
+    well_x = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
+    well_y = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
+    well_radius = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
 
     useSoak = models.BooleanField(default=False)
+
+    @property
+    def transferVol(self):
+        return RadiusToVolume(float(self.drop_radius) * UM_TO_PIX) #arg should be in pixels, return should be in uL
+
+    @property 
+    def offset_XY_um(self):
+        """Retuns the computed offset of the target soak relative to the target well"""
+        drop_xyr = self.drop_XYR_um
+        well_xyr = self.well_XYR_um
+        return [drop_xyr[0] - well_xyr[0], drop_xyr[1] - well_xyr[1]]
+
+    @property
+    def soak_XYR_um(self):
+        """"""
+        return list(map(lambda x: float(x), [self.soakOffsetX, self.soakOffsetY, VolumeToRadius(self.soakVolume)]))
+
+    @property
+    def well_XYR_um(self):
+        """Returns the target well x, y, and radius in pixels"""
+        return list(map(lambda x: float(x), [self.well_x, self.well_y, self.well_radius]))
+
+    @property
+    def well_XYR_pix(self):
+        """Returns the target well x, y, and radius in pixels"""
+        return mapUmToPix([self.well_x, self.well_y, self.well_radius])
     
     @property
-    def soakRadius(self):
-        # returns radius of soak based on some calibration curve of soak volume to radius
-        return self.transferVol
+    def drop_XYR_um(self):
+        """Returns the target drop x, y, and radius in pixels"""
+        return list(map(lambda x: float(x), [self.drop_x, self.drop_y, self.drop_radius]))
+
+    @property
+    def drop_XYR_pix(self):
+        """Returns the target drop x, y, and radius in pixels"""
+        return mapUmToPix([self.drop_x, self.drop_y, self.drop_radius])
 
     def __str__(self):
-        return "soak_" + str(self.id)
+        return self.experiment.name + "_soak_" + str(self.id)
 
 
 # HELPER FUNCTIONS -----------------------------------------------------
@@ -585,33 +694,47 @@ def createWellDict(numRows, numCols):
             wellIdx += 1
     return dict(zip(wellNames, wellProps))
 
-# def enum_well_location(s):
-#     # format needs to be [letter][0-9][0-9]
-#     letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
-#                 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X']
-#     lettersRange = range(len(letters))
-#     dic = dict(zip(letters, lettersRange))
-#     l, d = s[0], s[0:2]
-
-#     if len(s) != 3:
-#         return 
-#     else:
-#         return dic[l] + int(d)
 
 # SIGNALS -----------------------------------------------------
-#delete experiment plates and soaks on library change
 @receiver(post_save, sender=Experiment)
 def delete_plates_soaks_on_library_change(sender, instance, created, **kwargs):
-    if instance.prev_library_id != instance.library.id or created:
+    """
+    Delete experiment plates and soaks on library change
+    """
+    if instance.prev_library_id != instance.library_id and not(created):
         instance.plates.all().delete()
         instance.soaks.all().delete()
         reset = {'srcPlateType':None, 'destPlateType':None, 'subwell_locations':[]}
-        Experiment.objects.filter(id=instance.id).update(**reset)
+        Experiment.objects.filter(id=instance.id).update(**reset) # does not call save() so not signals emitted
+        # set state of current library
+        instance.prev_library_id = instance.library_id
 
-@receiver(post_init, sender=Experiment)
-def remember_library(sender, instance, **kwargs):
-    try:
-        if instance.library.id:
-            instance.prev_library_id = instance.library.id
-    except Library.DoesNotExist: # added to fix case where experiment has no library when first creating experiment
-        pass
+@receiver(post_save, sender=Experiment)
+def create_plates_and_soaks_init_data(sender, instance, created, **kwargs):
+    """
+    If initData PrivateFile exists, try to create plates and soaks from it
+    """
+    # print('in create_plates_and_soaks_init_data: ')
+    print(bool(instance.initData_id) and (instance.prev_initData_id != instance.initData_id or created))
+    if instance.initData_id and (instance.prev_initData_id != instance.initData_id or created):
+        # try:
+            # read file and save to JSON field initDataJSON
+        post_save.disconnect(create_plates_and_soaks_init_data, sender=Experiment)
+        data_json = str(instance.initData.local_upload.read(), encoding='utf-8').replace("'", "\"") #needs double quotes to parse correctly
+        instance.initDataJSON = json.loads(data_json)
+        instance.save()
+
+        # set state of current initData
+        instance.prev_initData_id = instance.initData_id
+
+        post_save.connect(create_plates_and_soaks_init_data, sender=Experiment)
+        instance.createPlatesSoaksFromInitDataJSON(instance.destPlateType)
+        # except Exception as e:
+            # print(e)
+
+@receiver(post_init, sender=Experiment) #TODO should this be pre_save signal?
+def remember_experiment_state(sender, instance, **kwargs):
+    # if instance.library_id:
+    instance.prev_library_id = instance.library_id
+    # if instance.initData_id:
+    instance.prev_initData_id = instance.initData_id

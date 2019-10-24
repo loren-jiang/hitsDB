@@ -40,8 +40,8 @@
                      </div>
                      <div class='{{use_soak|yesno:" ,soak-hidden"}}' id="soak-circle" style="display: None; top: {{topSoakCircle}}px; left: {{leftSoakCircle}}px">
                         <svg class="svg-circle" width="{{sideSoakCircle}}" height="{{sideSoakCircle}}">
-                            <circle class="circle outer-circle" cx="{{transferVol}}" cy="{{transferVol}}" r="{{radSoakCircle_}}" stroke="red" stroke-width="4" fill="" fill-opacity="0.0" />
-                            <circle class="circle inner-circle" cx="{{transferVol}}" cy="{{transferVol}}" r="1" stroke="red" stroke-width="4" fill="red" fill-opacity="1.0" />
+                            <circle class="circle outer-circle" cx="{{soakRadius}}" cy="{{soakRadius}}" r="{{radSoakCircle_}}" stroke="red" stroke-width="4" fill="" fill-opacity="0.0" />
+                            <circle class="circle inner-circle" cx="{{soakRadius}}" cy="{{soakRadius}}" r="1" stroke="red" stroke-width="4" fill="red" fill-opacity="1.0" />
                         </svg>
                         
                      </div> {% endcomment %}
@@ -54,7 +54,7 @@
                 <div class="row">
                     <div class="col">
                         <p>Soak coordinates:<br></p>
-                        <p> {{soakX}},{{soakY}}<br></p>
+                        <p> {{soakOffsetX}},{{soakOffsetY}}<br></p>
                         <p>Well coordinates:<br></p>
                         <p> {{targetWellX}},{{targetWellY}}<br></p>
                         <form id="soak-form" action="" method="post"> 
@@ -67,7 +67,7 @@
                             
                             {% comment %} <input type="submit" value="Save"> {% endcomment %}
                         </form>
-                        {% comment %} <div id="transferVol-slider"></div> {% endcomment %}
+                        {% comment %} <div id="soakRadius-slider"></div> {% endcomment %}
                           
                         <select id="sel-well" name="sel-name">
                             {% for f in file_names %}

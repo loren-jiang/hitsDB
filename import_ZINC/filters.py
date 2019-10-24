@@ -24,8 +24,8 @@ class LibraryFilter(django_filters.FilterSet):
     class Meta:
         model = Library
         fields={
-            'name':['exact','contains'],
-            'supplier':['exact','contains'],
+            'name':['icontains',],
+            'supplier':['icontains',],
             # 'owner':['exact'],
         }
  

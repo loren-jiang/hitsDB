@@ -4,8 +4,8 @@ from .tables import SoaksTable, ExperimentsTable, LibrariesTable, ProjectsTable
 from django_tables2 import RequestConfig
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from import_ZINC.models import Library, Compound
-from .forms import ExperimentModelForm, ProjectForm, SimpleProjectForm, ExperimentAsMultiForm
-# from .forms import ExperimentModelForm, ProjectForm, SimpleProjectForm, PlateSetupForm, ExperimentAsMultiForm
+from .forms import ExperimentModelForm, ProjectForm, SimpleProjectForm, ExpAsMultiForm
+# from .forms import ExperimentModelForm, ProjectForm, SimpleProjectForm, PlateSetupForm, ExpAsMultiForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 # from .library_views import lib_compounds
 # from .decorators import request_passes_test

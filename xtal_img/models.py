@@ -1,39 +1,27 @@
 from django.db import models
-from s3.models import PrivateFile, upload_path
+from s3.models import PrivateFile
 from experiment.models import Plate
 from django.contrib.auth.models import User
 from django.core.files.storage import FileSystemStorage
-from s3.s3utils import PrivateMediaStorage
+from s3.s3utils import PrivateMediaStorage, user_files_upload_path, fs, user_upload_path
 import uuid
 
+def upload_local_path(instance, file):
+        return 'local/' +  user_upload_path(instance, file) + str(instance.plate.id)+ '/'+ str(instance.file_name)
 
-# Create your models here.
+def well_image_upload_path(instance, file):
+    return user_upload_path(instance, file) + str(instance.plate.id) + '/' + str(instance.key)
 
-fs = FileSystemStorage(location='media/')
-
-def upload_local_path(instance, filename):
-        return 'local/' +  str(instance.owner.id)+ '/' +str(instance.plate.id)+ '/'+ str(instance.well_name)
-
-class DropImageS3(models.Model):
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
-    owner = models.ForeignKey(User, related_name='drop_images_s3', on_delete=models.SET_NULL, null=True, blank=True)
-    upload = models.ImageField(upload_to=upload_path,storage=PrivateMediaStorage())
-
-    plate = models.ForeignKey(Plate, related_name='drop_images_s3', on_delete=models.SET_NULL, null=True, blank=True)
-    well_name = models.CharField(max_length=10)  # e.g. A_01; regex [a-zA-Z]{1,2}_[123]{1}
-    
-    def __str__(self):
-        return self.well_name
-
-#DropImage that is stored locally
+# Create your models here
 class DropImage(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
     owner = models.ForeignKey(User, related_name='drop_images', on_delete=models.SET_NULL, null=True, blank=True)
-    upload = models.ImageField(upload_to=upload_local_path,storage=fs)
-
+    upload = models.ImageField(upload_to=well_image_upload_path,storage=PrivateMediaStorage())
+    file_name = models.CharField(max_length=10)  #should be well name + subwell idx; e.g. A_01_2; regex [a-zA-Z]{1,2}_[123]{1}
     plate = models.ForeignKey(Plate, related_name='drop_images', on_delete=models.SET_NULL, null=True, blank=True)
-    well_name = models.CharField(max_length=10)  # e.g. A_01; regex [a-zA-Z]{1,2}_[123]{1}
+    useS3 = models.BooleanField(default=True) #if True, then use s3 upload; if False, use local_upload
+    local_upload = models.ImageField(upload_to=upload_local_path,storage=fs, null=True, blank=True)
     
     def __str__(self):
-        return self.well_name
+        return self.file_name

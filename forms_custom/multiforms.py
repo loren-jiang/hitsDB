@@ -48,11 +48,6 @@ class MultiFormMixin(ContextMixin):
      
     def forms_invalid(self, forms, form_name):
         return self.render_to_response(self.get_context_data(forms=forms))
-        # f = forms[form_name]
-        # self.kwargs.update({'invalid_form':f})
-        # print(f)
-        # print(self.__dict__)
-        # return HttpResponseRedirect(self.get_success_url(form_name))
     
     def get_initial(self, form_name):
         initial_method = 'get_%s_initial' % form_name
@@ -69,6 +64,7 @@ class MultiFormMixin(ContextMixin):
 
     def _create_form(self, form_name, form_class):
         form_kwargs = self.get_form_kwargs(form_name)
+        print(form_kwargs)
         form = form_class(**form_kwargs)
         return form
 

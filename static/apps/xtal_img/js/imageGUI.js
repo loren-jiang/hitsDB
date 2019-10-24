@@ -5,7 +5,7 @@ $(function () {
   const DATA = window.guiData;
   console.log(DATA);  
 
-  const volToRadius = (x) => {
+  const volumeToRadius = (x) => {
     const coeff = [
       6.1417074854930405e1, 
       1.0073950737908067e1,
@@ -17,6 +17,17 @@ $(function () {
     return coeff.reduce((sum, e, i) =>  sum + e*Math.pow(x, i));
   };
 
+  const radiusToVolume = (x) => {
+    const coeff = [
+      -5.3743703571317667e-6,
+      3.8296724440466813e-2,
+      2.1381856713576437e-5,
+      8.5669944196377545e-7,
+      -5.7076472737908041e-16,
+      2.5941761345047031e-19
+    ];
+    return coeff.reduce((sum, e, i) =>  sum + e*Math.pow(x, i));
+  };
 
   //GLOBAL CONSTANTS 
   const PIX_TO_UM = 2.77; //conversion factor 2.77 µm/pixel at full size
@@ -24,11 +35,20 @@ $(function () {
   const STROKE_WIDTH = 4; // pixels
   const IMG_SCALE = 2.45; //1024 px / 418 px 
 
-  const SOAK_INPUTS = ['#id_soakOffsetX','#id_soakOffsetY', '#id_transferVol'];
-  const WELL_INPUTS = ['#id_targetWellX','#id_targetWellY', '#id_targetWellRadius'];
-  
-  const IMG_CONTAINER_DIM = [$('#well-image-container').width(), $('#well-image-container').height()];
+
+
+  const SOAK_INPUTS = ['#id_soakOffsetX','#id_soakOffsetY', '#id_soakVolume'];
+  const WELL_INPUTS = ['#id_well_x','#id_well_y', '#id_well_radius'];
+
+  const IMG_PADDING = 100;
+
+
   const IMG_DIM = [$('#well-image').width(), $('#well-image').height()];
+  // const IMG_CONTAINER_DIM = [$('#well-image-container').width(), $('#well-image-container').height()];
+  const IMG_CONTAINER_DIM = IMG_DIM.map(x => x + 2*IMG_PADDING);
+   
+  $('#well-image-container').width(IMG_CONTAINER_DIM[0]);
+  $('#well-image-container').height(IMG_CONTAINER_DIM[1]);
 
   const roundNPlaces = (num, n) => Math.round(num * Math.pow(10, n)) / Math.pow(10, n);
   const convertPixToUm = (xyr) => xyr.map(e => roundNPlaces(e*IMG_SCALE*PIX_TO_UM, 2));
@@ -37,18 +57,18 @@ $(function () {
   const getJQuery = (selectors) => selectors.map(s => $(s));
 
 const wCircData = {
-  t_w_c: DATA.topWellCircle*UM_TO_PIX/IMG_SCALE,
-  l_w_c: DATA.leftWellCircle*UM_TO_PIX/IMG_SCALE,
+  t_w_c: DATA.topWellCircle*UM_TO_PIX/IMG_SCALE + IMG_PADDING,
+  l_w_c: DATA.leftWellCircle*UM_TO_PIX/IMG_SCALE + IMG_PADDING,
   s_w_c: DATA.sideWellCircle*UM_TO_PIX/IMG_SCALE,
   t_w_r: DATA.targetWellRadius*UM_TO_PIX/IMG_SCALE,
   r_w_c: DATA.radWellCircle_*UM_TO_PIX/IMG_SCALE - STROKE_WIDTH,
 };
 
 const sCircData = {
-  t_s_c: DATA.topSoakCircle*UM_TO_PIX/IMG_SCALE,
-  l_s_c: DATA.leftSoakCircle*UM_TO_PIX/IMG_SCALE,
+  t_s_c: DATA.topSoakCircle*UM_TO_PIX/IMG_SCALE + IMG_PADDING,
+  l_s_c: DATA.leftSoakCircle*UM_TO_PIX/IMG_SCALE + IMG_PADDING,
   s_s_c: DATA.sideSoakCircle*UM_TO_PIX/IMG_SCALE,
-  t_s_r: DATA.transferVol*UM_TO_PIX/IMG_SCALE,
+  t_s_r: DATA.radSoakCircle_*UM_TO_PIX/IMG_SCALE,
   r_s_c: DATA.radSoakCircle_*UM_TO_PIX/IMG_SCALE - STROKE_WIDTH,
 };
 
@@ -85,25 +105,25 @@ const sCircData = {
     //t -> top
     //l -> left
     //w -> width of svg
-    return [Math.round(w/2), Math.round(w/2)];
+    return [roundNPlaces(w/2, 2), roundNPlaces(w/2, 2)];
   };
 
   const getCircleXYFromTopLeft = (l,t, w) => {
     //t -> top
     //l -> left
     //w -> width of svg
-    return [Math.round(l + w/2), Math.round(t + w/2)];
+    return [roundNPlaces(l + w/2, 2), roundNPlaces(t + w/2, 2)];
   };
 
   const getStrokeCircleRadius = (w, str_w) => {
     //w -> width of svg
     //str_w -> stroke width
-    return Math.round(w/2)-str_w;
+    return roundNPlaces(w/2, 2)-str_w;
   };
 
   const getCircleRadius = (w) => {
     //w -> width of svg
-    return Math.round(w/2);
+    return roundNPlaces(w/2, 2);
   };
 
   const circleWillBeOutsideContainer = (circle, container, delta) => {
@@ -152,7 +172,8 @@ const sCircData = {
      * `XYR`, array of x-coord, y-coord, and radius in um to be set
     */
     let xyr = convertPixToUm(XYR);
-    xyr[2] = Math.round( xyr[2] );
+    xyr[2] = XYR[2];
+    // xyr[2] = Math.round( xyr[2] );
     setTargetValues(getJQuery(SOAK_INPUTS), xyr);
     return true;
   };
@@ -196,7 +217,7 @@ const sCircData = {
     resizeCircleSVG(circle, [W,H], [C_X_Y[0], C_X_Y[1], R_]);
 
     const X_Y = getCircleXYFromTopLeft(ui.position.left, ui.position.top, W);
-    const XYR = [X_Y[0], X_Y[1], R]; // in pixels
+    const XYR = [X_Y[0] - IMG_PADDING, X_Y[1] - IMG_PADDING, radiusToVolume(R) * IMG_SCALE]; // in pixels
     const xyr = convertPixToUm(XYR);
     setTargetValues(tar, xyr);
   };
@@ -204,7 +225,7 @@ const sCircData = {
   const onSliderTrigger = (slider, add_or_minus)=>{      
     slider.trigger('moveSlider',[add_or_minus]);
     const xyr = getSoakXYR(); //in um
-    xyr[2] = volToRadius(xyr[2]);
+    xyr[2] = volumeToRadius(xyr[2]);
     const XYR = convertUmToPix(xyr); //in pixels
     const circle = $(".svg-circle", $('#soak-circle'));
     const position = circle.parent('#soak-circle').position();
@@ -214,8 +235,8 @@ const sCircData = {
     const delta = R2 - R1;
 
     // const new_xyr = convertPixToUm([XYR[0] + delta, XYR[1] + delta, R2]);
-    
-    setSoakXYR([XYR[0] + delta, XYR[1] + delta, R2]);
+    console.log(slider.slider("value"))
+    setSoakXYR([XYR[0] + delta, XYR[1] + delta, slider.slider("value")]);
     resizeCircleSVG(circle, [XYR[2]*2, XYR[2]*2], [XYR[2], XYR[2], XYR[2]-STROKE_WIDTH] );
   };
 
@@ -234,7 +255,7 @@ const sCircData = {
   function nav(e) {
     //http://gcctech.org/csc/javascript/javascript_keycodes.htm
     e = e || window.event;
-    const slider = $('#transferVol-slider');
+    const slider = $('#soakVolume-slider');
     // perform nav function 
     if (hotKeyMap[e.keyCode]) {
       hotKeyMap[e.keyCode].func(slider);
@@ -288,8 +309,12 @@ const sCircData = {
           R = getCircleRadius(W);
           R_ = getStrokeCircleRadius(W, STROKE_WIDTH);
           X_Y = getCircleXYFromTopLeft(ui.position.left, ui.position.top, W); //in pixels
-          XYR = [X_Y[0], X_Y[1], R]; //in pixels
+          
+          XYR = [X_Y[0] - IMG_PADDING, X_Y[1] - IMG_PADDING, R] //in pixels
           xyr = convertPixToUm(XYR);
+          if (selector==='#soak-circle') {
+            xyr[2] = targets[2].val();
+          }
           setTargetValues(targets, xyr);
         }
       });
@@ -334,7 +359,7 @@ const sCircData = {
       const min = slider.slider("option", "min");
       const currVal = slider.slider("value");      
       const newVal = inc_or_dec==='+' ?  (currVal + step <= max ? currVal + step: max) : (currVal - step >= min ? currVal - step: min);
-      const delta = inc_or_dec==='+' ? 25 : -25;
+      const delta = inc_or_dec==='+' ? step : -step;
       if (!(circleWillBeOutsideContainer($('#soak-circle'), $('#well-image-container'), delta*2))) {
         $(other_sel).val(newVal);
         slider.slider("value", newVal);
@@ -343,7 +368,7 @@ const sCircData = {
     });
   }
 
-  makeSlider("#transferVol-slider",'#id_transferVol');
+  makeSlider("#soakVolume-slider",'#id_soakVolume');
   makeUICircle('#well-circle', $('#well-image-container'), true, true);
   makeUICircle('#soak-circle', $('#well-image-container'), true, false);
   // makeUICircle('#well-circle_', $('#well-image-container'), true, true);

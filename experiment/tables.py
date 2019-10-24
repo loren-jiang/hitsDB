@@ -8,14 +8,34 @@ from django_tables2 import RequestConfig
 class ModifyTable:
     attrs = {'class': 'table modify-table'}
 
-class PlatesTable(tables.Table):
-    upload_well_images = tables.LinkColumn(viewname='well_images_upload', args=[A('pk')], orderable=False, empty_values=())
-    def render_upload_well_images(self):
-        return 'Upload images'
+class DestPlatesForGUITable(tables.Table):
+    upload_drop_images = tables.LinkColumn(verbose_name="Upload", viewname='drop_images_upload', args=[A('pk')], orderable=False, empty_values=())
+    drop_images_GUI = tables.LinkColumn(verbose_name="GUI", viewname='imageGUI', 
+        kwargs={'plate_id': A('pk'), 'user_id': A('experiment.owner.pk'), 'file_name': A('drop_images.first.file_name')}, orderable=False, empty_values=())
+
+    def render_upload_drop_images(self):
+        return 'Upload'
+
+    def render_drop_images_GUI(self, record):
+    
+        if Plate.objects.get(id=record.id).drop_images.count():
+            return 'GUI'
+        return ''
+
     class Meta:
         model = Plate
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields=('name','plateType','upload_well_images',)
+        fields=('name','plateType','upload_drop_images','drop_images_GUI')
+
+class PlatesTable(tables.Table):
+    # upload_drop_images = tables.LinkColumn(verbose_name="Upload", viewname='drop_images_upload', args=[A('pk')], orderable=False, empty_values=())
+    
+    # def render_upload_drop_images(self):
+    #     return 'Upload'
+    class Meta:
+        model = Plate
+        template_name = 'django_tables2/bootstrap-responsive.html'
+        fields=('name','plateType',)
 
 class SoaksTable(tables.Table):
     transferVol = tables.Column(accessor="transferVol")
@@ -34,6 +54,18 @@ class SoaksTable(tables.Table):
         model = Soak 
         template_name = 'django_tables2/bootstrap-responsive.html'
         fields = ('id','transferVol','transferCompound','srcWell', 'destSubwell','selection')
+
+def modifyColumn(data_target, a_class, view_name, verbose_name='', orderable=False):
+    return tables.Column(verbose_name=verbose_name, 
+                orderable=orderable, 
+                empty_values=(),
+                linkify=(view_name, [A('pk')]), 
+                attrs={'a': {
+                                "data-toggle":"modal", 
+                                "data-target":"#" + data_target,
+                                "class":a_class
+                            }
+                    })
 
 class ModalEditSoaksTable(SoaksTable):
     def render_modify(self, value):
@@ -87,22 +119,37 @@ class ProjectsTable(tables.Table):
     collaborators = tables.ManyToManyColumn()
     experiments = tables.ManyToManyColumn(separator=', ',verbose_name="Experiments",
         linkify_item=('exp',{'pk_proj':A('project.pk'),'pk_exp':A('pk')}))
-    modify = tables.Column(verbose_name='', 
-        orderable=False, 
-        empty_values=(),
-        linkify=('proj_edit', [A('pk')]), 
-        attrs ={'a': {"class": "btn btn-info"} }
-        ) 
+    # modify = tables.Column(verbose_name='', 
+    #     orderable=False, 
+    #     empty_values=(),
+    #     linkify=('proj_edit', [A('pk')]), 
+    #     attrs ={'a': {"class": "btn btn-info"} }
+    #     ) 
     
     def render_dateTime(self, value):
         return formatDateTime(value)
     
-    def render_modify(self):
-        return "Edit"
+
     class Meta:
         model = Project 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('name','owner','dateTime','experiments','collaborators','checked','modify')
+        fields = ('name','owner','dateTime','experiments','collaborators','checked')
+
+class ModalEditProjectsTable(ProjectsTable):
+    def render_modify(self):
+        return "Edit"
+    def __init__(self, data_target=None, a_class=None, *args, **kwargs):
+        if data_target and a_class:
+            modify = modifyColumn(**{
+                'data_target': data_target, 
+                'a_class': a_class,
+                'view_name': "proj_edit"
+            })
+        kwargs.update({'extra_columns':[('modify',modify)]})
+        super( ModalEditProjectsTable, self ).__init__(*args, **kwargs)
+
+    class Meta(ProjectsTable.Meta, ModifyTable):
+        exclude = ()
 
 class LibrariesTable(tables.Table):
     name = tables.Column(linkify=('lib',[A('pk')]))

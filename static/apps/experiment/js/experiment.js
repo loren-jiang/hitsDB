@@ -16,8 +16,9 @@ function confirmLibraryChange(lib_pk) {
 
 function initCurrentStep(step) {
 
-    const s = parseInt(step) - 1;
+    const s = parseInt(step);
     const selector = `#v-pills-tab a:nth-child(${s})`;
+    console.log(s);
     console.log($('#v-pills-tab a:nth-child(3)'));
     $(selector).tab('show');
 }

@@ -42,7 +42,6 @@ def modify_lib_compounds(request, pk_lib):
         compounds_qs = Compound.objects.filter(id__in=compound_pks)
         compounds = [c for c in compounds_qs]
         prev = request.META.get('HTTP_REFERER')
-        print(prev)
         if form['btn']=="remove_compounds":
             compounds_qs.delete()
         if form['btn']=="deactivate_compounds":
@@ -152,7 +151,9 @@ def libs(request):
     # libs_qs = Library.objects.filter(groups__in=request.user.groups.all()).union(
     url_class = "lib_edit_url"
     modal_id = "lib_edit_modal"
-    libs_filter = LibraryFilter(data=request.GET, queryset=user_libs_qs, request=request)#, user=request.user)
+    libs_filter = LibraryFilter(request.GET, queryset=user_libs_qs, request=request)#, user=request.user)
+    print('FILTERED LIBS:')
+    print(libs_filter.qs)
     table = ModalEditLibrariesTable(data=libs_filter.qs, order_by="id", 
         data_target=modal_id, a_class="btn btn-info " + url_class)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
@@ -165,7 +166,7 @@ def libs(request):
         {'url_class': url_class, 'modal_id': modal_id, 'form_class': "lib_edit_form"},
         {'url_class': 'new_lib_url', 'modal_id': 'new_lib_modal', 'form_class': "new_lib_form"},
         ]
-    data = {
+    context = {
         'filter': {
             'filter': libs_filter, 
             'form':libs_filter.form,
@@ -187,7 +188,7 @@ def libs(request):
             'json': json.dumps(buttons)
             },
     }
-    return render(request,'experiment/lib_templates/libraries.html', data)
+    return render(request,'experiment/lib_templates/libraries.html', context)
     # return render(request,'experiment/list_delete_table.html', data)
 
 @login_required(login_url="/login")

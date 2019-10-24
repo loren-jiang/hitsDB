@@ -3,6 +3,15 @@ import boto3
 from django.conf import settings
 import logging
 from botocore.exceptions import ClientError
+from django.core.files.storage import FileSystemStorage
+
+fs = FileSystemStorage(location='media/')
+
+def user_files_upload_path(instance, filename): 
+    return user_upload_path(instance, filename) + 'files/'
+
+def user_upload_path(instance, filename):
+    return str(instance.owner.id) + '/'
 
 # StaticS3BotoStorage = lambda: S3Boto3Storage(location='static')
 # MediaS3BotoStorage = lambda: S3Boto3Storage(location='media')

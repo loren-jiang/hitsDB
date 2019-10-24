@@ -39,37 +39,60 @@
             <div class="row">
                 
                 <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                    <a class="nav-link active" id="v-pills-home-tab" data-toggle="pill" href="#v-pills-home" role="tab" aria-controls="v-pills-home" aria-selected="true">Plate Setup</a>
-                    <a class="nav-link" id="v-pills-profile-tab" data-toggle="pill" href="#v-pills-profile" role="tab" aria-controls="v-pills-profile" aria-selected="false">GUI Setup</a>
-                    <a class="nav-link" id="v-pills-messages-tab" data-toggle="pill" href="#v-pills-messages" role="tab" aria-controls="v-pills-messages" aria-selected="false">Soak Setup</a>
+                    <a class="nav-link active" id="v-pills-home-tab" data-toggle="pill" href="#v-pills-home" role="tab" aria-controls="v-pills-home" aria-selected="true">Initialization</a>
+                    <a class="nav-link" id="v-pills-profile-tab" data-toggle="pill" href="#v-pills-profile" role="tab" aria-controls="v-pills-profile" aria-selected="false">Run GUI</a>
+                    <a class="nav-link" id="v-pills-messages-tab" data-toggle="pill" href="#v-pills-messages" role="tab" aria-controls="v-pills-messages" aria-selected="false">Soaks</a>
                 </div>
                 <div class="tab-content" id="v-pills-tabContent">
                     <div class="tab-pane fade show active" id="v-pills-home" role="tabpanel" aria-labelledby="v-pills-home-tab">
                         <div class="row"> 
+                            {% if current_step > 0 %}
                             <div class="col">
                                 <div class="jumbotron">
-                                    <h3>Plate setup</h3>
-                                    {% if current_step > 1 %}
-                                    <form id="plates-form" method="post">{% csrf_token %}
+                                    <h3>Initialization</h3>
+                                    <p> Local ploaded file: <a href={{initData_local_url}}> {{initData_local_url}} </a> </p>
+                                    <p> s3 uploaded file: <a href={{init_data_file_url}}> {{exp.init_data_file}} </a> </p>
+                                    <form id="init-form" enctype="multipart/form-data"  method="post">{% csrf_token %}
+                                        {{ forms.initform|crispy}}
+                                        <button type="submit" class="btn btn-info">Upload</button>
+                                    </form>
+                                    
+                                    
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if exp.init_data_file %} 
+                            <div class="col">
+                                <div class="jumbotron">
+                                    <h3>Process initialization file</h3>                            
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+                    <div class="tab-pane fade" id="v-pills-profile" role="tabpanel" aria-labelledby="v-pills-profile-tab">
+                        <div class="col">
+                            <div class="jumbotron">
+                                <h3>Upload drop images</h3>
+                                {% if current_step > 1 %}
+                                    {% render_table dest_plates_table %}
+
+                                    {% comment %} <form id="plates-form" method="post">{% csrf_token %}
                                         {{ forms.platesform|crispy}}
                                         <button type="submit" class="btn btn-info">Generate plates</button>
                                         {% if plates_valid %}
                                         <a role="button" class="btn btn-info" href="{% url 'exp_plates' exp.pk %}">View plates</a>
                                         {% endif %}
-                                    </form>
+                                    </form> {% endcomment %}
                                     {% else %}
                                     <p> Please select library in Step 1.</p>
-                                    {% endif %}
-                                </div>
+                                {% endif %}
+                                
                             </div>
-                            <div class="col" id="exp-plates">
-                                {% render_table src_plates_table %}
-                                {% render_table dest_plates_table %}
-                            </div>  
                         </div>
-
                     </div>
-                    <div class="tab-pane fade" id="v-pills-profile" role="tabpanel" aria-labelledby="v-pills-profile-tab">
+                    <div class="tab-pane fade" id="v-pills-messages" role="tabpanel" aria-labelledby="v-pills-messages-tab">
                         <div class="col">
                             <div class="jumbotron">
                                 <h3>Soak setup</h3>
@@ -85,18 +108,6 @@
                                 </form> 
                                 {% else %}
                                 <p> Please complete Step 2.</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="v-pills-messages" role="tabpanel" aria-labelledby="v-pills-messages-tab">
-                        <div class="col">
-                            <div class="jumbotron">
-                                <h3>Plate setup</h3>
-                                {% if current_step > 3 %}
-                                <p>soaks!</p>
-                                {% else %}
-                                <p> Please complete Step 1.</p>
                                 {% endif %}
                             </div>
                         </div>

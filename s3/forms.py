@@ -1,5 +1,5 @@
 from django import forms
-from .models import PrivateFile, WellImage
+from .models import PrivateFile
 from experiment.models import Plate
 from django.core.exceptions import ValidationError
 
@@ -8,12 +8,6 @@ class PrivateFileUploadForm(forms.ModelForm):
     class Meta:
         model = PrivateFile
         fields=('upload',)
-
-class PrivateImageUploadForm(forms.ModelForm):
-    # bucket_key = forms.CharField(max_length=100)
-    class Meta:
-        model = WellImage
-        fields=('upload','plate')
 
 class ImagesFieldForm(forms.Form):
     image_field = forms.ImageField(widget=forms.ClearableFileInput(attrs={'multiple': True}))

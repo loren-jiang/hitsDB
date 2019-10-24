@@ -8,7 +8,7 @@ from django.views.static import serve
 
 
 urlpatterns = [
-    re_path(r'^plate/(?P<pk_plate>\d+)/well_images_upload/$', login_required(views.WellImagesUploadView.as_view()), name='well_images_upload'),
+    # re_path(r'^plate/(?P<pk_plate>\d+)/well_images_upload/$', login_required(views.WellImagesUploadView.as_view()), name='well_images_upload'),
     re_path(r'^private_files_upload/$', login_required(views.PrivateFilesUploadView.as_view()), name='private_files_upload'),
     re_path(r'^private_file_upload/$', login_required(views.upload_private_file), name='private_file_upload'),
 ]

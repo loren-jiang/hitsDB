@@ -4,56 +4,54 @@ from django.core.files.storage import get_storage_class
 import boto3
 import logging
 from botocore.exceptions import ClientError
-from .s3utils import PrivateMediaStorage
+from .s3utils import PrivateMediaStorage, PublicMediaStorage
 from django.contrib.auth.models import User
-from experiment.models import Plate, Well, SubWell
 from django.core.files.storage import FileSystemStorage
-
+from django.core.validators import FileExtensionValidator
+from .s3utils import fs #filestorage
 import uuid
 
-fs = FileSystemStorage(location='media/')
-
 def upload_local_path(instance, filename):
-        return 'local/' +  str(instance.owner.id)+ '/' +str(instance.plate.id)+ '/'+ str(instance.file_name)
+        return 'local/' +  user_folder_upload_path(instance, filename)
 
-def upload_path(instance, filename):
-    return 'private/' +  str(instance.owner.id)+ '/' +str(instance.plate.id)+ '/'+ str(instance.key)
+def user_folder_upload_path(instance, filename): 
+    return user_upload_path(instance, filename) + 'user_folder/' + filename
 
-class WellImage(models.Model):
+def user_upload_path(instance, filename):
+    return str(instance.owner.id) + '/'
+
+class FileAbstract(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    owner = models.ForeignKey(User, related_name="%(app_label)s_%(class)s_related" , on_delete=models.CASCADE)
+    upload = models.FileField(upload_to=user_folder_upload_path,storage=PublicMediaStorage(), null=True, blank=True)
+    local_upload = models.FileField(upload_to=upload_local_path, storage=fs, null=True, blank=True)
+    s3_fileName = models.CharField(max_length=100, default='')
+    local_fileName = models.CharField(max_length=100, default='')
     key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
-    owner = models.ForeignKey(User, related_name='well_images', on_delete=models.SET_NULL, null=True, blank=True)
-    upload = models.ImageField(upload_to=upload_path,storage=PrivateMediaStorage(), null=True, blank=True)
-    plate = models.ForeignKey(Plate, related_name='well_images', on_delete=models.SET_NULL, null=True, blank=True)
-    file_name = models.CharField(max_length=10) # e.g. A_01
-    useS3 = models.BooleanField(default=True)
-    local_upload = models.ImageField(upload_to=upload_local_path,storage=fs, null=True, blank=True)
-
-    def __str__(self):
-        return self.file_name
 
     class Meta:
-        ordering = ('file_name',)
+        abstract=True
 
-# contains images appropriately named '[well]_[subwell].jpg' (i.e. 'A01_1.jpg')
-class PrivateFile(models.Model):
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
-    owner = models.ForeignKey(User, related_name='files', on_delete=models.CASCADE)
-    upload = models.FileField(upload_to=upload_path,storage=PrivateMediaStorage())
+class PrivateFile(FileAbstract):
+    # key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
+    upload = models.FileField(upload_to=user_folder_upload_path,storage=PrivateMediaStorage())
+    
 
+class PrivateFileJSON(FileAbstract):
+    # key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
+    upload = models.FileField(validators=[FileExtensionValidator(['json'])], 
+                                upload_to=user_folder_upload_path,storage=PrivateMediaStorage())
+    local_upload = models.FileField(validators=[FileExtensionValidator(['json'])], 
+                                upload_to=user_folder_upload_path,storage=fs) #TODO this json valdiation isnt working...
+    class Meta(FileAbstract.Meta):
+        constraints = [
+            models.CheckConstraint(check=~models.Q(local_upload__in=['',None]) 
+                | ~models.Q(upload__in=['',None]), name='has_upload'), 
+        ]
 
-class PublicFile(models.Model):
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    upload = models.FileField()
-
-
-# class S3PrivateFileField(models.FileField):
-#     """
-#     A FileField that gives the 'private' ACL to the files it uploads to S3, instead of the default ACL.
-#     """
-#     def __init__(self, verbose_name=None, name=None, upload_to='', storage=None, **kwargs):
-#         if storage is None:
-#             storage = get_storage_class()(acl='private')
-#         super(S3PrivateFileField, self).__init__(verbose_name=verbose_name,
-#                 name=name, upload_to=upload_to, storage=storage, **kwargs)
+class PublicFile(FileAbstract):
+    class Meta(FileAbstract.Meta):
+        constraints = [
+            models.CheckConstraint(check=~models.Q(local_upload__in=['',None]) 
+                | ~models.Q(upload__in=['',None]), name='has_upload'), 
+        ]

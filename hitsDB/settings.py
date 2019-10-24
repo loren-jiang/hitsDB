@@ -207,6 +207,5 @@ AWS_QUERYSTRING_EXPIRE = '5000' # expiration time for signed urls in seconds
 # CRISPY FORMS SETTINGS:
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
-
 # DJANGO TABLES 2 SETTINGS:
 DJANGO_TABLES2_TEMPLATE = 'django_tables2/bootstrap4.html'

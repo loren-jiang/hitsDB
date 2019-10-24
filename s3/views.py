@@ -5,9 +5,9 @@ from django import http
 from django.shortcuts import get_object_or_404
 from django.views.generic import RedirectView
 # from boto.s3.connection import S3Connection
-from .models import PublicFile, PrivateFile, WellImage
+from .models import PublicFile, PrivateFile
 from django.views.generic.edit import FormView
-from .forms import ImagesFieldForm, FilesFieldForm, PrivateFileUploadForm, PrivateImageUploadForm
+from .forms import ImagesFieldForm, FilesFieldForm, PrivateFileUploadForm
 import boto3
 from django.views.generic.edit import CreateView
 from django.urls import reverse_lazy
