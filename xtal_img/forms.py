@@ -4,51 +4,90 @@ from experiment.models import Soak
 
 # crispy form imports
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field
+from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, HTML
+
 
 class DropImageUploadForm(forms.ModelForm):
     class Meta:
         model = DropImage
-        fields=('upload', 'file_name')
+        fields = ('upload', 'file_name')
+
 
 class SoakGUIForm(forms.ModelForm):
     class Meta:
         model = Soak
-        fields = ('soakOffsetX', 'soakOffsetY', 'soakVolume',  'well_x', 'well_y', 'well_radius', 'useSoak')
+        fields = ('soakOffsetX', 'soakOffsetY', 'soakVolume', 'well_x',
+                  'well_y', 'well_radius', 'useSoak')
         labels = {
-            'soakOffsetX': 'Soak Center X (\u03BCm)',
-            'soakOffsetY': 'Soak Center Y (\u03BCm)',
-            'soakVolume': 'Soak Volume (\u03BCL)',
-            'well_x': 'Well Center X (\u03BCm)',
-            'well_y': 'Well Center Y (\u03BCm)',
-            'well_radius': 'Well Radius (\u03BCm)',
-            
+            'soakOffsetX': 'X (\u03BCm)',
+            'soakOffsetY': 'Y (\u03BCm)',
+            'soakVolume': 'Volume (\u03BCL)',
+            'well_x': 'X (\u03BCm)',
+            'well_y': 'Y (\u03BCm)',
+            'well_radius': 'Radius (\u03BCm)',
         }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # make form crispy
         self.helper = FormHelper()
-        
+
         self.helper.layout = Layout(
-            Row(
-                Field('soakOffsetX', wrapper_class='form-group col-md-4 mb-0', readonly=True, title="hh"),
-                Field('soakOffsetY', wrapper_class='form-group col-md-4 mb-0', readonly=True),
-                Field('soakVolume', wrapper_class='form-group col-md-4 mb-0', readonly=True),
-                css_class='form-row'
+            Row(Column(HTML("""
+                            <h5><strong>Soak </strong>
+                            <svg width="20" height="20">
+                                <circle class="circle outer-circle" cx="10" cy="10" r="8" stroke={{soakCircleColor}} stroke-width="2" fill="" fill-opacity="0.0" />
+                                <circle class="circle inner-circle" cx="10" cy="10" r="1" stroke={{soakCircleColor}} stroke-width="2" fill={{soakCircleColor}} fill-opacity="1.0" />
+                            </svg>
+                            </h5>
+                        """),
+                       css_class='col-md-4 mb-0'),
+                Column('useSoak', css_class='col-md-4 mb-0'),
+                css_class='form-row align-items-start'),
+            Row(Column(HTML(
+                """X: {{soakOffsetX}} | Y: {{soakOffsetY}} | Vol: {{soakVolume}} """
             ),
-            Row(
-                css_id='soakVolume-slider'
+                       css_class='col'),
+                css_class='form-row'),
+            Row(Field('soakOffsetX',
+                      wrapper_class='form-group col',
+                      readonly=True),
+                Field('soakOffsetY',
+                      wrapper_class='form-group col',
+                      readonly=True),
+                Field('soakVolume',
+                      wrapper_class='form-group col',
+                      readonly=True),
+                css_class='form-row'),
+            Div(HTML("""<br>"""), css_class='form-row'),
+            Row(Column(HTML("""<h5><strong>Well </strong>
+                            <svg width="20" height="20">
+                                <circle class="circle outer-circle" cx="10" cy="10" r="8" stroke={{wellCircleColor}} stroke-width="2" fill="" fill-opacity="0.0" />
+                                <circle class="circle inner-circle" cx="10" cy="10" r="1" stroke={{wellCircleColor}} stroke-width="2" fill={{wellCircleColor}} fill-opacity="1.0" />
+                            </svg></h5>"""),
+                       css_class='col-md-4 mb-0'),
+                css_class='form-row'),
+            Row(Column(HTML(
+                """X: {{targetWellX}} | Y: {{targetWellY}} | Radius: {{targetWellRadius}}  """
             ),
-            Row(
-                Field('well_x', wrapper_class='form-group col-md-4 mb-0', readonly=True),
-                Field('well_y', wrapper_class='form-group col-md-4 mb-0', readonly=True),
-                Field('well_radius', wrapper_class='form-group col-md-4 mb-0', readonly=True),
-                css_class='form-row'
-            ),
+                       css_class='col'),
+                css_class='form-row'),
+            Row(Field('well_x',
+                      wrapper_class='form-group col-md-4 mb-0',
+                      readonly=True),
+                Field('well_y',
+                      wrapper_class='form-group col-md-4 mb-0',
+                      readonly=True),
+                Field('well_radius',
+                      wrapper_class='form-group col-md-4 mb-0',
+                      readonly=True),
+                css_class='form-row'),
+            Div(HTML("""<br>"""), css_class='form-row'),
+            Div(css_id='soakVolume-slider', css_class='form-row'),
             # Row(
             #     Column('useSoak', css_class='slider round form-group col-md-4 mb-0'),
             #     css_class='switch'
             # ),
-            'useSoak',
-        )
-        self.helper.add_input(Submit('submit', 'Save'))
+            Div(HTML("""<br>"""), css_class='form-row'),
+            Row(Column(Submit('submit', 'Save'), css_class='col'),
+                css_class='form-row'))

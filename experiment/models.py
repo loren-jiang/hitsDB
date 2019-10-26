@@ -3,12 +3,12 @@ from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from import_ZINC.models import Library, Compound
 from .exp_view_process import formatSoaks, split_list, getWellIdx, getSubwellIdx
-from django.db.models.signals import post_save, post_init
+from django.db.models.signals import post_save, post_init, pre_save
 from django.dispatch import receiver
 from django.utils.functional import cached_property 
 from orm_custom.custom_functions import bulk_add, bulk_one_to_one_add
 from django.contrib.postgres.fields import ArrayField, JSONField
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db.models import Count, F, Value
 from utility_functions import chunk_list, items_at, ceiling_div, gen_circ_list, \
     PIX_TO_UM, UM_TO_PIX, IMG_SCALE, VolumeToRadius, RadiusToVolume, \
@@ -408,19 +408,22 @@ class Ingredient(models.Model):
         return self.name
 
 class Plate(models.Model):
-    name = models.CharField(default='', null=True, blank=True, max_length=20)
+    name = models.CharField(max_length=20)
     plateType = models.ForeignKey('PlateType', related_name='plates', on_delete=models.SET_NULL, null=True)
-    experiment = models.ForeignKey(Experiment, related_name='plates', on_delete=models.CASCADE, null=True, blank=True)
+    experiment = models.ForeignKey(Experiment, related_name='plates', on_delete=models.CASCADE)
     isSource = models.BooleanField(default=False) #is it a source plate? if not, it's a dest plate
     plateIdxExp = models.PositiveIntegerField(default=1,null=True, blank=True)
     dataSheetURL = models.URLField(max_length=200, null=True, blank=True)
-    echoCompatible = models.BooleanField(default=False, null=True, blank=True)
+    echoCompatible = models.BooleanField(default=False)
     rockMakerId = models.PositiveIntegerField(unique=True, null=True, blank=True)
     dateTime = models.DateTimeField(null=True, blank=True)
 
     def get_absolute_url(self):
         return "/plate/%i/" % self.id
-        
+    
+    @property
+    def subwells(self):
+        return SubWell.objects.filter(parentWell__in=self.wells.filter())
     @property
     def numCols(self):
         return self.plateType.numCols
@@ -436,7 +439,10 @@ class Plate(models.Model):
 
     class Meta:
         ordering = ('id',)
-        unique_together = ('plateIdxExp', 'isSource', 'experiment')
+        constraints = [
+            models.UniqueConstraint(fields=['plateIdxExp', 'isSource', 'experiment'], name='unique_src_dest_plate_idx')
+        ]
+        # unique_together = ('plateIdxExp', 'isSource', 'experiment')
 
     # creates appropriate wells for plate instance
     def createPlateWells(self):
@@ -568,7 +574,10 @@ class PlateType(models.Model):
         return instance
 
 class Well(models.Model):
-    name = models.CharField(max_length=4) #format should be A01, X10, etc.
+    validWellName = RegexValidator(regex=r'^[A-Z]\d{2}$', message='Enter valid well name')
+    name = models.CharField(max_length=3, 
+        validators=[validWellName]
+        ) #format should be A01, X10, etc.
     compounds = models.ManyToManyField(Compound, related_name='wells', blank=True) #can a well have more than one compound???
     maxResVol = models.DecimalField(max_digits=10, decimal_places=0)
     minResVol = models.DecimalField(max_digits=10, decimal_places=0)
@@ -587,7 +596,10 @@ class Well(models.Model):
 
     class Meta:
         ordering = ('wellIdx',)
-        unique_together = ('plate', 'name',) #ensure that each plate has unique well names
+        constraints = [
+            models.UniqueConstraint(fields=['plate_id', 'name'], name='unique_well_name_in_plate')
+        ]
+        # unique_together = ('plate', 'name',) #ensure that each plate has unique well names
 
 class SubWell(models.Model):
     #relative to A1 well center
@@ -607,7 +619,10 @@ class SubWell(models.Model):
 
     class Meta:
         ordering = ('idx',)
-        unique_together = ('parentWell', 'idx',) #ensure that each plate has unique well names
+        constraints = [
+            models.UniqueConstraint(fields=['parentWell_id', 'idx'], name='unique_subwell_in_well')
+        ]
+        # unique_together = ('parentWell', 'idx',) 
 
 class Soak(models.Model):
     experiment = models.ForeignKey(Experiment,on_delete=models.CASCADE,null=True, blank=True, related_name='soaks',)
@@ -616,19 +631,20 @@ class Soak(models.Model):
     src = models.OneToOneField(Well, on_delete=models.CASCADE,null=True, blank=True, related_name='soak',)
     transferCompound = models.ForeignKey(Compound, on_delete=models.CASCADE,null=True, blank=True, related_name='soaks',)
     
-    soakOffsetX = models.DecimalField(max_digits=10, decimal_places=2,default=0)
-    soakOffsetY = models.DecimalField(max_digits=10, decimal_places=2,default=0)
-    soakVolume = models.DecimalField(max_digits=10, decimal_places=2, default=25) # in nL
+    soakOffsetX = models.DecimalField(max_digits=10, decimal_places=2,default=0, validators=[MinValueValidator(0.0)])
+    soakOffsetY = models.DecimalField(max_digits=10, decimal_places=2,default=0, validators=[MinValueValidator(0.0)])
+    soakVolume = models.DecimalField(max_digits=10, decimal_places=2, default=25, validators=[MinValueValidator(0.0)]) # in nL
 
-    drop_x = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
-    drop_y = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
-    drop_radius = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
+    drop_x = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+    drop_y = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+    drop_radius = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
 
-    well_x = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
-    well_y = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
-    well_radius = models.DecimalField(max_digits=6, decimal_places=2,default=0) #in um
+    well_x = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+    well_y = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+    well_radius = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
 
     useSoak = models.BooleanField(default=False)
+    saveCount = models.PositiveIntegerField(default=0)
 
     @property
     def transferVol(self):
@@ -738,3 +754,8 @@ def remember_experiment_state(sender, instance, **kwargs):
     instance.prev_library_id = instance.library_id
     # if instance.initData_id:
     instance.prev_initData_id = instance.initData_id
+
+@receiver(pre_save, sender=Soak)
+def increment_save_count(sender, instance, **kwargs):
+    # print(instance.saveCount)
+    instance.saveCount += 1

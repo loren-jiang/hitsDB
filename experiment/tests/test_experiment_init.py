@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
-from .models import Experiment, Plate, PlateType, Project, Soak
+from experiment.models import Experiment, Plate, PlateType, Project, Soak
 from import_ZINC.models import Library
 from .test_init_data import test_init_data
 from datetime import datetime
@@ -30,7 +30,7 @@ class Tests(TestCase):
         with open('./test_data/test_plate_data.json', 'r') as myfile:
             data = myfile.read()
             uploaded_file = SimpleUploadedFile("./test_data/test_plate_data.json", bytes(data, 'utf-8'), content_type="application/json")
-            cls.test_init_file = PrivateFileJSON.objects.get_or_create(owner=cls.user, upload=uploaded_file)[0]
+            cls.test_init_file = PrivateFileJSON.objects.get_or_create(owner=cls.user, local_upload=uploaded_file)[0]
 
         cls.experiment = Experiment.objects.get_or_create(
             name="test_exp",
@@ -43,18 +43,18 @@ class Tests(TestCase):
             initDataJSON = test_init_data
         )[0]
 
-    def testMakeExperimentPlates(self):
-        self.client.force_login(self.user)
-        def makeExperimentPlates(platesCreated, plate_type):
-            self.assertEqual(len(platesCreated), 5)
-            for p in platesCreated:
-                wells = p.wells.filter()
-                self.assertEqual(p.isSource, plate_type.isSource) #check correct source or dest label
-                self.assertEqual(wells.count(), plate_type.numResWells) #check number of wells
-                self.assertEqual(wells.count() * wells[0].numSubwells, plate_type.numSubwellsTotal) #check number of subwells
+    # def testMakeExperimentPlates(self):
+    #     self.client.force_login(self.user)
+    #     def makeExperimentPlates(platesCreated, plate_type):
+    #         self.assertEqual(len(platesCreated), 5)
+    #         for p in platesCreated:
+    #             wells = p.wells.filter()
+    #             self.assertEqual(p.isSource, plate_type.isSource) #check correct source or dest label
+    #             self.assertEqual(wells.count(), plate_type.numResWells) #check number of wells
+    #             self.assertEqual(wells.count() * wells[0].numSubwells, plate_type.numSubwellsTotal) #check number of subwells
 
-        makeExperimentPlates(self.experiment.makePlates(5, self.echo_src_plate), self.echo_src_plate)
-        makeExperimentPlates(self.experiment.makePlates(5, self.mrc3_dest_plate), self.mrc3_dest_plate)
+    #     makeExperimentPlates(self.experiment.makePlates(5, self.echo_src_plate), self.echo_src_plate)
+    #     makeExperimentPlates(self.experiment.makePlates(5, self.mrc3_dest_plate), self.mrc3_dest_plate)
     
     # def testCreateSoaksFromInitFileJSON(self):
     #     self.client.force_login(self.user)
@@ -104,7 +104,6 @@ class Tests(TestCase):
             srcPlateType=self.echo_src_plate,
             destPlateType=self.mrc3_dest_plate,
             library=self.library,
-            # initDataJSON = test_init_data,
             initData = self.test_init_file
         )[0]
         copy_initData = PrivateFileJSON.objects.filter(id=self.test_init_file.id).first()

@@ -96,7 +96,9 @@ def DropImageViewGUI(request, *args, **kwargs):
     subwell_idx = int(file_name.split("_")[1])
     p = get_object_or_404(Plate,id=plate_id)
     p_drop_images= p.drop_images.all()
-    useS3 = p_drop_images[0].useS3
+    soakSaves = [soak.saveCount for soak in Soak.objects.filter(dest__parentWell__plate=p)]
+    perc_complete = len(list(filter(lambda x: bool(x), soakSaves))) / len(soakSaves)
+    useS3 = p_drop_images.first().useS3
     target_well = p.wells.get(name=well_name)
     s_w = target_well.subwells.get(idx=subwell_idx)
     soak = s_w.soak
@@ -114,7 +116,7 @@ def DropImageViewGUI(request, *args, **kwargs):
         # 'drop_y':drop_XYR_um[1],
         'well_x':well_XYR_um[0],
         'well_y':well_XYR_um[1],
-        'well_radius':well_XYR_um[1],
+        'well_radius':well_XYR_um[2],
         'useSoak':soak.useSoak,})
     
     obj_keys = [w.key for w in p_drop_images]
@@ -149,7 +151,11 @@ def DropImageViewGUI(request, *args, **kwargs):
                 "plate_id":plate_id,
                 "file_names":file_names,
                 "dont_show_path": True,
+                "back_to_exp_url": reverse_lazy('exp', kwargs={'pk_exp':p.experiment.id}),
+                "perc_complete": (perc_complete*100//1), 
 
+                "soakCircleColor": '#ffc107',
+                "wellCircleColor": '#28a745',
                 "soakOffsetX" : soakOffset_xyr[0],
                 "soakOffsetY" : soakOffset_xyr[1],
                 "soakVolume": soak.soakVolume,
@@ -166,10 +172,8 @@ def DropImageViewGUI(request, *args, **kwargs):
                 "sideWellCircle":2*targetWell_xyr[2],
                 "radWellCircle_": targetWell_xyr[2],
 
-
-
-
                 'SoakGUIForm':form,
+                "saveCount": soak.saveCount,
                 "use_soak" : soak.useSoak, 
             }
             guiData = copy.deepcopy(context)

@@ -40,36 +40,47 @@
                      </div>
                      <div class='{{use_soak|yesno:" ,soak-hidden"}}' id="soak-circle" style="display: None; top: {{topSoakCircle}}px; left: {{leftSoakCircle}}px">
                         <svg class="svg-circle" width="{{sideSoakCircle}}" height="{{sideSoakCircle}}">
-                            <circle class="circle outer-circle" cx="{{soakRadius}}" cy="{{soakRadius}}" r="{{radSoakCircle_}}" stroke="red" stroke-width="4" fill="" fill-opacity="0.0" />
-                            <circle class="circle inner-circle" cx="{{soakRadius}}" cy="{{soakRadius}}" r="1" stroke="red" stroke-width="4" fill="red" fill-opacity="1.0" />
+                            <circle class="circle outer-circle" cx="{{soakRadius}}" cy="{{soakRadius}}" r="{{radSoakCircle_}}" stroke="#d39bcb" stroke-width="4" fill="" fill-opacity="0.0" />
+                            <circle class="circle inner-circle" cx="{{soakRadius}}" cy="{{soakRadius}}" r="1" stroke="#d39bcb" stroke-width="4" fill="#d39bcb" fill-opacity="1.0" />
                         </svg>
                         
                      </div> {% endcomment %}
                 </div>
+                <br>
+
+                <div class='row justify-content-between'>
+                    <div class='col'>
+                        <a id="prev-well" class="btn btn-primary" href="/image-gui/{{user_id}}/{{plate_id}}/{{prev_well}}">&lt;&lt; {{prev_well}}</a>
+                        <a id="next-well" class="btn btn-primary" href="/image-gui/{{user_id}}/{{plate_id}}/{{next_well}}">{{next_well}} &gt;&gt;</a>
+                    </div>
+                    <div class='col'>
+                        <a id="back-to-exp" class="btn btn-secondary float-right" href="{{back_to_exp_url}}"> &crarr; Back to Experiment </a>
+                    </div>
+                </div>
                 
-                <a id="prev-well" class="button" href="/image-gui/{{user_id}}/{{plate_id}}/{{prev_well}}">&lt;&lt; {{prev_well}}</a>
-                <a id="next-well" class="button" href="/image-gui/{{user_id}}/{{plate_id}}/{{next_well}}">{{next_well}} &gt;&gt;</a>
+
+                
             </div>
             <div class="col">
                 <div class="row">
                     <div class="col">
-                        <p>Soak coordinates:<br></p>
-                        <p> {{soakOffsetX}},{{soakOffsetY}}<br></p>
-                        <p>Well coordinates:<br></p>
-                        <p> {{targetWellX}},{{targetWellY}}<br></p>
-                        <form id="soak-form" action="" method="post"> 
-                            {%csrf_token%} 
-                            {% crispy SoakGUIForm %}
-                            <span>
-                                Next well on save
-                                <input type="checkbox" name="nextWellOnSave" id="nextWellOnSave" Checked><br>  
-                            </span>
-                            
-                            {% comment %} <input type="submit" value="Save"> {% endcomment %}
-                        </form>
+                        <div class='jumbotron'>
+                            <form id="soak-form" action="" method="post"> 
+                                {%csrf_token%} 
+                                {% crispy SoakGUIForm %}
+                                
+                                
+                                {% comment %} <input type="submit" value="Save"> {% endcomment %}
+                            </form>
+
+                        </div>
+                        <span>
+                            Next well on save
+                            <input type="checkbox" name="nextWellOnSave" id="nextWellOnSave" Checked><br>  
+                        </span>
                         {% comment %} <div id="soakRadius-slider"></div> {% endcomment %}
                           
-                        <select id="sel-well" name="sel-name">
+                        <select class="form-control" id="sel-well" name="sel-name">
                             {% for f in file_names %}
                                 {% if f == file_name %}
                                     <option value="{{f}}" selected="selected"> {{f}} </option>
@@ -79,7 +90,7 @@
                             {% endfor %}                 
                         </select> <br>
                           
-
+                        <p> Save count: {{saveCount}} | % complete: {{perc_complete}}</p>
                         <div>
                             <table>
                                 <h5> Hotkey mapping </h5>
