@@ -10,7 +10,7 @@ https://docs.djangoproject.com/en/2.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.1/ref/settings/
 """
-
+from decouple import config # used to retrieve sensitive credentials using python-decouple
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -40,12 +40,21 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'livereload', #hot reloading for Django
     'django.contrib.staticfiles',
     'widget_tweaks',
     'log',
     'experiment',
+    'import_ZINC',
     'debug_toolbar',
     'django_tables2',
+    'rest_framework',
+    's3',
+    'xtal_img',
+    'storages',
+    'crispy_forms',
+    'django_filters',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -57,9 +66,20 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
+    'livereload.middleware.LiveReloadScript',
 ]
 
 ROOT_URLCONF = 'hitsDB.urls'
+
+# DEBUG_TOOLBAR_CONFIG = {
+#     'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
+#     # '...
+# }
+
+GRAPH_MODELS = {
+  'all_applications': True,
+  'group_models': True,
+}
 
 TEMPLATES = [
     {
@@ -89,10 +109,10 @@ WSGI_APPLICATION = 'hitsDB.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'hitsdb',
-        'USER': 'loren',
-        'PASSWORD': 'coygth14',
-        'HOST': 'localhost',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'), 
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
         'PORT': '',
     }
 }
@@ -116,7 +136,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
 
@@ -138,13 +157,55 @@ STATIC_URL = '/static/'
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
-    os.path.join(BASE_DIR, 'node_modules'),
+    # os.path.join(BASE_DIR, 'node_modules'),
 ]
 
 LOGIN_REDIRECT_URL = '/' # It means home view
+LOGIN_URL = '/login'
 
+# Send an email from xray@msg.ucsf.edu
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = 'xray@msg.ucsf.edu'
-EMAIL_HOST_PASSWORD = 'i64tbtwl'
-EMAIL_PORT = 587
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
+EMAIL_PORT = config('EMAIL_PORT', cast=int)
+
+# AWS S3 configuraiton
+
+# DEFAULT_FILE_STORAGE = 's3.s3utils.MediaStorage' 
+# STATICFILES_STORAGE = 's3.s3utils.StaticS3BotoStorage'
+
+AWS_DEFAULT_ACL = None
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+
+S3_URL = 'http://%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
+# STATIC_DIRECTORY = '/static/'
+MEDIA_DIRECTORY = '/media/'
+# STATIC_URL = S3_URL + STATIC_DIRECTORY
+MEDIA_URL = S3_URL + MEDIA_DIRECTORY
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+# AWS_STATIC_LOCATION = 'static'
+# STATICFILES_STORAGE = 's3.s3utils.StaticStorage'
+# STATIC_URL = "https://%s/%s/" % (AWS_S3_CUSTOM_DOMAIN, AWS_STATIC_LOCATION)
+
+AWS_PUBLIC_MEDIA_LOCATION = 'media/public'
+DEFAULT_FILE_STORAGE = 's3.s3utils.PublicMediaStorage'
+
+AWS_PRIVATE_MEDIA_LOCATION = 'media/private'
+PRIVATE_FILE_STORAGE = 's3.s3utils.PrivateMediaStorage'
+
+AWS_QUERYSTRING_EXPIRE = '5000' # expiration time for signed urls in seconds
+
+
+# CRISPY FORMS SETTINGS:
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
+# DJANGO TABLES 2 SETTINGS:
+DJANGO_TABLES2_TEMPLATE = 'django_tables2/bootstrap4.html'

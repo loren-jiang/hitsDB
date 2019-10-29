@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% load render_table from django_tables2 %} 
+{% block content %}
+
+  
+  <script src="{% static 'hitsDB/js/modalForm.js' %}"></script>
+  <script src="{% static 'hitsDB/js/selectDeleteDj2Table.js' %}"></script>
+
+  <link href="{% static 'apps/experiment/css/lib.css' %}" rel="stylesheet">
+  
+  <div class="modal" id="{{modal_id}}"></div>
+  {% if filter %}
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-3">
+            
+            <div class="jumbotron">
+              <h3>
+                <b>Name</b> <span>: {{lib.name}} </span>
+              </h3>
+              <p>
+                <b>Description</b> <span> {{lib.description}} </span>
+              </p>
+              <p>
+                <b># Compounds</b> <span> {{lib.numCompounds}} </span>
+              </p>
+              <p>
+                <b>Supplier</b> <span> {{lib.supplier}} </span>
+              </p>
+              {% render_table libTable %}
+              <p>Used in experiments:</p>
+              {% render_table expsTable %}
+            </div>
+          </div>
+
+          <div class="col-9">
+            {% with table=table filter=filter modal=modal btn=btn%}
+              {% include 'filter_table.html' %}
+            {% endwith %}
+          </div>  
+        </div>
+      </div>
+      
+      
+      
+  {% endif %}
+    
+  <script>
+    // $(document).ready(function() {
+   
+    //   $("#{{btn1_id}}, #{{btn2_id}}, #{{btn3_id}}").click( function(e) {
+    //     e.preventDefault();
+    //     let $form = $("#compounds_form");
+    //     const $this_id = this.id;
+    //     const msg = "Are you sure?"
+    //     if (confirm(msg)) {
+    //       $("<input />").attr("type","hidden")
+    //         .attr("name","btn")
+    //         .attr("value",$this_id)
+    //         .appendTo($form);
+    //       $form.submit();
+    //     }
+    //   });  
+
+    // });
+  </script>
+
+
+{% endblock %}

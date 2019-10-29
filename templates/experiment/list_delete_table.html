@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+<!-- Template to show table of class model instances and have filter, select / delete functionality -->
+<!-- shoud have 'table_form_id','filter_form_id','table_id','filter' (w/ filter.form),'table' -->
+
+{% load static %}
+{% load crispy_forms_tags %}
+{% load render_table from django_tables2 %} 
+{% block content %}
+  <script src="{% static 'hitsDB/js/modalForm.js' %}"></script>
+  <script src="{% static 'hitsDB/js/selectDeleteDj2Table.js' %}"></script>
+  <div class="modal" id="{{modal_id}}"></div>
+  {% if filter %}
+      <div class="container">
+        <div class="row">
+          <div class="col-3">
+            <form id="{{ filter_form_id }}" action="" method="get" class="form">
+                {% csrf_token %}
+                {{ filter.form | crispy }}
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </form>
+          </div>
+  {% endif %}
+          <div class="col-9">
+            <form id="{{table_form_id}}" action="{{form_action_url}}" method="post" class="form">
+              {% csrf_token %}
+              {% render_table table %}
+              <!-- <div class="modify-table" id="{{ table_id }}">
+                
+              </div> -->
+            </form>
+            
+            <a class="btn btn-danger" role="button" id="delete_selected"> Deleted selected </a>
+          </div>  
+        </div>
+      </div>
+      
+      
+      
+  
+    
+  <script>
+    $(document).ready(function() {
+      url_class = '{{url_class}}'
+      modal_id = "{{modal_id}}"
+      form_class = "{{form_class}}"
+      setUpModalForm(url_class, modal_id, form_class);
+
+      $("#delete_selected").click( function(e) {
+        e.preventDefault();
+        let $form = $("#" + "{{ table_form_id }}");
+        // $form.attr("action", "{{form_action_url}}");
+        // $form.attr("method", "post");
+        const msg = "Are you sure?"
+        if (getFormInputData("{{table_form_id}}").length > 0) {
+          if (confirm(msg)) {
+            $form.submit();
+          }
+        };
+        
+      });      
+
+    });
+  </script>
+
+{% endblock %}

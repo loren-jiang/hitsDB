@@ -1,0 +1,42 @@
+<!-- Template for form as modal. 
+  Note: Data passed should have
+  - form appropriately named 'form' when passing data
+  - modal-title named 'modal_title'
+  - form action named 'action' #should be a view ideally
+-->
+{% load crispy_forms_tags %}
+{% block content %}
+{{ form.media }}
+
+<div class="modal-dialog">
+  {% if use_ajax %}
+  <form class="{{form_class}} ajax_form" method="post" action="{{action}}" enctype="multipart/form-data">
+  {% else %}
+  <form class="{{form_class}}" method="post" action="{{action}}" enctype="multipart/form-data">
+  {% endif %}
+  
+    <div class="modal-content">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <h4 class="modal-title">{{modal_title}}</h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      
+      <!-- Modal body -->
+      <div class="modal-body">
+          {% csrf_token %}
+          {{ form | crispy }}
+          
+      </div>
+      
+      <!-- Modal footer -->
+      <div class="modal-footer">
+        <input type="submit" class="btn btn-primary" value="Save" />
+        <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+      </div>
+      
+    </div>
+  </form>
+</div>
+
+{% endblock %}

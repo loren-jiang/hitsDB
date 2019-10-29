@@ -1,36 +1,39 @@
 {% extends 'base.html' %}
 {% load static %}
-
+{% load render_table from django_tables2 %} 
+{% load crispy_forms_tags %}
 {% block content %}
+<script src="{% static 'js/selectDeleteDj2Table.js' %}"></script>
 
 <!-- The Modal -->
 <div class="modal fade" id="newExp">
-  
-  <div class="modal-dialog">
-    <div class="modal-content">
-    
-      <!-- Modal Header -->
-      <div class="modal-header">
-        <h4 class="modal-title">New Experiment</h4>
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-      </div>
+  <form method="post" >
+    <div class="modal-dialog">
+      <div class="modal-content">
       
-      <!-- Modal body -->
-      <div class="modal-body">
-        <form method="post" >
-          {% csrf_token %}
-          {% include 'bs4_form.html' with form=form %}
-          <input type="submit" value="Create" />
-        </form>
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <h4 class="modal-title">New Experiment</h4>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        
+        <!-- Modal body -->
+        <div class="modal-body">
+          
+            {% csrf_token %}
+            <!-- {% include 'bs4_form.html' with form=form %} -->
+            {{ form|crispy }}
+        </div>
+        
+        <!-- Modal footer -->
+        <div class="modal-footer">
+            <input type="submit" class="btn btn-primary" value="Create"/>
+          <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+        </div>
+        
       </div>
-      
-      <!-- Modal footer -->
-      <div class="modal-footer">
-        <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
-      </div>
-      
     </div>
-  </div>
+  </form>
 </div>
 
 <div class="container-fluid">
@@ -39,22 +42,31 @@
             <div class="jumbotron">
                 <h3>Experiments <img src={% static 'icons/atomic.png' %} height="10%" width="10%"> </h3>
 
-                  {% load django_tables2 %} 
                   {% render_table experimentsTable %}
                   <!-- Button to Open the Modal -->
                   <button type="button" class="btn btn-info" data-toggle="modal" data-target="#newExp">
                       New Experiment
                   </button>
                   <!--<a class="btn btn-info" role="button" href={% url 'new_proj_experiment' pk_proj %}> New Experiment </a>-->
-                  <a class="btn btn-info" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a>
+                  <a  class="btn btn-info" role="button" id="delete-exps"> Delete Selected </a>
+                  {# <a  onclick="return deleteSelExps()" class="btn btn-info" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a> #}
             </div>
         </div>
         <div class="col-md-6">
             <div class="jumbotron">
                   <h3>Libraries <img src={% static 'icons/book.png' %} height="10%" width="10%"></h3>
-                  {% load django_tables2 %} 
+                  
                   {% render_table librariesTable %}
                   <a class="btn btn-info" role="button" href={% url 'proj_libs' pk_proj %}>View all libraries</a>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="jumbotron">
+                <h3>Collaborators <img src={% static 'icons/users.png' %} height="10%" width="10%"> </h3>
+
+                  {% render_table collaboratorsTable %}
+          
             </div>
         </div>
  
@@ -62,36 +74,19 @@
 </div>
 
 
-
 <script>
-  $(document).ready(function() {
-       
-    function getSelected() {
-      var selected = [];
-                $.each($("td input[type='checkbox']:checked"), function(){
-                    var exp = $(this).val();     
-                    if (exp.length > 0)  {selected.push(exp);}   
-                });
-      return selected;
-    }
-
-    $("#delete-exps").click(function(){
-      
-      selected = getSelected();
-      var newurl = '/proj/{{pk_proj}}/delete_exps/' + selected.join("/");
-      if (selected.length > 0) {
-        if (confirm("Are you sure you want to delete these experiments?")) {
-          $("#delete-exps").attr("href", newurl);
-        } 
-        else {
-          $("#delete-exps").attr("href", '/proj/{{pk_proj}}');
-        }
-      } 
-      
-    });
-            
+  $(document).ready(function() { 
+    $("#delete-exps").on("click", function(e) {
+      e.preventDefault();
+      let selected = getSelected("td input[type='checkbox']:checked");
+      let base_url = "{% url 'delete_proj_exps' pk_proj '' %}";
+      // base_url = base_url.slice(0, base_url.length-1);
+      deleteSelected(selected, base_url)
+    });    
+    
   });
 
+  
 </script>
 
 {% endblock %}

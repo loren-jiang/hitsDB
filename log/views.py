@@ -13,25 +13,10 @@ from .tokens import account_activation_token
 from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
 from django.core.mail import EmailMessage
-from experiment.models import Project
 
+# # Create your views here.
 
-# Create your views here.
-# this login required decorator is to not allow to any  
-# view without authenticating
-@login_required(login_url="login/")
-def user_home(request):
-    user = request.user
-    recent_projs = Project.objects.filter(owner=user)[:3]
-    data = {
-        'user':user,
-        'recent_projs':recent_projs,
-    }
-
-    return render(request,"user_home.html", data)
-
-
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def deactivate_user(request):
     try:
         u = request.user
@@ -57,43 +42,36 @@ def isValidEmail( email ):
     except ValidationError:
         return False
 
-@login_required(login_url="login/")
+@login_required(login_url="/login")
 def manage_user(request):
-
     user = request.user
     form = EditUserForm(request.POST or None, 
-        initial={'email':user.email})
+        initial={'username':user.username, 'email':user.email})
 
     if request.method == 'POST':
-        # newUsername = request.POST['username']
+        newUsername = request.POST['username']
         newEmail = request.POST['email']
         newPassword = request.POST['password1']
         if form.is_valid():
-
-            # user.username = newUsername
+            user.username = newUsername
             user.email = newEmail
-            user.set_password(newPassword)
+            if newPassword:
+                user.set_password(newPassword)
             user.save()
             messages.success(request,'Account successfully updated.')
             update_session_auth_hash(request, user)
-            
-            return redirect(reverse('user_home')) #change this to view_user.html
-        # else: # a bit hacky for changing just a user's email while keeping username...
-        #     if (newUsername == user.username and 
-        #         isValidEmail(newEmail)):
-        #         user.email = newEmail
-        #         user.save()
-        #         return HttpResponseRedirect('%s'%(reverse('user_home'))) #change this to view_user.html
+            return HttpResponseRedirect('')
 
-    data = {
+    context = {
         "form": form,
         "user": user,
+        "dont_show_path": True,
     }
 
-    return render(request, "manage_user.html", data)
+    return render(request, "log/manage_user.html", context)
 
+# https://medium.com/@frfahim/django-registration-with-confirmation-email-bb5da011e4ef 
 def register(request):
-    # https://medium.com/@frfahim/django-registration-with-confirmation-email-bb5da011e4ef 
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
         if form.is_valid():
@@ -109,7 +87,8 @@ def register(request):
                 'user': user,
                 'groups':groups,
                 'domain': current_site.domain,
-                'uid':urlsafe_base64_encode(force_bytes(user.pk)).decode(),
+                # 'uid':urlsafe_base64_encode(force_bytes(user.pk)).decode(), #Doesn't work for python 3?
+                'uid':urlsafe_base64_encode(force_bytes(user.pk)), 
                 'token':account_activation_token.make_token(user),
             })
             to_email = form.cleaned_data.get('email')
@@ -119,11 +98,11 @@ def register(request):
             email.send()
             messages.success(request, 'Account created. You will receive \
                 a confirmation email to activate your account.')
-            return redirect('register')
- 
+            return HttpResponseRedirect('')
+
     else:
         form = RegistrationForm()
-    return render(request, '../templates/register.html', {'form': form})    
+    return render(request, 'log/register.html', {'form': form})    
 
 def activate(request, uidb64, token):
     try:
@@ -138,7 +117,7 @@ def activate(request, uidb64, token):
         login(request, user)
         # return redirect('home')
         messages.success(request, '[hitsDB] Account has been successfully activated.')
-        return redirect('user_home')
+        return redirect('home')
     else:
         return HttpResponse('Activation link is invalid!')
 
@@ -161,22 +140,20 @@ def reset_password(request, uidb64, token):
     else:
         return HttpResponse('Activation link is invalid!')
 
-
 def user_recover(request):
     if request.method == 'POST':
         usernameInput = request.POST['username']
         
         f = RecoverUserForm(request.POST)
-        if f.is_valid():
-            # f.save()
-            
+        if f.is_valid():            
             user = User.objects.get(username=usernameInput)
             current_site = get_current_site(request)
             mail_subject = '[hitsDB] Password reset'  
             message = render_to_string('resetpw_email.html', {
                 'user': user,
                 'domain': current_site.domain,
-                'uid':urlsafe_base64_encode(force_bytes(user.pk)).decode(),
+                # 'uid':urlsafe_base64_encode(force_bytes(user.pk)).decode(), #Doesn't work for python 3?
+                'uid':urlsafe_base64_encode(force_bytes(user.pk)), 
                 'token':account_activation_token.make_token(user),
             })
             to_email = user.email
@@ -191,6 +168,6 @@ def user_recover(request):
 
     else:
         f = RecoverUserForm()
-    data  ={'form': f}
-    return render(request,"user_recover.html", data)
+    context = {'form': f}
+    return render(request,"log/user_recover.html", context)
 

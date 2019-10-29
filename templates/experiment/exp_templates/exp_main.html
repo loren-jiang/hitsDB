@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% load static %}
+{% load render_table from django_tables2 %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block content %}
+<script src="{% static 'apps/experiment/js/experiment.js' %}"></script>
+<script src="{% static 'hitsDB/js/multiform.js' %}"></script>
+<link rel="stylesheet" href="{% static 'apps/experiment/css/exp_main.css' %}">
+
+<div id="exp-container" class="container-fluid multiform">
+    <div class="row justify-content-center">
+
+        <div class="col-2">
+        <div id="exp-info" class="jumbotron">
+            <h3> {{ exp.name }}</h3>
+            <p> Created: {{ exp.dateTime }}</p>
+            {% comment %} <p> Protein: {{ exp.protein }}</p>
+            <p> Description: {{ exp.description }}</p>
+            <p> Library: 
+                {% if exp.library %}
+                <a href="{% url 'lib' exp.library.id %}">{{ exp.library }}</a> 
+                {% endif %}
+            </p>  {% endcomment %}
+            <form id="exp-form" method="post">{% csrf_token %}
+                {{ forms.expform|crispy}}
+                <button type="submit" class="btn btn-info">Save</button>   
+                <a id='delete-exp' class='btn btn-danger' role='button' href="{% url 'delete_exp' exp.pk %}"> Delete </a>                          
+            </form>
+            
+        </div>
+
+        
+        </div>
+
+        <div class="col-8">
+            <div class="row">
+                
+                <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                    <a class="nav-link active" id="v-pills-home-tab" data-toggle="pill" href="#v-pills-home" role="tab" aria-controls="v-pills-home" aria-selected="true">Initialization</a>
+                    <a class="nav-link" id="v-pills-profile-tab" data-toggle="pill" href="#v-pills-profile" role="tab" aria-controls="v-pills-profile" aria-selected="false">Run GUI</a>
+                    <a class="nav-link" id="v-pills-messages-tab" data-toggle="pill" href="#v-pills-messages" role="tab" aria-controls="v-pills-messages" aria-selected="false">Soaks</a>
+                </div>
+                <div class="tab-content" id="v-pills-tabContent">
+                    <div class="tab-pane fade show active" id="v-pills-home" role="tabpanel" aria-labelledby="v-pills-home-tab">
+                        <div class="row"> 
+                            {% if current_step > 0 %}
+                            <div class="col">
+                                <div class="jumbotron">
+                                    <h3>Initialization</h3>
+                                    <p> Local ploaded file: <a href={{initData_local_url}}> {{initData_local_url}} </a> </p>
+                                    <p> s3 uploaded file: <a href={{init_data_file_url}}> {{exp.init_data_file}} </a> </p>
+                                    <form id="init-form" enctype="multipart/form-data"  method="post">{% csrf_token %}
+                                        {{ forms.initform|crispy}}
+                                        <button type="submit" class="btn btn-info">Upload</button>
+                                    </form>
+                                    
+                                    
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% if exp.init_data_file %} 
+                            <div class="col">
+                                <div class="jumbotron">
+                                    <h3>Process initialization file</h3>                            
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+                    <div class="tab-pane fade" id="v-pills-profile" role="tabpanel" aria-labelledby="v-pills-profile-tab">
+                        <div class="col">
+                            <div class="jumbotron">
+                                <h3>Upload drop images</h3>
+                                {% if current_step > 1 %}
+                                    {% render_table dest_plates_table %}
+
+                                    {% comment %} <form id="plates-form" method="post">{% csrf_token %}
+                                        {{ forms.platesform|crispy}}
+                                        <button type="submit" class="btn btn-info">Generate plates</button>
+                                        {% if plates_valid %}
+                                        <a role="button" class="btn btn-info" href="{% url 'exp_plates' exp.pk %}">View plates</a>
+                                        {% endif %}
+                                    </form> {% endcomment %}
+                                    {% else %}
+                                    <p> Please select library in Step 1.</p>
+                                {% endif %}
+                                
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="v-pills-messages" role="tabpanel" aria-labelledby="v-pills-messages-tab">
+                        <div class="col">
+                            <div class="jumbotron">
+                                <h3>Soak setup</h3>
+                                {% if current_step > 2 %}
+                                <form id="soaks-form" method="post">{% csrf_token %}
+                                    {{ forms.soaksform|crispy}}
+                                    <span>
+                                        <button type="submit" class="btn btn-info">Generate soaks</button>
+                                        {% if soaks_valid %}
+                                        <a role="button" class="btn btn-info" href="{% url 'exp_soaks' exp.pk %}">View soaks</a>
+                                        {% endif %}
+                                    </span>
+                                </form> 
+                                {% else %}
+                                <p> Please complete Step 2.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div> 
+            </div>
+            <div class="row">
+                {% comment %} <div class="col">
+                    <div class="jumbotron">
+                        <h3>Step 1: Experiment setup</h3>
+                        <form id="exp-form" method="post">{% csrf_token %}
+                            {{ forms.expform|crispy}}
+                            <button type="submit" class="btn btn-info">Save</button>                            
+                        </form>
+                    </div>
+                </div> {% endcomment %}
+                {% comment %} <div class="col">
+                    <div class="jumbotron">
+                        <h3>Plate setup</h3>
+                        {% if current_step > 1 %}
+                        <form id="plates-form" method="post">{% csrf_token %}
+                            {{ forms.platesform|crispy}}
+                            <button type="submit" class="btn btn-info">Generate plates</button>
+                            {% if plates_valid %}
+                            <a role="button" class="btn btn-info" href="{% url 'exp_plates' exp.pk %}">View plates</a>
+                            {% endif %}
+                        </form>
+                        {% else %}
+                        <p> Please select library in Step 1.</p>
+                        {% endif %}
+                    </div>
+                </div> 
+
+                <div class="col">
+                    <div class="jumbotron">
+                        <h3>Soak setup</h3>
+                        {% if current_step > 2 %}
+                        <form id="soaks-form" method="post">{% csrf_token %}
+                            {{ forms.soaksform|crispy}}
+                            <span>
+                                <button type="submit" class="btn btn-info">Generate soaks</button>
+                                {% if soaks_valid %}
+                                <a role="button" class="btn btn-info" href="{% url 'exp_soaks' exp.pk %}">View soaks</a>
+                                {% endif %}
+                            </span>
+                        </form> 
+                        {% else %}
+                        <p> Please complete Step 2.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="jumbotron">
+                        <h3>Plate setup</h3>
+                        {% if current_step > 3 %}
+                        <p>soaks!</p>
+                        {% else %}
+                        <p> Please complete Step 1.</p>
+                        {% endif %}
+                    </div>
+                </div>  {% endcomment %}
+            </div>
+            
+        </div>
+
+    </div>
+</div>
+  
+<script>
+$(document).ready(function() {
+    lib_pk = "{{exp.library.pk|safe}}";
+    confirmLibraryChange(lib_pk);
+    initCurrentStep('{{current_step}}');
+});
+</script>
+{% endblock content %}
