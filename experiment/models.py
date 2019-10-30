@@ -97,7 +97,7 @@ class Experiment(models.Model):
         """
         if bool(self.initData):
             return True
-        reutrn False
+        return False
 
     @property
     def getCurrentStep(self):
@@ -761,8 +761,8 @@ class Well(models.Model):
         # unique_together = ('plate', 'name',) #ensure that each plate has unique well names
 
 class SubWell(models.Model):
-    validSubwellName = RegexValidator(regex=r'^[A-Z]\d{2}$', message='Enter valid well name')
-    name = models.CharField(max_length=3, 
+    validSubwellName = RegexValidator(regex=r'^[A-Z]\d{2}_[123]$', message='Enter valid well name')
+    name = models.CharField(max_length=5, 
         validators=[validSubwellName]
         )
     idx = models.PositiveIntegerField(default=1) #CHANGE TO 0-indexed?
@@ -785,7 +785,7 @@ class SubWell(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['parentWell_id', 'idx'], name='unique_subwell_in_well')
         ]
-        # unique_together = ('parentWell', 'idx',) 
+        unique_together = ('parentWell', 'idx',) 
 
 class Soak(models.Model):
     experiment = models.ForeignKey(Experiment,on_delete=models.CASCADE,null=True, blank=True, related_name='soaks',)

@@ -1,3 +1,4 @@
+### ORM (object-relational mapping layer) functions
 
 def bulk_add(throughRel, a_pks, b_pks, a_col_name, b_col_name): 
     """
@@ -43,16 +44,34 @@ def bulk_one_to_one_add(throughRel, a_pks, b_pks, a_col_name, b_col_name):
     rels = throughRel.objects.bulk_create(relations, ignore_conflicts=True)
     return rels 
 
-def make_instance_from_dict(instance_model_a_as_dict,model_a):
+def make_instance_from_dict(instance_model_a_as_dict, model_a):
+    """
+    Makes Model instance (unsaved) from dict of fields; fields must be valid to be saved later
+
+    Parameters:
+    instance_model_a_as_dict (dictionary): dictionary of Model fields to be created with instance
+    model_a (Model instance): instance of Model to be created
+
+    Returns (Model instance)
+    """
     try:
         del instance_model_a_as_dict['id']
     except KeyError:
         pass
     return model_a(**instance_model_a_as_dict)
 
-def copy_instance(instance_of_model_a,instance_of_model_b):
-    for field in instance_of_model_a._meta.fields:
+def copy_instance(instance_a, instance_b):
+    """
+    Copies Model instance a to Model instance b; both instances should be of the same Model
+
+    Parameters:
+    instance_a (Model instance): instance of Model from which to copy fields
+    instance_b (Model instance): instance of Model to which to copy fields
+
+    Returns (Model instance) instance_b
+    """
+    for field in instance_a._meta.fields:
         if field.primary_key == True:
             continue  # don't want to clone the PK
-        setattr(instance_of_model_b, field.name, getattr(instance_of_model_a, field.name))
-    return instance_of_model_b
+        setattr(instance_b, field.name, getattr(instance_a, field.name))
+    return instance_b
