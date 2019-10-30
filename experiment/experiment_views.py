@@ -5,13 +5,15 @@ from django_tables2 import RequestConfig
 import csv
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from import_ZINC.models import Library, Compound
-from .forms import ExperimentModelForm, PlatesSetupMultiForm, ExpAsMultiForm, SoaksSetupMultiForm, ExpInitMultiForm, ExpInitDataMultiForm
+from .forms import CreateSrcPlatesFromLibMultiForm, ExperimentModelForm, PlatesSetupMultiForm, ExpAsMultiForm, SoaksSetupMultiForm, ExpInitMultiForm, ExpInitDataMultiForm
 from forms_custom.multiforms import MultiFormsView
 from django.db.models import Count, F, Value
 from .decorators import is_users_experiment 
 from django.conf import settings
 from s3.s3utils import myS3Client, myS3Resource, create_presigned_url
 from s3.models import PrivateFileJSON
+from io import TextIOWrapper
+
 
 class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
     template_name = "experiment/exp_templates/exp_main.html"
@@ -20,6 +22,7 @@ class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
                     'initform': ExpInitDataMultiForm,
                     'platesform': PlatesSetupMultiForm,
                     'soaksform' : SoaksSetupMultiForm,
+                    'platelibform': CreateSrcPlatesFromLibMultiForm,
                     }
     form_arguments = {}
     success_urls = {}
@@ -47,6 +50,9 @@ class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
         self.form_arguments['initform'] = {
                                         'exp': exp, 
         }
+        self.form_arguments['platelibform'] = {
+                                            'exp': exp,
+                                    }
         self.form_arguments['platesform'] = {
                                         'exp': exp
                                     }
@@ -58,6 +64,7 @@ class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
         
         self.success_urls['expform'] = exp_view_url
         self.success_urls['initform'] = exp_view_url  
+        self.success_urls['platelibform'] = exp_view_url
         self.success_urls['platesform'] = exp_view_url
         self.success_urls['soaksform'] = exp_view_url
         # call super
@@ -68,7 +75,7 @@ class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-        exp = exp_qs[0]
+        exp = exp_qs.first()
         fields = [key for key in cleaned_data]
         for field in fields:
             new_field_data = cleaned_data[field]
@@ -83,7 +90,7 @@ class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-        exp = exp_qs[0]
+        exp = exp_qs.first()
         exp.destPlateType = PlateType.objects.get(name="Swiss MRC-3 96 well microplate") #TODO: ensure destPlateType is set for experiment
         f = cleaned_data['initDataFile']
         useS3 = False
@@ -104,13 +111,33 @@ class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
 
         return HttpResponseRedirect(self.get_success_url(form_name))
     
+    def platelibform_form_valid(self, form):
+        pk = self.kwargs.get('pk_exp', None)
+        cleaned_data = form.cleaned_data
+        form_name = cleaned_data.pop('action')
+        exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
+        exp = exp_qs.first()
+        lib = exp.library #TODO: ensure library is tied to experiment beforehand
+        # try:
+        f = TextIOWrapper(cleaned_data['plateLibDataFile'], self.request.encoding )
+        with transaction.atomic():
+            # print(cleaned_data['numSrcPlates'], cleaned_data['plateLibDataFile'])
+
+            print(type(cleaned_data['plateLibDataFile']))
+            exp.createSrcPlatesFromLibFile(cleaned_data['numSrcPlates'], f)
+            # pass
+        # except Exception as e:
+        #     print(e)
+        #     pass
+        return HttpResponseRedirect(self.get_success_url(form_name))
+
     def platesform_form_valid(self, form):
         pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp_qs.update(**cleaned_data)
-        exp_qs[0].generateSrcDestPlates()
+        exp_qs.first().generateSrcDestPlates()
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def soaksform_form_valid(self, form):
@@ -118,8 +145,12 @@ class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
+        exp = exp_qs.first()
         # exp_qs.update(**cleaned_data)
-        exp_qs[0].generateSoaks(cleaned_data['transferVol'],cleaned_data['soakOffsetX'],cleaned_data['soakOffsetY'] ) 
+        src_wells = [w for w in exp.srcWellsWithCompounds]
+        soaks = [s for s in exp.usedSoaks]
+        exp.matchSrcWellsToSoaks(src_wells, soaks)
+        # exp_qs.first().generateSoaks(cleaned_data['transferVol'],cleaned_data['soakOffsetX'],cleaned_data['soakOffsetY'] ) 
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def get_context_data(self, **kwargs):
@@ -168,7 +199,6 @@ def experiment(request, pk_exp):
     src_plates_table = experiment.getSrcPlatesTable(exc=[])
     dest_plates_table = experiment.getDestPlatesTable(exc=[])
     
-    # formattedSoaks = experiment.formattedSoaks(soaks_qs) #played around with caching
     context = {
         'show_path' : True,
         'pkUser': request.user.id,
@@ -176,7 +206,6 @@ def experiment(request, pk_exp):
         'pkOwner': experiment.owner.id,
         'src_plates_table': src_plates_table,
         'dest_plates_table': dest_plates_table,
-        # 'plates' : formattedSoaks, #rendering the plate grids takes too long and isn't useful; maybe we should just list plates?
         'soaks_table': soaks_table,
     }
     return render(request,'experiment.html', context)
@@ -198,14 +227,14 @@ def soaks(request, pk_exp):
           .annotate(plate_id=F('src__plate_id'))
           .annotate(well_row=F('src__wellRowIdx'))
           .annotate(well_col=F('src__wellColIdx'))
-          .order_by('src__plate_id','id'),
+          .order_by('src__plate__plateIdxExp','src__name'),
 
         'dest_soaks_qs' : exp.soaks.select_related('dest__parentWell__plate','src')
           .annotate(plate_id=F('dest__parentWell__plate_id'))
           .annotate(well_row=F('dest__parentWell__wellRowIdx'))
           .annotate(well_col=F('dest__parentWell__wellColIdx'))
           .annotate(parent_well=F('dest__parentWell_id'))
-          .order_by('dest__parentWell__plate_id','well_row','id'),
+          .order_by('dest__parentWell__plate__plateIdxExp','dest__parentWell__name','dest__idx'),
 
         'soaks_table': soaks_table,
     }

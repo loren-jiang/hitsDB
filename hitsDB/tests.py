@@ -11,4 +11,4 @@ class Tests(TestCase):
 
     # def test_url_responses(self):
     #     for url in self.urls:
-    #         print(url.__dict__) 
+    #         #print(url.__dict__) 

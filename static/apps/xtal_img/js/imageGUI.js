@@ -142,6 +142,26 @@ $(function() {
         }
     };
 
+    const placeCircleSVG = (circle, cx_cy) => {
+        const outer_circle = $(".outer-circle", circle);
+        const inner_circle = $(".inner-circle", circle);
+        // const r = circle.width() / 2;
+        // const x = cx_cy[0] - r;
+        // const y = cx_cy[1] - r;
+        circle.css({
+            left: cx_cy[0],
+            top: cx_cy[1],
+        });
+        // outer_circle.attr({
+        //     cx: x_y[0],
+        //     cy: x_y[1],
+        // });
+        // inner_circle.attr({
+        //     cx: x_y[0],
+        //     cy: x_y[1],
+        // });
+    };
+
     const resizeCircleSVG = (circle, w_h, cx_cy_r) => {
         const outer_circle = $(".outer-circle", circle);
         const inner_circle = $(".inner-circle", circle);
@@ -173,22 +193,24 @@ $(function() {
     const setSoakXYR = (XYR) => {
         /**
          * sets soak input fields
-         * `XYR`, array of x-coord, y-coord, and radius in um to be set
+         * `XYR`, array of x-coord, y-coord, and radius in pixels to be set
+         * radius is set to stay the same
+         * coordinates relative to well-image-container
          */
         let xyr = convertPixToUm(XYR);
         xyr[2] = XYR[2];
-        // xyr[2] = Math.round( xyr[2] );
         setTargetValues(getJQuery(SOAK_INPUTS), xyr);
-        return true;
+        return xyr;
     };
 
     const setWellXYR = (XYR) => {
         /**
          * sets well input fields
-         * `XYR`, array of x-coord, y-coord, and radius in um to be set
+         * `XYR`, array of x-coord, y-coord, and radius in pixels to be set
          */
-        setTargetValues(getJQuery(WELL_INPUTS), convertPixToUm(XYR));
-        return true;
+        const xyr = convertPixToUm(XYR);
+        setTargetValues(getJQuery(WELL_INPUTS), xyr);
+        return xyr;
     };
 
     const setTargetValues = (targets, values) => {
@@ -271,9 +293,17 @@ $(function() {
         '77': { keyCode: 'm', desc: 'Next well', func: (slider) => $('#next-well')[0].click() },
         '78': { keyCode: 'n', desc: 'Previous well', func: (slider) => $('#prev-well')[0].click() },
         '83': { keyCode: 's', desc: 'Save', func: (slider) => $('#soak-form').find('#submit-id-submit').click() },
+        '90': {
+            keyCode: 'z',
+            desc: "Toggle 'Set soak on click'",
+            func: (slider) => {
+                const checkbox = $('#setSoakOnClick');
+                checkbox.prop("checked", !checkbox.prop("checked")).change();
+            }
+        },
         '88': {
             keyCode: 'x',
-            desc: 'Use Soak',
+            desc: "Toggle 'UseSoak'",
             func: (slider) => {
                 const checkbox = $('#id_useSoak');
                 checkbox.prop("checked", !checkbox.prop("checked")).change();
@@ -308,6 +338,11 @@ $(function() {
 
     document.onkeydown = nav;
 
+    // $('#setSoakOnClick').change(function() {
+    //     const checked = this.is(':checked') ? this.is(':checked') : '';
+    //     console.log()
+    // })
+
     $('#id_useSoak').change(function() {
         if ((this.checked)) {
             $('#use-soak-indicator').html("yes");
@@ -317,6 +352,8 @@ $(function() {
             $('#soak-circle').addClass("soak-hidden");
         }
     });
+
+    $('.soak-progress-bar #pgbar_' + DATA.file_name).css('background-color', 'yellow');
 
     $('#sel-well').change(function() {
         const curr_url = window.location.href;
@@ -402,7 +439,7 @@ $(function() {
         var tr = "<tr>";
         var key = Object.keys(hotKeyMap)[i];
 
-        tr += "<td>" + hotKeyMap[key].keyCode + "</td>" + "<td>" + hotKeyMap[key].desc + "</td></tr>";
+        tr += "<td>" + hotKeyMap[key].keyCode + "</td>" + "<td> &rarr;" + hotKeyMap[key].desc + "</td></tr>";
 
         /* We add the table row to the table body */
         tbody_html += tr;
@@ -412,4 +449,63 @@ $(function() {
         tbody_html
     );
 
+    $('.subwell, .soak-progress-bar a').not('.empty').each(function() {
+        const origColor = $(this).css('background-color');
+        $(this).on({
+
+            mouseenter: function() {
+                //stuff to do on mouse enter
+                $(this).css('background-color', 'yellow');
+            },
+            mouseleave: function() {
+                //stuff to do on mouse enter
+                $(this).css('background-color', origColor);
+            },
+        })
+    })
+
+    ;
+
+    $('.subwell').on('click', function() {
+        const href = $(this).attr('href');
+        // console.log($(this).attr('href'));
+        if (href) {
+            window.location.href = href;
+        }
+        // window.location.href = this.href;
+    });
+
+
+    // set css cursor to crosshair if setSoakOnClick is checked; default is True
+    const hoverElmnts = $('#well-image, #soak-circle, #well-circle');
+    const setSoakOnClick = $('#setSoakOnClick');
+    const setCrosshair = () => {
+        if (setSoakOnClick.is(':checked')) {
+            hoverElmnts.css('cursor', 'crosshair');
+        } else {
+            hoverElmnts.css('cursor', '');
+        }
+    };
+    setCrosshair();
+    setSoakOnClick.on('change', function() {
+        setCrosshair();
+    });
+
+
+    $('#well-image, #soak-circle, #well-circle').on('click', function(e) {
+        if (setSoakOnClick.is(':checked')) {
+            let elm = $('#well-image-container');
+            const xPos = e.pageX - elm.offset().left;
+            const yPos = e.pageY - elm.offset().top;
+            const circle = $('#soak-circle');
+            const r = circle.width() / 2;
+            let soakXYR = getSoakXYR();
+            soakXYR[0] = xPos - IMG_PADDING;
+            soakXYR[1] = yPos - IMG_PADDING;
+            setSoakXYR(soakXYR);
+
+            placeCircleSVG(circle, [xPos - r, yPos - r])
+        }
+
+    });
 });

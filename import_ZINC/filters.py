@@ -32,6 +32,6 @@ class LibraryFilter(django_filters.FilterSet):
     # def __init__(self, user=None, *args, **kwargs):
     #         super(LibraryFilter, self).__init__(*args, **kwargs)
     #         # You need to override the method in the filter's form field
-    #         print(user.groups.all())
+    #         #print(user.groups.all())
     #         self.filters['owner'].queryset = User.objects.filter(groups__in=user.groups.all())
     #         # self.filters['thon_group'].field.label_from_instance = lambda obj: obj.user.last_name

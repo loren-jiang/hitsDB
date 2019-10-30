@@ -5,6 +5,8 @@ from django.contrib.auth.models import User
 from django.core.files.storage import FileSystemStorage
 from s3.s3utils import PrivateMediaStorage, user_files_upload_path, fs, user_upload_path
 import uuid
+from django.urls import reverse, reverse_lazy
+
 
 def upload_local_path(instance, file):
         return 'local/' +  user_upload_path(instance, file) + str(instance.plate.id)+ '/'+ str(instance.file_name)
@@ -30,3 +32,10 @@ class DropImage(models.Model):
 
     class Meta:
         ordering=('file_name',)
+        constraints = [
+            models.UniqueConstraint(fields=['plate_id', 'file_name'], name='unique_filename_per_plate')
+        ]
+
+    @property
+    def guiURL(self):
+        reverse_lazy('imageGUI', kwargs={'pk_plate':self.plate.id, 'pk_user':self.plate.exp.owner.id, 'file_name':self.file_name})

@@ -152,6 +152,12 @@ class ExpInitDataMultiForm(MultipleForm):
         super(ExpInitDataMultiForm, self).__init__(*args,**kwargs)
         self.fields['initDataFile'] = forms.FileField()
 
+class CreateSrcPlatesFromLibMultiForm(MultipleForm):
+    def __init__(self, exp, *args, **kwargs):
+        super(CreateSrcPlatesFromLibMultiForm, self).__init__(*args, **kwargs)
+        self.fields['numSrcPlates'] = forms.IntegerField()
+        self.fields['plateLibDataFile'] = forms.FileField()
+
 class PlatesSetupMultiForm(MultipleForm):
     subwells = (
         (1,'1'),

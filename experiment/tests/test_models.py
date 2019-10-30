@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from experiment.models import Experiment, Plate, PlateType, Project, Soak, SubWell, Well
-from import_ZINC.models import Library
+from import_ZINC.models import Library, Compound
 from datetime import datetime
 from django.utils.timezone import make_aware
 # from utility_functions import PIX_TO_UM, UM_TO_PIX, IMG_SCALE
@@ -29,8 +29,21 @@ class Tests(TestCase):
             library=cls.library,
         )[0]
 
-    def testExperiment(self):
-        pass
+    def testExperimentMethods(self):
+        exp = self.experiment
+        num = 3
+        exp.makePlates(num, self.mrc3_dest_plate) #make 3 mrc3 dest plates 
+        exp.makePlates(num, self.echo_src_plate) #make 3 echo source plates 
+
+        """Check various instance properties """        
+        # Case: check destSubwells
+        with self.assertNumQueries(1):
+            self.assertEqual(exp.destSubwells.count(), num*96*3)
+            
+        # Case: check srcWells
+        with self.assertNumQueries(1):
+            self.assertEqual(exp.srcWells.count(), num*384)
+
 
     def testPlateWellSubwell(self):
         exp = self.experiment

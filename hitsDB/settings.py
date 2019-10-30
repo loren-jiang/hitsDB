@@ -71,6 +71,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'hitsDB.urls'
 
+"""Uncomment to disable django debug toolar for improved perfomance"""
 # DEBUG_TOOLBAR_CONFIG = {
 #     'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
 #     # '...

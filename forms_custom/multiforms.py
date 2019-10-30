@@ -92,8 +92,11 @@ class ProcessMultipleFormsView(ProcessFormView):
         if not form:
             return HttpResponseForbidden()
         elif form.is_valid():
+            print('FORM VALID')
             return self.forms_valid(forms, form_name)
         else:
+            print('FORM INVALID')
+            print(form.errors)
             return self.forms_invalid(forms, form_name)
  
  

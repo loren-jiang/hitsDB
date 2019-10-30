@@ -1,3 +1,12 @@
+from functools import reduce 
+from operator import mul
+
+def reshape(lst, shape):
+    if len(shape) == 1:
+        return lst
+    n = reduce(mul, shape[1:])
+    return [reshape(lst[i*n:(i+1)*n], shape[1:]) for i in range(len(lst)//n)]
+
 def polynomial(coeff):
     def apply(coeff, x):
         ret = 0

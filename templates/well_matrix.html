@@ -1,0 +1,45 @@
+{% load experiment_tags %}
+
+
+<div class='well-matrix'>
+    <div class='row plate-row'> 
+        <div class='col y-axis'> </div>
+        {% for h in wellMatrix.0 %}
+            <div class='col x-axis'> {{forloop.counter}} </div>
+        {% endfor %}
+    </div>
+    {% for row in wellMatrix %}
+        <div class='row plate-row'>
+            <div class='col y-axis'> {{forloop.counter}} </div>
+            {% for col in row %}
+                <div class='col well'>
+                    {% with sw1=col.subwells.0 sw2=col.subwells.1 sw3=col.subwells.2 usedAndSavedSubwellClass='col-md-auto   subwell soak-used soak-saved' usedSubwellClass='col-md-auto   subwell soak-used' subwellClass='col-md-auto   subwell' %}
+                    <div class='row justify-content-md-center'>
+                        <a {% if sw1.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}" {% elif sw1.saveCount == 0 %} class="{{usedSubwellClass}}"  {% else %} class="{{subwellClass}}" {% endif %}  
+                            data-toggle="tooltip" data-placement="top" title="{{sw1.file_name}}"
+                            {% if sw1.guiURL %} href="{{sw1.guiURL}}" {% endif %}> 
+                            &nbsp;&nbsp;
+                        </a>
+                        <a class='col-md-auto subwell empty-block  '> 
+                            &nbsp;&nbsp;
+                        </a>
+                    </div>
+
+                    <div class='row justify-content-md-center'>
+                        <a {% if sw2.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}" {% elif sw2.saveCount == 0 %} class="{{usedSubwellClass}}"  {% else %} class="{{subwellClass}}" {% endif %} 
+                            data-toggle="tooltip" data-placement="top" title="{{sw2.file_name}}"
+                            {% if sw2.guiURL %} href="{{sw2.guiURL}}" {% endif %}> 
+                            &nbsp;&nbsp;
+                        </a>
+                        <a {% if sw3.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}" {% elif sw3.saveCount == 0 %} class="{{usedSubwellClass}}"  {% else %} class="{{subwellClass}}" {% endif %}  
+                            data-toggle="tooltip" data-placement="top" title="{{sw3.file_name}}"
+                            {% if sw3.guiURL %} href="{{sw3.guiURL}}" {% endif %}> 
+                            &nbsp;&nbsp;
+                        </a>
+                    </div>
+                    {% endwith %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+</div>

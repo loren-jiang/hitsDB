@@ -16,8 +16,8 @@ class Command(BaseCommand):
         df = pd.read_csv(file, index_col=0)
         df['nameInternal'] = df.index
         df.index = (range(0,len(df.index)))
-        print(df.head())
-        print("\n")
+        #print(df.head())
+        #print("\n")
         for index, row in df.iterrows():
             try:
                 obj, created = Compound.objects.get_or_create(
@@ -31,4 +31,4 @@ class Command(BaseCommand):
                 )
                 lib.compounds.add(obj)
             except: # need to write more exception cases...
-                print('PROB with', index)
+                #print('PROB with', index)

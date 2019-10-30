@@ -214,7 +214,7 @@ def get_user_recent_exps(request, exc=[], num_per_page=5, num_exps=3):
     # recent_exps =[e.pk for e in  request.user.experiments.order_by('-dateTime')][:num_exps]
     qs = request.user.experiments.order_by('-dateTime')[:num_exps]
     # qs = Experiment.objects.filter(id__in=recent_exps)
-    print(qs)
+    #print(qs)
     table = ExperimentsTable(data=qs, exclude=exc,orderable=False)
     # RequestConfig(request,paginate={'per_page': num_per_page}).coorderable=Falsenfigure(table)
     return table

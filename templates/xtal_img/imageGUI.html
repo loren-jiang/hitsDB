@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 {% load staticfiles%}
 {% load crispy_forms_tags %}
-
 {% block content %}
 
     <script>
@@ -25,26 +24,12 @@
     <br>
 
 
-    <div class="container">
-        <div class="row" > 
-            <div class="col" >
+    <div class="container-fluid">
+        <div class="row justify-content-center" > 
+            <div id="img-col" class="col col-md-5" >
                 <div id="well-image-container" >
                     <img id="well-image" src={{image_url}}></img>
-                    {% comment %} <div id="well-circle">  {% endcomment %}
-                    {% comment %} <div id="well-circle" style="display: None; top: {{topWellCircle}}px; left: {{leftWellCircle}}px">
-                        <svg class="svg-circle" width="{{sideWellCircle}}" height="{{sideWellCircle}}">
-                            <circle class="circle outer-circle" cx="{{targetWellRadius}}" cy="{{targetWellRadius}}" r="{{radWellCircle_}}" stroke="green" stroke-width="4" fill="" fill-opacity="0.0" />
-                            <circle class="circle inner-circle" cx="{{targetWellRadius}}" cy="{{targetWellRadius}}" r="1" stroke="green" stroke-width="4" fill="green" fill-opacity="1.0" />
-                        </svg>
-                        
-                     </div>
-                     <div class='{{use_soak|yesno:" ,soak-hidden"}}' id="soak-circle" style="display: None; top: {{topSoakCircle}}px; left: {{leftSoakCircle}}px">
-                        <svg class="svg-circle" width="{{sideSoakCircle}}" height="{{sideSoakCircle}}">
-                            <circle class="circle outer-circle" cx="{{soakRadius}}" cy="{{soakRadius}}" r="{{radSoakCircle_}}" stroke="#d39bcb" stroke-width="4" fill="" fill-opacity="0.0" />
-                            <circle class="circle inner-circle" cx="{{soakRadius}}" cy="{{soakRadius}}" r="1" stroke="#d39bcb" stroke-width="4" fill="#d39bcb" fill-opacity="1.0" />
-                        </svg>
-                        
-                     </div> {% endcomment %}
+
                 </div>
                 <br>
 
@@ -61,42 +46,33 @@
 
                 
             </div>
-            <div class="col">
+            <div class="col col-md-3">
                 <div class="row">
                     <div class="col">
                         <div class='jumbotron'>
                             <form id="soak-form" action="" method="post"> 
                                 {%csrf_token%} 
                                 {% crispy SoakGUIForm %}
-                                
-                                
-                                {% comment %} <input type="submit" value="Save"> {% endcomment %}
                             </form>
-
                         </div>
-                        <span>
-                            Next well on save
-                            <input type="checkbox" name="nextWellOnSave" id="nextWellOnSave" Checked><br>  
-                        </span>
-                        {% comment %} <div id="soakRadius-slider"></div> {% endcomment %}
-                          
-                        <select class="form-control" id="sel-well" name="sel-name">
-                            {% for f in file_names %}
-                                {% if f == file_name %}
-                                    <option value="{{f}}" selected="selected"> {{f}} </option>
-                                {% else %}
-                                    <option value="{{f}}"> {{f}} </option>
-                                {% endif %}
-                            {% endfor %}                 
-                        </select> <br>
-                          
-                        <p> Save count: {{saveCount}} | % complete: {{perc_complete}}</p>
+                        
+                        <div class='soak-progress-bar'>
+                        {% for k, v in soakDict.items %}
+                            <a id="pgbar_{{v.file_name}}" {% if v.saveCount %} class="soak-saved" {% endif %} href="{{v.guiURL}}">
+                            &nbsp; 
+                            </a>
+                        {% endfor %}   
+                            <span> &nbsp;  <b>% complete: </b> {{perc_complete}}</span>
+                        </div>             
+                        
                         <div>
                             <table>
                                 <h5> Hotkey mapping </h5>
                                 <tbody id="hotKey-map" > </tbody>
                             </table>
                         </div>
+                        
+
                     </div>
                     
                 </div>
@@ -113,7 +89,33 @@
             </div>
         </div> {% endcomment %}
     </div>
+
+
+<!-- The Modal -->
+<div class="modal fade" id="myModal">
+    <div class="modal-dialog modal-lg">
+    <div class="modal-content">
     
+        <!-- Modal Header -->
+        <div class="modal-header">
+        <h4 class="modal-title">Choose drop image</h4>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        
+        <!-- Modal body -->
+        <div class="modal-body">
+            {% include 'well_matrix.html' with wellMatrix=wellMatrix soakDict=soakDict %}
+        </div>
+        
+        <!-- Modal footer -->
+        <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+        </div>
+        
+    </div>
+    </div>
+</div>
+  
     
 
 {% endblock %}

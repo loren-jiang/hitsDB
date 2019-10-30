@@ -19,6 +19,9 @@ from django.utils.timezone import make_aware
 from s3.s3utils import PrivateMediaStorage
 from s3.models import PrivateFile, PrivateFileJSON
 import json 
+import csv 
+from django.db import transaction, IntegrityError
+
 
 # Create your models here.
 class Project(models.Model):
@@ -101,8 +104,9 @@ class Experiment(models.Model):
         """
         cond0 = bool(self)
         cond1 = self.library_valid and self.initData_valid
-        cond2 = self.plates_valid
-        cond3 = self.soaks_valid
+        cond2 = self.dest_plates_valid
+        cond3 = self.src_plates_valid
+        # cond3 = self.soaks_valid
         conds = [cond0, cond1, cond2, cond3] # cond1 corresponds to step 1
         if all(conds[0:4]): #might want to more robust check (e.g. # soaks = # compounds in library)
             return 4
@@ -138,30 +142,43 @@ class Experiment(models.Model):
     def library_valid(self):
         return bool(self.library)
 
+    @property
+    def src_plates_valid(self):
+        return bool(self.plates.filter(isSource=True).count())
+
+    @property
+    def dest_plates_valid(self):
+        dest_plates = self.plates.filter(isSource=False).prefetch_related('drop_images')
+        for p in dest_plates:
+            if not(p.drop_images.count()):
+                return False
+        return True
+
     @property #TODO: rewrite this to not use expNumSrcPlates() and expNumDestPlates()
     def plates_valid(self):
-        try:
-            return self.plates.count() > 0 \
-                and self.numSrcPlates == self.expNumSrcPlates() \
-                    and self.numDestPlates >= self.expNumDestPlates()
-        except AttributeError:
-            return False
+        return self.dest_plates_valid
+
+        # try:
+        #     return self.plates.count() > 0 \
+        #         and self.numSrcPlates == self.expNumSrcPlates() \
+        #             and self.numDestPlates >= self.expNumDestPlates()
+        # except AttributeError:
+        #     return False
 
     @property
     def libCompounds(self):
-        try:
-            compounds = self.library.compounds.all()
-            return compounds
-        except AttributeError:
-            return None
+        if self.library.compounds.first():
+            return self.library.compounds.order_by('id')
+        else:
+            return Compound.objects.none() #empty queryset
 
     @property
     def numSrcPlates(self):
-        return len(self.plates.filter(isSource=True))
+        return self.plates.filter(isSource=True).count()
     
     @property
     def numDestPlates(self):
-        return len(self.plates.filter(isSource=False))
+        return self.plates.filter(isSource=False).count()
 
     #expected number of source plates based on number of compounds in library
     def expNumSrcPlates(self):
@@ -169,7 +186,6 @@ class Experiment(models.Model):
         num_src_wells = src_plate_type.numCols * src_plate_type.numRows
         return ceiling_div(self.libCompounds.count(), num_src_wells)
   
-
     #expected number of dest plates based on number of compounds in library
     def expNumDestPlates(self):
         num_subwells  = len(self.subwell_locations)
@@ -177,23 +193,122 @@ class Experiment(models.Model):
         num_dest_wells = dest_plate_type.numCols * dest_plate_type.numRows
         return ceiling_div(self.libCompounds.count(),num_dest_wells * num_subwells)
 
-    #get queryset of destination subwells
-    @property
-    def getDestSubwells(self):
-        return SubWell.objects.filter(parentWell_id__in=Well.objects.filter(plate_id__in= self.plates.filter(isSource=False)))
 
-    #get queryset of source wells
     @property
-    def getSrcWells(self):
-        return Well.objects.filter(plate_id__in=self.plates.filter(isSource=True))
+    def usedSoaks(self):
+        """
+        Returns the experiment's ordered used soaks
+        """
+        return self.soaks.filter(useSoak=True).order_by('dest__parentWell__plate__plateIdxExp','dest__idx')
+
+    @property
+    def destSubwells(self):
+        """
+        Returns ordered subwells in the experiment's destination plates
+        """
+        return SubWell.objects.filter(parentWell__plate__isSource=False).order_by('parentWell__plate__plateIdxExp', 'idx')
+
+    @property
+    def srcWells(self):
+        """
+        Returns ordered wells in the experiment's source plates
+        """
+        return Well.objects.filter(plate__isSource=True).filter().order_by('plate__plateIdxExp', 'name')
+    
+    @property
+    def srcWellsWithCompounds(self):
+        """
+        Returns the wells in the experiment's source plates with compounds
+        """
+        return self.srcWells.exclude(compounds__isnull=True)
+
+    def createSrcPlatesFromLibFile(self, numPlates=0, file=''):
+        """
+        Creates source plates from CSV file (https://docs.google.com/spreadsheets/d/1FRBm6wVNSpwg4d3zGCYKLQkEZjf4BP9JL0YkEJzSojw/edit?usp=sharing)
+        Then update wells with the appropriate compounds specified from csv file
+
+        Parameters:
+        numPlates (int): number of empty plates to make
+        file (uploaded file): CSV file to update wells with appropriate compounds (see example file above)
+        """
+        exp = self
+        file_reader = csv.reader(file, delimiter=',')
+        headers = next(file_reader)
+        zinc_id_idx = headers.index('zinc_id')
+        plate_idx_idx = headers.index('plate_idx')
+        well_idx = headers.index('well')
+        try:
+            with transaction.atomic():
+                platesMade = exp.makeSrcPlates(numPlates)
+                plateIdxRange = range(1, numPlates+1)
+
+                compound_dict = {}
+                for row in file_reader:
+                    compound_dict[row[zinc_id_idx]] = {
+                        'plate_idx': row[plate_idx_idx],
+                        'well_name':row[well_idx],
+                    }
+                #retrieve existing compounds 
+                existing_compounds_qs = Compound.objects.filter(zinc_id__in=compound_dict.keys())
+                existing_compounds_dict = {}
+                for c in existing_compounds_qs:
+                    key_ = compound_dict[c.zinc_id]['plate_idx'] + '_' + compound_dict[c.zinc_id]['well_name']
+                    existing_compounds_dict[key_] = c
+                existing_compounds_ids = [existing_compounds_dict[k_].id for k_ in existing_compounds_dict.keys()]
+                
+                #retrieve and update existing wells with appropriate compound
+                wells_qs = Well.objects.filter(plate__in=platesMade
+                    ).select_related('plate'
+                    ).prefetch_related('compounds'
+                    ).annotate(plate_idx=F('plate__plateIdxExp'))
+                wells_dict = {}
+                for w in wells_qs:
+                    wells_dict[str(w.plate_idx) + '_' + w.name] = w
+
+                wells_with_compounds_ids = [wells_dict[k_].id for k_ in existing_compounds_dict.keys()]
+                throughRel = Well.compounds.through
+                bulk_one_to_one_add(throughRel, wells_with_compounds_ids, existing_compounds_ids, 'well_id', 'compound_id')
+        except IntegrityError as e:
+            print(e)
+        except KeyError as e:
+            print(e)
+
+    def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
+        """
+        Match soaks to source wells by looping through one-by-one
+        
+        Parameters:
+        src_wells (list): List of an experiment's source wells with compounds
+        soaks (list): List of an experiment's used soaks 
+
+        Returns:
+        None
+        """
+        if not(soaks):
+            soaks = [s for s in self.usedSoaks]
+        if not(src_wells):
+            src_wells = [w for w in self.srcWellsWithCompounds]
+
+        assert len(soaks) <= len(src_wells)
+        try:
+            with transaction.atomic():
+                for i in range(len(soaks)):
+                    soaks[i].src = None
+                Soak.objects.bulk_update(soaks, ['src'])
+                for i in range(len(soaks)):
+                    soaks[i].src = src_wells[i]
+                Soak.objects.bulk_update(soaks, ['src'])
+        except Exception as e: 
+            print(e)
+            pass
     
     def generateSoaks(self, transferVol=25, soakOffsetX=0, soakOffsetY=0):
         self.soaks.all().delete() #start from fresh
         ct = 0
         cmpds = self.libCompounds
         list_soaks = [None]*cmpds.count()
-        list_src_wells = [w for w in self.getSrcWells.order_by('id')]
-        list_dest_subwells = [w for w in self.getDestSubwells.order_by('id')]
+        list_src_wells = [w for w in self.srcWells.order_by('id')]
+        list_dest_subwells = [w for w in self.destSubwells.order_by('id')]
         # a = chunk_list(list_dest_subwells, 3)
         s_w_idxs = list(map(lambda x: x-1, self.subwell_locations))
         
@@ -260,11 +375,26 @@ class Experiment(models.Model):
                 p.createPlateWells() # bulk_create doesn't send signals so need to call explicitly
             return True
         except Exception as e:
-            print(e)
+            #print(e)
             return False
+    
+    def makeSrcPlates(self, num_plates):
+        self.plates.filter(isSource=True).delete()
+        if (self.srcPlateType):
+            return self.makePlates(num_plates, self.srcPlateType)
+        else:
+            return []
+
+    def makeDestPlates(self, num_plates):
+        self.plates.filter(isSource=False).delete()
+        if (self.destPlateType):
+            return self.makePlates(num_plates, self.destPlateType)
+        else:
+            return []
 
     def makePlates(self, num_plates, plate_type, plates_init_data=None):
         try:
+            assert num_plates > 0
             plates_to_create = [None] * num_plates
             name_prefix = 'src_' if plate_type.isSource else 'dest_'
             if plates_init_data:
@@ -279,15 +409,15 @@ class Experiment(models.Model):
                     p.createPlateWells()
                 return plates
         except Exception as e:
-            print(e)
-            return False
+            return []
 
-    def createPlatesSoaksFromInitDataJSON(self, plate_type):
+    def createPlatesSoaksFromInitDataJSON(self):
         exp = self
-        if exp.plates.filter().exists():
-            exp.plates.filter().delete()
+        dest_plates = exp.plates.filter(isSource=False)
+        if dest_plates.exists():
+            dest_plates.delete()
         init_data_plates = exp.initDataJSON.items()
-        lst_plates = exp.makePlates(len(init_data_plates), plate_type)
+        lst_plates = exp.makePlates(len(init_data_plates), self.destPlateType)
         soaks = []
         for i, (plate_id, plate_data) in enumerate(init_data_plates):
             id = plate_data.pop("plate_id", None) 
@@ -430,7 +560,9 @@ class Plate(models.Model):
     @property
     def numRows(self):
         return self.plateType.numRows
-            
+    @property
+    def numSubwells(self):
+        return self.plateType.numSubwells
     # returns number of reservoir wells
     @property 
     def numResWells(self):
@@ -592,10 +724,10 @@ class Well(models.Model):
         return self.subwells.count()
 
     def __str__(self):
-        return "plate_" + str(self.plate.id) + "_" + self.name
+        return str(self.plate.plateIdxExp) + '_' + self.name
 
     class Meta:
-        ordering = ('wellIdx',)
+        ordering = ('wellRowIdx','wellColIdx')
         constraints = [
             models.UniqueConstraint(fields=['plate_id', 'name'], name='unique_well_name_in_plate')
         ]
@@ -614,11 +746,16 @@ class SubWell(models.Model):
     hasCrystal = models.BooleanField(default=True)
     useSoak = models.BooleanField(default=False)
 
+    
     def __str__(self):
         return repr(self.parentWell) + "_" + str(self.idx)
 
+    @property
+    def name(self):
+        str(self)
+        
     class Meta:
-        ordering = ('idx',)
+        # ordering = ('idx',)
         constraints = [
             models.UniqueConstraint(fields=['parentWell_id', 'idx'], name='unique_subwell_in_well')
         ]
@@ -730,8 +867,8 @@ def create_plates_and_soaks_init_data(sender, instance, created, **kwargs):
     """
     If initData PrivateFile exists, try to create plates and soaks from it
     """
-    # print('in create_plates_and_soaks_init_data: ')
-    print(bool(instance.initData_id) and (instance.prev_initData_id != instance.initData_id or created))
+    # #print('in create_plates_and_soaks_init_data: ')
+    #print(bool(instance.initData_id) and (instance.prev_initData_id != instance.initData_id or created))
     if instance.initData_id and (instance.prev_initData_id != instance.initData_id or created):
         # try:
             # read file and save to JSON field initDataJSON
@@ -744,9 +881,9 @@ def create_plates_and_soaks_init_data(sender, instance, created, **kwargs):
         instance.prev_initData_id = instance.initData_id
 
         post_save.connect(create_plates_and_soaks_init_data, sender=Experiment)
-        instance.createPlatesSoaksFromInitDataJSON(instance.destPlateType)
+        instance.createPlatesSoaksFromInitDataJSON()
         # except Exception as e:
-            # print(e)
+            # #print(e)
 
 @receiver(post_init, sender=Experiment) #TODO should this be pre_save signal?
 def remember_experiment_state(sender, instance, **kwargs):
@@ -757,5 +894,5 @@ def remember_experiment_state(sender, instance, **kwargs):
 
 @receiver(pre_save, sender=Soak)
 def increment_save_count(sender, instance, **kwargs):
-    # print(instance.saveCount)
+    # #print(instance.saveCount)
     instance.saveCount += 1

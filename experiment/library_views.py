@@ -123,8 +123,8 @@ def lib_edit(request, pk_lib):
     from import_ZINC.forms import UploadCompoundsNewLib
     form = LibraryForm(initial=init_form_data)
     if request.method == 'POST':
-        print("AJAX")
-        print(request.is_ajax())
+        #print("AJAX")
+        #print(request.is_ajax())
         form = LibraryForm( request.POST, instance=lib)
         if request.POST.get('cancel', None):
             return redirect("libs")
@@ -152,8 +152,8 @@ def libs(request):
     url_class = "lib_edit_url"
     modal_id = "lib_edit_modal"
     libs_filter = LibraryFilter(request.GET, queryset=user_libs_qs, request=request)#, user=request.user)
-    print('FILTERED LIBS:')
-    print(libs_filter.qs)
+    #print('FILTERED LIBS:')
+    #print(libs_filter.qs)
     table = ModalEditLibrariesTable(data=libs_filter.qs, order_by="id", 
         data_target=modal_id, a_class="btn btn-info " + url_class)
     RequestConfig(request, paginate={'per_page': 5}).configure(table)

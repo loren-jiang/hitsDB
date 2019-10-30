@@ -3,7 +3,6 @@ from django.db import models
 from django.core.files.storage import get_storage_class
 import boto3
 import logging
-from botocore.exceptions import ClientError
 from .s3utils import PrivateMediaStorage, PublicMediaStorage
 from django.contrib.auth.models import User
 from django.core.files.storage import FileSystemStorage
