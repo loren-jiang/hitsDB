@@ -5,7 +5,7 @@ from .models import Library, Compound
 import json
 from django.db import transaction, DatabaseError
 from itertools import compress
-from orm_custom.custom_functions import bulk_add
+from my_utils.orm_functions import bulk_add
 from io import TextIOWrapper
 from django.db import transaction
 from django.core.exceptions import ValidationError

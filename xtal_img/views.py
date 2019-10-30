@@ -13,7 +13,7 @@ from hitsDB.views_import import *
 from .forms import DropImageUploadForm, SoakGUIForm
 import copy 
 from experiment.decorators import is_dest_plate
-from utility_functions import UM_TO_PIX, PIX_TO_UM, IMG_SCALE, STROKE_WIDTH, VolumeToRadius, RadiusToVolume, reshape
+from my_utils.utility_functions import UM_TO_PIX, PIX_TO_UM, IMG_SCALE, STROKE_WIDTH, VolumeToRadius, RadiusToVolume, reshape
 from django.db.models import F
 from django.forms.models import model_to_dict
 

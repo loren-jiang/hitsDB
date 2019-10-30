@@ -1,13 +1,34 @@
 from functools import reduce 
 from operator import mul
 
+def checkValidWellName(s):
+    pass
+
 def reshape(lst, shape):
+    """
+    Reshape list to desired shaped 2d, 3d, etc. similar numpy.reshape
+
+    Parameters:
+    lst (list): list to reshape
+    shape (tuple): desired shape e.g. (2,3,4) or (1,10)
+
+    Returns (list) 
+
+    """
     if len(shape) == 1:
         return lst
     n = reduce(mul, shape[1:])
     return [reshape(lst[i*n:(i+1)*n], shape[1:]) for i in range(len(lst)//n)]
 
 def polynomial(coeff):
+    """
+    Returns polynomial function with given coefficients
+
+    Parameters:
+    coeff (list): list of coefficients for each ascending powered term; e.g. coeff[0]*x^0 + coeff[1]*x^1 
+
+    Returns (function)
+    """
     def apply(coeff, x):
         ret = 0
         for i, c in enumerate(coeff):
@@ -16,6 +37,15 @@ def polynomial(coeff):
     return lambda x: apply(coeff, x)
 
 def RadiusToVolume(x):
+    """
+    Converts radius (pix) to volume (uL); coefficients are based off fitted polynomial with pixels values from original drop
+    image size
+
+    Parameters:
+    x (float, int, str): value to convert
+
+    Returns (float)
+    """
     coeff = [
         -5.3743703571317667e-6,
         3.8296724440466813e-2,
@@ -27,6 +57,14 @@ def RadiusToVolume(x):
     return polynomial(coeff)(float(x))
 
 def VolumeToRadius(x):
+    """
+    Back-calculation of RadiusToVolume(x)
+
+    Parameters:
+    x (float, int, str): value to convert
+
+    Returns (float)
+    """
     coeff = [     
         6.1417074854930405e1,
         1.0073950737908067e1,

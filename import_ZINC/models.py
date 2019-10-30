@@ -7,9 +7,9 @@ import json
 import csv
 
 from itertools import compress
-from orm_custom.custom_functions import bulk_add
+from my_utils.orm_functions import bulk_add
 from itertools import compress
-from utility_functions import chunks
+from my_utils.utility_functions import chunks
 from .validators import validate_prefix
 
 # Create your models here.
@@ -116,7 +116,7 @@ class Library(models.Model):
             lib_pks = [lib.pk]
             rels = bulk_add(LibCompoundRelation, lib_pks, compound_pks,
                     "library_id","compound_id")
-            relations.extend(rels)
+            relaions.extend(rels)
             created.extend(compounds_to_create)
             existed.extend(compounds_existing)
         return relations, created, existed

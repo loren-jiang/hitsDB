@@ -6,11 +6,11 @@ from .exp_view_process import formatSoaks, split_list, getWellIdx, getSubwellIdx
 from django.db.models.signals import post_save, post_init, pre_save
 from django.dispatch import receiver
 from django.utils.functional import cached_property 
-from orm_custom.custom_functions import bulk_add, bulk_one_to_one_add
+from my_utils.orm_functions import bulk_add, bulk_one_to_one_add
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db.models import Count, F, Value
-from utility_functions import chunk_list, items_at, ceiling_div, gen_circ_list, \
+from my_utils.utility_functions import chunk_list, items_at, ceiling_div, gen_circ_list, \
     PIX_TO_UM, UM_TO_PIX, IMG_SCALE, VolumeToRadius, RadiusToVolume, \
         mapUmToPix, mapPixToUm
 import string
@@ -90,12 +90,14 @@ class Experiment(models.Model):
         get_latest_by="dateTime"
         # ordering = ['-dateTime']
 
-    @property 
-    def initData_valid(self):
+    @property
+    def initDataValid(self):
         """
-        Checks if self.initData exists and has all the right initialization data
+        Return True if self.initData exists and has all the right initialization data
         """
-        return bool(self.initData)
+        if bool(self.initData):
+            return True
+        reutrn False
 
     @property
     def getCurrentStep(self):
@@ -103,10 +105,10 @@ class Experiment(models.Model):
         Gets the current step of the experiment; used for rendering main experiment view
         """
         cond0 = bool(self)
-        cond1 = self.library_valid and self.initData_valid
-        cond2 = self.dest_plates_valid
-        cond3 = self.src_plates_valid
-        # cond3 = self.soaks_valid
+        cond1 = self.libraryValid and self.initDataValid
+        cond2 = self.destPlatesValid
+        cond3 = self.srcPlatesValid
+        # cond3 = self.soaksValid
         conds = [cond0, cond1, cond2, cond3] # cond1 corresponds to step 1
         if all(conds[0:4]): #might want to more robust check (e.g. # soaks = # compounds in library)
             return 4
@@ -134,39 +136,54 @@ class Experiment(models.Model):
                 pairs.append(pair)
         return pairs
 
-    @property 
-    def soaks_valid(self):
-        return self.soaks.count() > 0
-
-    @property 
-    def library_valid(self):
-        return bool(self.library)
+    @property
+    def soaksValid(self):
+        """
+        Returns True if experiment soaks exist and if each soak's dest subwell and source well exist and is in plate,
+        else returns False
+        """
+        if not(self.soaks.count()):
+            return False
+        for s in self.soaks.select_related('src__plate', 'dest__parentWell__plate'):
+            if not(s.src_id and s.dest_id):
+                return False
+            if not(s.src.plate.id==self.id and s.dest.parentWell.plate.id==self.id):
+                return False
+        return True
 
     @property
-    def src_plates_valid(self):
+    def libraryValid(self):
+        """
+        Returns True if experiment library has compounds, else False
+        """
+        return bool(self.library.compounds.count())
+
+    @property
+    def srcPlatesValid(self):
         return bool(self.plates.filter(isSource=True).count())
-
+    
     @property
-    def dest_plates_valid(self):
+    def destPlatesValid(self):
+        """
+        Returns True if all dest plates have drop images, else False
+        """
         dest_plates = self.plates.filter(isSource=False).prefetch_related('drop_images')
         for p in dest_plates:
             if not(p.drop_images.count()):
                 return False
         return True
-
-    @property #TODO: rewrite this to not use expNumSrcPlates() and expNumDestPlates()
-    def plates_valid(self):
-        return self.dest_plates_valid
-
-        # try:
-        #     return self.plates.count() > 0 \
-        #         and self.numSrcPlates == self.expNumSrcPlates() \
-        #             and self.numDestPlates >= self.expNumDestPlates()
-        # except AttributeError:
-        #     return False
+    @property
+    def platesValid(self):
+        """
+        Returns True if dest plates and source plates are valid, else False
+        """
+        return self.destPlatesValid and self.srcPlatesValid
 
     @property
     def libCompounds(self):
+        """
+        Returns compounds in experiment library ordered by id
+        """
         if self.library.compounds.first():
             return self.library.compounds.order_by('id')
         else:
@@ -174,20 +191,30 @@ class Experiment(models.Model):
 
     @property
     def numSrcPlates(self):
+        """
+        Returns number of source plates
+        """
         return self.plates.filter(isSource=True).count()
     
     @property
     def numDestPlates(self):
+        """
+        Returns number of dest plates
+        """
         return self.plates.filter(isSource=False).count()
 
-    #expected number of source plates based on number of compounds in library
     def expNumSrcPlates(self):
+        """
+        Returns expected number of source plates based on number of compounds in library
+        """
         src_plate_type = self.srcPlateType
         num_src_wells = src_plate_type.numCols * src_plate_type.numRows
         return ceiling_div(self.libCompounds.count(), num_src_wells)
   
-    #expected number of dest plates based on number of compounds in library
     def expNumDestPlates(self):
+        """
+        Returns expected number of dest plates based on number of compounds in library
+        """
         num_subwells  = len(self.subwell_locations)
         dest_plate_type = self.destPlateType
         num_dest_wells = dest_plate_type.numCols * dest_plate_type.numRows
@@ -734,7 +761,10 @@ class Well(models.Model):
         # unique_together = ('plate', 'name',) #ensure that each plate has unique well names
 
 class SubWell(models.Model):
-    #relative to A1 well center
+    validSubwellName = RegexValidator(regex=r'^[A-Z]\d{2}$', message='Enter valid well name')
+    name = models.CharField(max_length=3, 
+        validators=[validSubwellName]
+        )
     idx = models.PositiveIntegerField(default=1) #CHANGE TO 0-indexed?
     xPos = models.DecimalField(max_digits=10, decimal_places=2,default=0) # relative to center of well
     yPos = models.DecimalField(max_digits=10, decimal_places=2,default=0)
@@ -750,10 +780,6 @@ class SubWell(models.Model):
     def __str__(self):
         return repr(self.parentWell) + "_" + str(self.idx)
 
-    @property
-    def name(self):
-        str(self)
-        
     class Meta:
         # ordering = ('idx',)
         constraints = [

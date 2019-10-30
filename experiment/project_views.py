@@ -10,7 +10,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 # from .library_views import lib_compounds
 # from .decorators import request_passes_test
 from .decorators import is_users_project
-from orm_custom.custom_functions import make_instance_from_dict, copy_instance
+from my_utils.orm_functions import make_instance_from_dict, copy_instance
 
 
 # PROJECT VIEWS ------------------------------------------------------------------

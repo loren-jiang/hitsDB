@@ -4,7 +4,7 @@ from experiment.models import Experiment, Plate, PlateType, Project, Soak, SubWe
 from import_ZINC.models import Library, Compound
 from datetime import datetime
 from django.utils.timezone import make_aware
-# from utility_functions import PIX_TO_UM, UM_TO_PIX, IMG_SCALE
+# from my_utils.utility_functions import PIX_TO_UM, UM_TO_PIX, IMG_SCALE
 # from s3.models import PrivateFile, PrivateFileJSON
 # from django.core.files.uploadedfile import SimpleUploadedFile
 # import uuid
