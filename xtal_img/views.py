@@ -88,7 +88,7 @@ class DropImagesUploadView(FormView):
 
 
 @login_required(login_url="/login")
-def DropImageViewGUI(request, *args, **kwargs):
+def DropImageViewGUI(request, *args, **kwargs):    
     plate_id = kwargs['plate_id']
     user_id = kwargs['user_id']
     file_name = kwargs['file_name']
@@ -114,7 +114,7 @@ def DropImageViewGUI(request, *args, **kwargs):
         w = wells_[k]
         wells[k] = {'name': w.name}
         subwells = []
-        for s_w in w.subwells.all():
+        for s_w in w.subwells.order_by('name'):
             file_name_ = w.name+'_'+str(s_w.idx)
             s_w_dict = {'id': s_w.id, 'idx':s_w.idx, 'saveCount': None, 'guiURL':'', 'file_name': file_name_}
             

@@ -176,9 +176,9 @@ class MultipleFormsDemoView(MultiFormsView, LoginRequiredMixin):
         context['src_plates_table'] = src_plates_table
         context['dest_plates_table'] = dest_plates_table
         context['soaks_table'] = soaks_table
-        context['plates_valid'] = exp.plates_valid
+        context['platesValid'] = exp.platesValid
         context['current_step'] = exp.getCurrentStep
-        context['soaks_valid'] = exp.soaks_valid
+        context['soaksValid'] = exp.soaksValid
         
         return context
 

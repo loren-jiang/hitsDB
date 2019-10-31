@@ -21,7 +21,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '+h8&+sl1^s*a-0t4z)a6nzd)*4j(i^8t9*#1hb4m0gtq0)$npl'
+SECRET_KEY = config('SECRET_KEY')
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True   
@@ -72,10 +73,10 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'hitsDB.urls'
 
 """Uncomment to disable django debug toolar for improved perfomance"""
-# DEBUG_TOOLBAR_CONFIG = {
-#     'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
-#     # '...
-# }
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
+    # '...
+}
 
 GRAPH_MODELS = {
   'all_applications': True,

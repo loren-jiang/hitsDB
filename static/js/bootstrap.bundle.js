@@ -4190,7 +4190,7 @@ var Dropdown = function ($$$1) {
       // If not input/textarea:
       //  - And not a key in REGEXP_KEYDOWN => not a dropdown command
       // If input/textarea:
-      //  - If space key => not a dropdown command
+      //  - If space key soaksValid not a dropdown command
       //  - If key is other than escape
       //    - If key is not up or down => not a dropdown command
       //    - If trigger inside the menu => not a dropdown command

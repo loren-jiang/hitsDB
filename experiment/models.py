@@ -88,7 +88,6 @@ class Experiment(models.Model):
     
     class Meta:
         get_latest_by="dateTime"
-        # ordering = ['-dateTime']
 
     @property
     def initDataValid(self):
@@ -605,6 +604,9 @@ class Plate(models.Model):
 
     # creates appropriate wells for plate instance
     def createPlateWells(self):
+        """
+        TODO: write DOCSTRING
+        """
         wells = None
         plateType = self.plateType
         wellDict = plateType.wellDict
@@ -626,12 +628,15 @@ class Plate(models.Model):
                 for w in wells:
                     subwells_lst = [None]*numSubwells
                     for i in range(numSubwells):
-                        subwells_lst[i] = SubWell(idx=i+1,xPos= 0,yPos=0, parentWell_id=w.pk)
+                        subwells_lst[i] = SubWell(name=w.name+'_'+str(i+1), idx=i+1,xPos= 0,yPos=0, parentWell=w)
                     SubWell.objects.bulk_create(subwells_lst)
         return wells
 
 @receiver(post_save, sender=Plate)
 def createPlateWells(sender, instance, created, **kwargs):
+    """
+        TODO: write DOCSTRING
+    """
     if created: # we only want to create wells and subwells once for plates on model creation
         instance.createPlateWells()
     return 
@@ -672,14 +677,23 @@ class PlateType(models.Model):
     # returns number of reservoir wells
     @property 
     def numResWells(self):
+        """
+        TODO: write DOCSTRING
+        """
         return self.numCols * self.numRows
     
     @property
     def numSubwellsTotal(self):
+        """
+        TODO: write DOCSTRING
+        """
         return self.numResWells * self.numSubwells
 
     @property
     def wellDict(self):
+        """
+        TODO: write DOCSTRING
+        """
         return createWellDict(self.numRows, self.numCols)
 
     def __str__(self):

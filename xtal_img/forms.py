@@ -47,7 +47,7 @@ class SoakGUIForm(forms.ModelForm):
                         """),
                        css_class='col-md-3 mb-0'),
                 Column('useSoak', css_class='col-md-3 mb-0'),
-                Column('src', css_class='col-md-3 mb-0'),
+                # Column('src', css_class='col-md-3 mb-0'),
                 css_class='form-row align-items-start'),
             Row(Column(HTML(
                 """X: {{soakOffsetX}} | Y: {{soakOffsetY}} | Vol: {{soakVolume}} """

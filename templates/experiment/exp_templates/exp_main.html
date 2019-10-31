@@ -84,7 +84,7 @@
                                 {% comment %} <form id="plates-form" method="post">{% csrf_token %}
                                     {{ forms.platesform|crispy}}
                                     <button type="submit" class="btn btn-info">Generate plates</button>
-                                    {% if plates_valid %}
+                                    {% if platesValid %}
                                     <a role="button" class="btn btn-info" href="{% url 'exp_plates' exp.pk %}">View
                                         plates</a>
                                     {% endif %}
@@ -134,7 +134,7 @@
                                     {{ forms.soaksform|crispy}}
                                     <span>
                                         <button type="submit" class="btn btn-info">Generate soaks</button>
-                                        {% if soaks_valid %}
+                                        {% if soaksValid %}
                                         <a role="button" class="btn btn-info" href="{% url 'exp_soaks' exp.pk %}">View
                                             soaks</a>
                                         {% endif %}
