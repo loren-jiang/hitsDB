@@ -8,7 +8,8 @@ from django_filters.views import FilterView
 from .decorators import is_users_library
 from .forms import LibraryForm
 from .models import Experiment
-from .querysets import accessible_libs
+from .querysets import user_accessible_libs
+from hitsDB.views_helper import filter_table_context_builder
 
 @login_required(login_url="/login")
 def user_compounds(request):
@@ -35,6 +36,7 @@ class UserCompoundsFilterView(SingleTableMixin, FilterView):
 
 @is_users_library
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def modify_lib_compounds(request, pk_lib):
     if request.method=="POST":
         form = request.POST
@@ -52,15 +54,14 @@ def modify_lib_compounds(request, pk_lib):
             for c in compounds:
                 c.active = True
             Compound.objects.bulk_update(compounds, ['active'])
-    # return redirect('lib', pk_lib=pk_lib)
     return redirect(prev)
 
 @is_users_library
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def lib_compounds(request, pk_lib):
-    # lib = get_object_or_404(Library, pk=pk_lib)
     lib_qs = Library.objects.filter(id=pk_lib)
-    lib = lib_qs[0]
+    lib = lib_qs.first()
     expsTable = ExperimentsTable(data=lib.experiments.all(), exclude=['project', 'library', 'protein','owner','expChecked'],)
     compounds = lib.compounds.filter()
     compounds_filter = CompoundFilter(request.GET, queryset=compounds)
@@ -83,7 +84,13 @@ def lib_compounds(request, pk_lib):
         {'url_class': 'update_compounds_from_file_url', 'modal_id': 'update_compounds_from_file_modal', 
         'form_class': "update_compounds_from_file_url_form"},
         ]
-    data = {
+    # context = filter_table_context_builder(compounds_filter, table, modals, buttons)
+    # context.update({
+        # 'expsTable': expsTable,
+        # 'lib': lib,
+        # 'libTable': libTable,
+    # })
+    context = {
         'expsTable': expsTable,
         'lib': lib,
         'libTable': libTable,
@@ -108,107 +115,113 @@ def lib_compounds(request, pk_lib):
             'json': json.dumps(buttons)
             },
     }
-    return render(request, 'experiment/lib_templates/library_compounds.html', data)
-    # return render(request, 'experiment/lib_templates/lib_compounds.html', data)
+    return render(request, 'experiment/lib_templates/library_compounds.html', context)
 
 @is_users_library
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def lib_edit(request, pk_lib):
     lib = Library.objects.get(pk=pk_lib)
-    init_form_data = {
+    form_data = {
         "name":lib.name,
         "description":lib.description,
         "supplier":lib.supplier
     }
-    from import_ZINC.forms import UploadCompoundsNewLib
-    form = LibraryForm(initial=init_form_data)
+    form = LibraryForm(initial=form_data)
     if request.method == 'POST':
-        #print("AJAX")
-        #print(request.is_ajax())
         form = LibraryForm( request.POST, instance=lib)
         if request.POST.get('cancel', None):
             return redirect("libs")
-        if form.is_valid() and form.has_changed():
+        if form.is_valid():
             form.save()
-        prev = request.META.get('HTTP_REFERER')
-        if prev:
-            return redirect(prev)
-        return redirect("libs")
+            data = {'result':'success'}
+            return JsonResponse(data, status=200)
+        else:
+            data = {'result':'failure'}
+            data.update({'errors':form.errors.as_json()})
+            return JsonResponse(data, status=403)
+        # prev = request.META.get('HTTP_REFERER')
+        # if prev:
+        #     return redirect(prev)
+        # return redirect("libs")
 
     context = {
         "arg":pk_lib,
         "form":form,
         "modal_title":"Edit Library",
-        "action":reverse_lazy('lib_edit', kwargs={'pk_lib':pk_lib}), #should be view w/o arg
-        "form_class":"lib_edit_form",
+        "action":reverse('lib_edit', kwargs={'pk_lib':pk_lib}), #should be view w/o arg
+        "form_class": Library.getModalFormData()['edit']['form_class'],
+        "use_ajax":True,
     }
     return render(request,'modals/modal_form.html', context)
 
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def libs(request):
-    # user_libs_qs = request.user.libraries.all()
-    user_libs_qs = accessible_libs(request.user)
-    # libs_qs = Library.objects.filter(groups__in=request.user.groups.all()).union(
-    url_class = "lib_edit_url"
-    modal_id = "lib_edit_modal"
-    libs_filter = LibraryFilter(request.GET, queryset=user_libs_qs, request=request)#, user=request.user)
-    #print('FILTERED LIBS:')
-    #print(libs_filter.qs)
-    table = ModalEditLibrariesTable(data=libs_filter.qs, order_by="id", 
-        data_target=modal_id, a_class="btn btn-info " + url_class)
+    user_libs_qs = user_accessible_libs(request.user)
+    modalFormData = Library.getModalFormData()
+
+    libs_filter = LibraryFilter(
+        data=request.GET, 
+        request=request, 
+        queryset=user_libs_qs,
+        filter_id='lib_filter',
+        form_id='lib_filter_form'
+        )
+    table = ModalEditLibrariesTable(
+        data=libs_filter.qs, 
+        order_by="id", 
+        data_target=modalFormData['edit']['modal_id'], 
+        a_class="btn btn-info " + modalFormData['edit']['url_class'],
+        table_id='lib_table',
+        form_id='lib_table_form', 
+        form_action=reverse('modify_libs')
+        )
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
     buttons = [
         {'id': 'delete_libs', 'text': 'Delete Selected','class': 'btn-danger btn-confirm'},
-        {'id': 'new_lib','text': 'New Library','class': 'btn-primary ' + 'new_lib_url', 
-            'href':reverse('upload_file', kwargs={'form_class':"new_lib_form"})},
+        modalFormData['new']['button']
+        # {'id': 'lib_new','text': 'New Library','class': 'btn-primary ' + 'lib_new_url', 
+        #     'href':reverse('new_lib_from_file', kwargs={'form_class':"lib_new_form"})},
         ]
     modals = [
-        {'url_class': url_class, 'modal_id': modal_id, 'form_class': "lib_edit_form"},
-        {'url_class': 'new_lib_url', 'modal_id': 'new_lib_modal', 'form_class': "new_lib_form"},
+        modalFormData['edit'],
+        modalFormData['new'],
         ]
-    context = {
-        'filter': {
-            'filter': libs_filter, 
-            'form':libs_filter.form,
-            'filter_id': 'lib_filter',
-            'filter_form_id': 'lib_filter_form',
-            },
-        'table': {
-            'table': table,
-            'table_id': 'lib_table',
-            'table_form_id': 'lib_table_form',
-            'form_action_url': reverse_lazy('modify_libs'),
-            },
-        'modals': {
-            'modals': modals,
-            'json': json.dumps(modals),
-            },
-        'btn': {
-            'buttons': buttons,
-            'json': json.dumps(buttons)
-            },
-    }
+    context = filter_table_context_builder(libs_filter, table, modals, buttons)
+
+    # context = {
+    #     'filter': {
+    #         'filter': libs_filter, 
+    #         'form':libs_filter.form,
+    #         'filter_id': libs_filter.filter_id,
+    #         'filter_form_id': libs_filter.form_id,
+    #         },
+    #     'table': {
+    #         'table': table,
+    #         'table_id': table.table_id,
+    #         'table_form_id': table.form_id,
+    #         'form_action_url': table.form_action,
+    #         },
+    #     'modals': {
+    #         'modals': modals,
+    #         'json': json.dumps(modals),
+    #         },
+    #     'btn': {
+    #         'buttons': buttons,
+    #         'json': json.dumps(buttons)
+    #         },
+    # }
     return render(request,'experiment/lib_templates/libraries.html', context)
-    # return render(request,'experiment/list_delete_table.html', data)
 
 @login_required(login_url="/login")
-def modify_libraries(request):
+@user_passes_test(user_base_tests)
+def modify_libs(request):
     if request.method=="POST":
         form = request.POST
+        prev = request.META.get('HTTP_REFERER')
         pks_libs = form.getlist('checked') #list of lib pks
         libs_qs = Library.objects.filter(id__in=pks_libs)
-        # libs = [l for l in libs_qs]
-        # for l in libs:
-        #     .delete()
-
         if form['btn']=="delete_libs":
             libs_qs.delete()
-        # if form['btn']=="deactivate_compounds":
-        #     for c in compounds:
-        #         c.active = False
-        #     Compound.objects.bulk_update(compounds, ['active'])
-        # if form['btn']=="activate_compounds":
-        #     for c in compounds:
-        #         c.active = True
-        #     Compound.objects.bulk_update(compounds, ['active'])
-    return redirect('libs')
+    return redirect(prev)

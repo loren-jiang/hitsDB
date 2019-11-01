@@ -139,14 +139,16 @@ class ModalEditProjectsTable(ProjectsTable):
     def render_modify(self):
         return "Edit"
     def __init__(self, data_target=None, a_class=None, *args, **kwargs):
+        
         if data_target and a_class:
             modify = modifyColumn(**{
                 'data_target': data_target, 
                 'a_class': a_class,
                 'view_name': "proj_edit"
             })
-        kwargs.update({'extra_columns':[('modify',modify)]})
+            kwargs.update({'extra_columns':[('modify',modify)]})
         super( ModalEditProjectsTable, self ).__init__(*args, **kwargs)
+        
 
     class Meta(ProjectsTable.Meta, ModifyTable):
         exclude = ()
@@ -168,20 +170,28 @@ class ModalEditLibrariesTable(LibrariesTable):
     def render_modify(self, value):
         return "Edit"
 
-    def __init__(self, data_target=None, a_class=None, *args, **kwargs):
-        if data_target and a_class:
+    # def __init__(self, data_target=None, a_class=None, form_action=None, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        self.table_id = kwargs.pop('table_id', '')
+        self.form_id =  kwargs.pop('form_id', '')
+        self.data_target =  kwargs.pop('data_target', '')
+        self.a_class =  kwargs.pop('a_class', '')
+        self.form_action = kwargs.pop('form_action', '')
+
+        if self.data_target and self.a_class and self.form_action:
             modify = tables.Column(verbose_name='', 
                 orderable=False, 
                 empty_values=(),
                 linkify=('lib_edit', [A('pk')]), 
                 attrs={'a': {
                                 "data-toggle":"modal", 
-                                "data-target":"#" + data_target,
-                                "class":a_class
+                                "data-target":"#" + self.data_target,
+                                "class": self.a_class
                             }}#shoud be a button to a modal
                 ) 
             kwargs.update({'extra_columns':[('modify',modify)]})
         super( ModalEditLibrariesTable, self ).__init__(*args, **kwargs)
+        
 
     class Meta(LibrariesTable.Meta, ModifyTable):
         exclude=()
@@ -192,10 +202,19 @@ class CompoundsTable(tables.Table):
     
     class Meta(ModifyTable):
         model=Compound
-        fields=('zinc_id','smiles','molWeight','active','selection')
+        exclude=()
+
+
         
+
+
+
+
+
+
 # returns user projects as django tables 2 for home page
 # argument should be request for pagination to work properly
+
 def get_user_projects(request, exc=[], num_per_page=5):
     user_proj_qs = request.user.projects.all()
     user_collab_proj_qs = request.user.collab_projects.all()

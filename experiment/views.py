@@ -1,15 +1,10 @@
 from hitsDB.views_import import * #common imports for views
 from experiment.tables import get_user_projects, get_user_libraries, get_user_recent_exps
-# from django.views.generic.detail import DetailView
 from django.views.generic.edit import UpdateView
 
 # Create your views here.
-
-def is_active(user):
-    return user.is_active
-
 @login_required(login_url="/login")
-@user_passes_test(is_active)
+@user_passes_test(user_base_tests)
 def home(request):
     projectsTable = get_user_projects(request, exc=["owner","id","checked"]) #takes in request
     libsTable = get_user_libraries(request, exc=["checked",])

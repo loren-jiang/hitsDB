@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
 
 {% block content %}
 
@@ -19,7 +20,7 @@
             <hr>
             <form method="post" >
                 {% csrf_token %}
-                {% include 'bs4_form.html' with form=form %}
+                {{ form | crispy }}
                 <!-- <div class="form-group">
 			    	<label for="id_username"> <b> New username: </b> </label>
 			    	<input type="text" class="form-control" id="id_username" name="username">

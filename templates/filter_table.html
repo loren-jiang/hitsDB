@@ -28,7 +28,6 @@
             {% for button in btn.buttons %}
                 <a id="{{button.id}}" href="{{button.href}}" role="button" class="btn {{button.class}}" msg="{{button.msg}}"> {{button.text}} </a>
             {% endfor %}
-            <!-- <a class="btn btn-danger" role="button" id="delete_selected"> Deleted selected </a> -->
         </div>  
         </div>
     </div>
@@ -44,9 +43,6 @@
     }
 
     $(document).ready(function() {
-        // url_class = "{{modal.url_class}}"
-        // modal_id = "{{modal.modal_id}}"
-        // form_class = "{{modal.form_class}}"
         modals = JSON.parse('{{modals.json|safe}}');
         modals.forEach(modal => {
             setUpModalForm(modal.url_class, modal.modal_id, modal.form_class);
@@ -83,7 +79,6 @@
         $('#clear_fields').click(function(e) {
             e.preventDefault();
             $form = $("#" + "{{filter.filter_form_id}}");
-            console.log($form);
             clearForms($form);
             // $form.trigger("reset");
             $form.submit();

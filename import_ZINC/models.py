@@ -5,7 +5,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from datetime import date
 import json
 import csv
-
+from django.urls import reverse, reverse_lazy
 from itertools import compress
 from my_utils.orm_functions import bulk_add
 from itertools import compress
@@ -53,9 +53,33 @@ class Library(models.Model):
 
     def get_absolute_url(self):
         return "/libraries/%i/" % self.id
+
     def __str__(self):
         return self.name
-    
+
+    @classmethod
+    def getModalFormData(cls):
+        """
+        Class method to return data needed for modal form to edit and make new instance of model
+        """
+        new_ = 'lib_new'
+        edit_= 'lib_edit'
+        return {
+            'new': {
+                'url_class': '%s_url' % new_,
+                'modal_id': '%s_modal' % new_,
+                'form_class': '%s_form' % new_,
+                'button': {'id': new_, 'text': 'New Library','class': 'btn-primary ' + '%s_url' % new_, 
+                    'href':reverse('new_lib_from_file', kwargs={'form_class':"%s_form" % new_})},
+            },
+            'edit': {
+                'url_class': '%s_url' % edit_,
+                'modal_id': '%s_modal' % edit_, 
+                'form_class': '%s_form' % edit_,
+            }
+            
+        }
+
     @property
     def numCompounds(self):
         return self.compounds.all().count()
@@ -116,7 +140,7 @@ class Library(models.Model):
             lib_pks = [lib.pk]
             rels = bulk_add(LibCompoundRelation, lib_pks, compound_pks,
                     "library_id","compound_id")
-            relaions.extend(rels)
+            relations.extend(rels)
             created.extend(compounds_to_create)
             existed.extend(compounds_existing)
         return relations, created, existed

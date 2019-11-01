@@ -12,6 +12,8 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse, reverse_lazy
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.forms.utils import ErrorList
+from hitsDB.views_import import * #common imports for views
 
 
 # upload file (.csv or .json), create new library, and import compounds 
@@ -41,11 +43,12 @@ def upload_file(request):
 
 # upload file (.csv or .json), create new library, and import compounds 
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def new_lib_from_file(request, form_class="new_lib_form"):
     context = {
         "form":UploadCompoundsNewLib(),
         "modal_title":"New Library",
-        "action":reverse('upload_file', kwargs={'form_class':form_class}), #should be view w/o arg
+        "action":reverse('new_lib_from_file', kwargs={'form_class':form_class}), 
         "form_class":form_class,
         "use_ajax":True, 
     }
@@ -66,24 +69,25 @@ def new_lib_from_file(request, form_class="new_lib_form"):
                             "createdCompounds":created,
                             "exisitingCompounds":existed,
                         })
-                except Exception as e:
-                    context['form']._errors['file'] = [str(e.detail.serializer._errors)]
-                    return render(request, 'modals/modal_form.html', context)
+                except KeyError as e:
+                    errors = form._errors.setdefault('file', ErrorList())
+                    errors.append(u"Error processing file. Double check .csv contains the right formatting and column headers.")
+                    data = {'result':'failure'}
+                    data.update({'errors':form.errors.as_json()})
+                    return JsonResponse(data, status=403)
             else:
                 new_lib.save()            
             data = {'result':'success'}
             return JsonResponse(data, status=200)
 
         else:
-            data = {'result':'success'}
+            data = {'result':'failure'}
             data.update({'errors':form.errors.as_json()})
-            # return HttpResponse(response, status=400)
-            return JsonResponse(data, status=400)
+            return JsonResponse(data, status=403)
+            # return render(request, 'modals/modal_form.html', context)
         context.update({'form':form})
     if request.method == 'GET':
-        # return JsonResponse(context)
         return render(request, 'modals/modal_form.html', context)
-        # return render(request, 'upload_file.html', context)
 
 # upload file (.csv or .json) and import compounds with existing library
 # deletes library compounds and associates new compounds

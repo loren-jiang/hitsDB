@@ -1,16 +1,14 @@
 from hitsDB.views_import import * #common imports for views
 from .models import Experiment, Plate, Well, SubWell, Soak, Project
-from .tables import SoaksTable, ExperimentsTable, LibrariesTable, ProjectsTable
+from .tables import SoaksTable, ExperimentsTable, LibrariesTable, ProjectsTable, ModalEditProjectsTable
 from django_tables2 import RequestConfig
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from import_ZINC.models import Library, Compound
 from .forms import ExperimentModelForm, ProjectForm, SimpleProjectForm, ExpAsMultiForm
-# from .forms import ExperimentModelForm, ProjectForm, SimpleProjectForm, PlateSetupForm, ExpAsMultiForm
 from django.contrib.auth.mixins import LoginRequiredMixin
-# from .library_views import lib_compounds
-# from .decorators import request_passes_test
 from .decorators import is_users_project
 from my_utils.orm_functions import make_instance_from_dict, copy_instance
+from .querysets import user_accessible_projects
 
 
 # PROJECT VIEWS ------------------------------------------------------------------
@@ -79,14 +77,16 @@ def get_user_projects(request, exc=[]):
     user_collab_proj_qs = request.user.collab_projects.all()
     projectsTable = ProjectsTable(data=user_proj_qs.union(user_collab_proj_qs),exclude=exc)
     RequestConfig(request, paginate={'per_page': 5}).configure(projectsTable)
-    # return {
-    #     'projectsTable': projectsTable,
-    # }
     return projectsTable
 
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def projects(request):
-    data = {"projectsTable":get_user_projects(request)} #wrapped in list so we can access in both GET and POST views
+    # projectsTable = ModalEditProjectsTable(user_accessible_projects(request.user))
+    projectsTable = ProjectsTable(user_accessible_projects(request.user))
+    RequestConfig(request, paginate={'per_page': 20}).configure(projectsTable)
+    data = {"projectsTable": projectsTable} 
+    
     form = ProjectForm(user=request.user)
     data['form'] = form
 

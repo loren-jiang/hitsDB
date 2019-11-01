@@ -20,7 +20,7 @@ from django.core.mail import EmailMessage
 def deactivate_user(request):
     try:
         u = request.user
-        u.is_active = False; #deactivate user
+        u.is_active = False #deactivate user
         u.save()
         messages.success(request, "The user account has been deactivated.")            
 
@@ -135,8 +135,7 @@ def reset_password(request, uidb64, token):
         user.save()
         update_session_auth_hash(request, user)
         login(request, user)
-        # return redirect('home')
-        return redirect('manage_user')
+        return redirect('home')
     else:
         return HttpResponse('Activation link is invalid!')
 

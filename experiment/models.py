@@ -22,7 +22,6 @@ import json
 import csv 
 from django.db import transaction, IntegrityError
 
-
 # Create your models here.
 class Project(models.Model):
     name = models.CharField(max_length=30)
@@ -31,23 +30,44 @@ class Project(models.Model):
     description = models.CharField(max_length=300, blank=True, null=True)
     collaborators = models.ManyToManyField(User, related_name='collab_projects',blank=True) 
     
-    # takes in exc list of column names to exclude
     def getExperimentsTable(self, exc=[]):
+        """
+        Get table of project's experiments
+
+        Parameters: 
+        exc (list): List of columns to exclude; should be in Model fields
+
+        Returns (django_tables2.Table)
+        """
         from .tables import ExperimentsTable
-        # might want to implement try catch
         return ExperimentsTable(self.experiments.all(), exclude=exc)
 
     def getCollaboratorsTable(self,exc=[]):
+        """
+        Get table of project's collaborators
+
+        Parameters: 
+        exc (list): List of columns to exclude; should be in Model fields
+
+        Returns (django_tables2.Table)
+        """
         from .tables import CollaboratorsTable
-        # might want to implement try catch
         return CollaboratorsTable(self.collaborators.all(), exclude=exc)
 
     #get list of libraries used in project's experiments
     def getLibrariesTable(self, exc=[]):
+        """
+        Get table of libraries that are used project's experiments and libraries that are template (isTemplate=True)
+
+        Parameters: 
+        exc (list): List of columns to exclude; should be in Model fields
+
+        Returns (django_tables2.Table)
+        """
         from .tables import LibrariesTable
-        qs = Library.objects.filter(experiments__in=self.experiments.all()).union(
+        libs_qs = Library.objects.filter(experiments__in=self.experiments.all()).union(
             Library.objects.filter(isTemplate=True))
-        return LibrariesTable(qs)
+        return LibrariesTable(libs_qs, exclude=exc)
 
     class Meta:
         get_latest_by = "dateTime"
@@ -59,11 +79,10 @@ class Project(models.Model):
         return self.name
 
 def defaultSubwellLocations():
+    """
+    Callable for the ArrayField default to subwell_locations
+    """
     return list([1])
-
-
-def exp_init_upload_path(instance, filename):
-    return str(instance.owner.id)+ '/init_data_files/' + str(instance.id) 
 
 class Experiment(models.Model):
     name = models.CharField(max_length=30)
@@ -79,10 +98,8 @@ class Experiment(models.Model):
     destPlateType = models.ForeignKey('PlateType', null=True, blank=True, on_delete=models.CASCADE, related_name='experiments_dest') #noly one dest plate type per experiment
     subwell_locations = ArrayField(
         models.PositiveSmallIntegerField(blank=True, null=True, validators=[MaxValueValidator(3), MinValueValidator(1)]),
-        size=3, default=defaultSubwellLocations
-        )
+        size=3, default=defaultSubwellLocations) 
     initDataJSON = JSONField(default=dict)
-    init_data_file = models.FileField(upload_to=exp_init_upload_path,storage=PrivateMediaStorage(), blank=True, null=True)
     initData = models.OneToOneField(PrivateFileJSON, null=True, blank=True, on_delete=models.CASCADE, related_name='experiment')
     prev_initData_id = None #prev library to check if initData file has changed
     
@@ -122,15 +139,16 @@ class Experiment(models.Model):
     @property
     def getTransferPlatePairs(self):
         """
-        TODO: add doc string
+        Pairs experiment's soaks source plate and dest plate
+        Returns (list) of pairs
         """
         pairs = []
-        qs = self.soaks.select_related('src__plate','dest__parentWell__plate'
-            ).annotate(src_plate_id=F('src__plate_id')
-            ).annotate(dest_plate_id=F('dest__parentWell__plate_id'))
+        qs = self.soaks.select_related('src__plate','dest__parentWell__plate')
+            # ).annotate(src_plate_id=F('src__plate_id')
+            # ).annotate(dest_plate_id=F('dest__parentWell__plate_id'))
         for s in qs:
             s.__dict__
-            pair = (s.src_plate_id, s.dest_plate_id)
+            pair = (s.src.plate.id, s.dest.parentWell.plate.id)
             if pair not in pairs:
                 pairs.append(pair)
         return pairs

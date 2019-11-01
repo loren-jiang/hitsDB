@@ -7,11 +7,14 @@ from django.core.files.storage import FileSystemStorage
 
 fs = FileSystemStorage(location='media/')
 
-def user_files_upload_path(instance, filename): 
-    return user_upload_path(instance, filename) + 'files/'
+def upload_local_path(instance, filename):
+        return 'local/' +  user_file_upload_path(instance, filename)
+
+def user_file_upload_path(instance, filename): 
+    return user_upload_path(instance, filename) + filename
 
 def user_upload_path(instance, filename):
-    return str(instance.owner.id) + '/'
+    return 'user_folder/' + str(instance.owner.id) + '/'
 
 # StaticS3BotoStorage = lambda: S3Boto3Storage(location='static')
 # MediaS3BotoStorage = lambda: S3Boto3Storage(location='media')

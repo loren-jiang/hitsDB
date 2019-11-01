@@ -1,6 +1,17 @@
 from functools import reduce 
 from operator import mul
 
+def tests_wrapper(tests):
+    """
+    Wrapper which returns a function that returns True if all tests pass
+
+    Parameters: 
+    tests(list): list of tests
+
+    Returns (function) which takes user argument
+    """
+    return lambda user: all(list(map(lambda test: test(user), tests)))
+
 def checkValidWellName(s):
     pass
 

@@ -28,9 +28,7 @@ function setUpModalForm(urlClass, modalId, formClass) {
     });
     $(document).on('submit','.' + formClass + '.ajax_form', function(ev) {
         ev.preventDefault();
-        // let data = $(this).serialize();
         let data_ = new FormData($(this)[0]);
-        console.log($(this)[0]);
         $.ajax({ 
             type: $(this).attr('method'), 
             url: this.action, 
@@ -43,9 +41,22 @@ function setUpModalForm(urlClass, modalId, formClass) {
                 // $('#' + modalId).html(data);
                 location.reload();
             },
-            error: function(xhr, ajaxOptions, thrownError) { // on error..
-                console.log(JSON.parse(xhr.responseJSON.errors));
+            error: function(data, xhr, ajaxOptions, thrownError) {
+                const errors = JSON.parse(data.responseJSON.errors);
+                const keys = Object.keys(errors);
+                var i;
+                for (i = 0; i < keys.length; i++) {
+                    const selector = '#div_id_' + keys[i];
+                    $(selector).find('input').addClass('form-control is-invalid');
+                    errors[keys[i]].forEach((err)=> {
+                        $(selector).append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
+                    });
+                    
+                  }
             }
+            // error: function(xhr, ajaxOptions, thrownError) { // on error..
+            //     console.log(JSON.parse(xhr.responseJSON.errors));
+            // }
         });
         return false;
     });

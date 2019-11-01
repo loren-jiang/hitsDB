@@ -16,7 +16,7 @@ urlpatterns = [
     re_path(r'^home/libs/(?P<pk_lib>\d+)/modify_lib_compounds/$', 
         library_views.modify_lib_compounds, name='modify_lib_compounds'),
     re_path(r'^home/libs/$', library_views.libs, name='libs'),
-    re_path(r'^home/libs/delete/$', library_views.modify_libraries, name='modify_libs'),
+    re_path(r'^home/libs/modify_libs/$', library_views.modify_libs, name='modify_libs'),
     # re_path(r'^home/compounds_search/$', library_views.UserCompoundsFilterView.as_view(), name='user_compounds'),
     re_path(r'^home/compounds_search/$', library_views.user_compounds, name='user_compounds'),
     
