@@ -8,13 +8,42 @@ from django.core.files.storage import FileSystemStorage
 fs = FileSystemStorage(location='media/')
 
 def upload_local_path(instance, filename):
-        return 'local/' +  user_file_upload_path(instance, filename)
+    """
+    Local path to upload file to
+
+    Parameters:
+    instance (Model instance): Django model instance
+    filename (string): file name
+
+    Returns (string) upload path
+    """
+    return 'local/' +  user_file_upload_path(instance, filename)
 
 def user_file_upload_path(instance, filename): 
+    """
+    Path to upload user file to user's upload folder
+
+    Parameters:
+    instance (Model instance): Django model instance
+    filename (string): file name
+
+    Returns (string) upload path
+    """
     return user_upload_path(instance, filename) + filename
 
 def user_upload_path(instance, filename):
+    """
+    Path to user's upload folder
+
+    Parameters:
+    instance (Model instance): Django model instance
+    filename (string): file name
+
+    Returns (string) upload path
+    """
     return 'user_folder/' + str(instance.owner.id) + '/'
+
+
 
 # StaticS3BotoStorage = lambda: S3Boto3Storage(location='static')
 # MediaS3BotoStorage = lambda: S3Boto3Storage(location='media')
@@ -47,10 +76,12 @@ def myS3Client(key_id=settings.AWS_ACCESS_KEY_ID, access_key=settings.AWS_SECRET
 def create_presigned_url(bucket_name, object_name, expiration=3600):
     """Generate a presigned URL to share an S3 object
 
-    :param bucket_name: string
-    :param object_name: string
-    :param expiration: Time in seconds for the presigned URL to remain valid
-    :return: Presigned URL as string. If error, returns None.
+    Parameters::
+    bucket_name (string): name of AWS s3 bucket
+    object_name (string): name of object
+    expiration (int): Time in seconds for the presigned URL to remain valid
+    
+    Returns (string) presigned URL as string. If error, returns None.
     """
 
     # Generate a presigned URL for the S3 object

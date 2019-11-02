@@ -10,9 +10,21 @@ from django.urls import reverse, reverse_lazy
 
 
 def upload_local_path(instance, filename):
-        return 'local/' +  user_upload_path(instance, filename) + str(instance.plate.id)+ '/'+ str(instance.file_name)
+    """
+    Local path to upload file to
+
+    Parameters:
+    instance (Model instance): Django mdoel instance
+    filename (string): file name
+
+    Returns (string) upload path
+    """
+    return 'local/' +  user_upload_path(instance, filename) + str(instance.plate.id)+ '/'+ str(instance.file_name)
 
 def drop_image_upload_path(instance, filename):
+    """
+    
+    """
     return user_upload_path(instance, filename) + 'dropimages/' +  str(instance.plate.id) + '/' + str(instance.key)
 
 # Create your models here

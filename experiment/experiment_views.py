@@ -4,7 +4,7 @@ from .tables import SoaksTable, ExperimentsTable
 from django_tables2 import RequestConfig
 import csv
 from .exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
-from import_ZINC.models import Library, Compound
+from lib.models import Library, Compound
 from .forms import CreateSrcPlatesFromLibMultiForm, ExperimentModelForm, PlatesSetupMultiForm, ExpAsMultiForm, SoaksSetupMultiForm, ExpInitMultiForm, ExpInitDataMultiForm
 from forms_custom.multiforms import MultiFormsView
 from django.db.models import Count, F, Value

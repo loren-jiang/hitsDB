@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'widget_tweaks',
     'log',
     'experiment',
-    'import_ZINC',
+    'lib',
     'debug_toolbar',
     'django_tables2',
     'rest_framework',

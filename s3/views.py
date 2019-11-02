@@ -89,7 +89,7 @@ def upload_private_file(request):
                 "file": new_file,
             }
             return render(request, 's3/private_file_upload.html', data)
-            # return HttpResponseRedirect('')
+            # return HttpResponseRedirect(request.path_info)
     else:
         form = PrivateFileUploadForm()
     return render(request, 's3/private_file_upload.html', {'form': form})

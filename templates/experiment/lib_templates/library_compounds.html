@@ -12,9 +12,9 @@
   
   <div class="modal" id="{{modal_id}}"></div>
   {% if filter %}
-      <div class="container-fluid">
+      <div class="container">
         <div class="row">
-          <div class="col-3">
+          <div class="col col-md-3">
             
             <div class="jumbotron">
               <h3>
@@ -35,7 +35,7 @@
             </div>
           </div>
 
-          <div class="col-9">
+          <div class="col col-md-9">
             {% with table=table filter=filter modal=modal btn=btn%}
               {% include 'filter_table.html' %}
             {% endwith %}

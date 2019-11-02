@@ -1,7 +1,7 @@
 # common querysets that views will need 
 
 from .models import Project, Experiment, Soak
-from import_ZINC.models import Library, Compound
+from lib.models import Library, Compound
 
 
 #-------------------------------------------------Library querysets ---------------------------------------------------------

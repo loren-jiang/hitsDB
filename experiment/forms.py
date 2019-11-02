@@ -4,7 +4,7 @@ from django.contrib.auth.models import User, Group
 from .models import Experiment, Plate, Ingredient, Project, PlateType, Soak
 from django.forms import ModelChoiceField
 from django.contrib.admin.widgets import FilteredSelectMultiple
-from import_ZINC.models import Compound, Library
+from lib.models import Compound, Library
 from django.core.exceptions import ValidationError
 from crispy_forms.bootstrap import InlineField
 from crispy_forms.helper import FormHelper
@@ -63,12 +63,12 @@ class ProjectForm(forms.ModelForm):
 
     class Meta:
         model = Project
-        fields=('name','description','collaborators')
+        fields=('name','description','collaborators', 'owner')
 
     def __init__(self, user, *args, **kwargs):
         super(ProjectForm, self).__init__(*args, **kwargs)
-        collab_qs=User.objects.filter(groups__in=user.groups.all()).exclude(id=user.id)    
-        # self.fields['collaborators'].queryset = collab_qs
+        self.fields['owner'] = forms.ModelChoiceField(queryset=User.objects.filter(id=user.id), initial=0, widget=forms.HiddenInput()) 
+        collab_qs=User.objects.filter(groups__in=user.groups.all(), is_active=True).exclude(id=user.id)    
         self.fields['collaborators'] = forms.ModelMultipleChoiceField(
             queryset=collab_qs,
             widget=FilteredSelectMultiple("User", 

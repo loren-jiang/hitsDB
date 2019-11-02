@@ -1,7 +1,7 @@
 from functools import wraps, partial
 from django.core.exceptions import PermissionDenied
 from .models import Project, Experiment, Plate
-from import_ZINC.models import Library
+from lib.models import Library
 
 def is_users_project(func):
     @wraps(func)

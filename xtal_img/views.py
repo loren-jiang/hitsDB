@@ -26,7 +26,7 @@ def upload_drop_image(request):
         form = DropImageUploadForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
-            return HttpResponseRedirect('')
+            return HttpResponseRedirect(request.path_info)
     else:
         form = DropImageUploadForm()
     return render(request, 'basic_form.html', {
@@ -50,7 +50,7 @@ class DropImagesUploadView(FormView):
         if p:
             # exp = 
             return reverse_lazy('exp', kwargs={'pk_exp':p.experiment.id})
-        return HttpResponseRedirect('')
+        return HttpResponseRedirect(request.path_info)
 
     @method_decorator(is_dest_plate, login_required)
     def dispatch(self, *args, **kwargs):

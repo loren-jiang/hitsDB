@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from experiment.models import Experiment, Plate, PlateType, Project, Soak
-from import_ZINC.models import Library
+from lib.models import Library
 from .test_init_data import test_init_data
 from datetime import datetime
 from django.utils.timezone import make_aware

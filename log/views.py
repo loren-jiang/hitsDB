@@ -60,7 +60,7 @@ def manage_user(request):
             user.save()
             messages.success(request,'Account successfully updated.')
             update_session_auth_hash(request, user)
-            return HttpResponseRedirect('')
+            return HttpResponseRedirect(request.path_info)
 
     context = {
         "form": form,
@@ -98,7 +98,7 @@ def register(request):
             email.send()
             messages.success(request, 'Account created. You will receive \
                 a confirmation email to activate your account.')
-            return HttpResponseRedirect('')
+            return HttpResponseRedirect(request.path_info)
 
     else:
         form = RegistrationForm()

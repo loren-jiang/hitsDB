@@ -4,6 +4,10 @@
 {% load static %}
 {% block content %}
 
+{% comment %} {% with table=table filter=filter modals=modals btn=btn%}
+{% include 'filter_table.html' %}
+{% endwith %} {% endcomment %}
+
 <script src="{% static 'js/selectDeleteDj2Table.js' %}"></script>
 <!-- <script src="/static/js/editProjectModal.js"></script> -->
 
@@ -23,7 +27,6 @@
         
           {% csrf_token %}
           {{ form|crispy }}
-          <!-- {% include 'bs4_form.html' with form=form %} -->
         
       </div>
       <!-- Modal footer -->

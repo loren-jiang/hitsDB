@@ -1,7 +1,7 @@
 import django_tables2 as tables
 from django_tables2.utils import A  # alias for Accessor
 from .models import Project, Experiment, Soak, Plate
-from import_ZINC.models import Compound, Library
+from lib.models import Compound, Library
 from django.contrib.auth.models import User, Group
 from django_tables2 import RequestConfig
 
@@ -203,6 +203,14 @@ class CompoundsTable(tables.Table):
     class Meta(ModifyTable):
         model=Compound
         exclude=()
+
+    def __init__(self, *args, **kwargs):
+        self.table_id = kwargs.pop('table_id', '')
+        self.form_id =  kwargs.pop('form_id', '')
+        self.data_target =  kwargs.pop('data_target', '')
+        self.a_class =  kwargs.pop('a_class', '')
+        self.form_action = kwargs.pop('form_action', '')
+        super(CompoundsTable, self ).__init__(*args, **kwargs)
 
 
         

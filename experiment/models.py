@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User, Group
 from django.utils import timezone
-from import_ZINC.models import Library, Compound
+from lib.models import Library, Compound
 from .exp_view_process import formatSoaks, split_list, getWellIdx, getSubwellIdx
 from django.db.models.signals import post_save, post_init, pre_save
 from django.dispatch import receiver

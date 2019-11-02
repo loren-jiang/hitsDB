@@ -1,8 +1,8 @@
 from hitsDB.views_import import * #common imports for views
 from django_tables2 import RequestConfig
-from import_ZINC.models import Library, Compound
+from lib.models import Library, Compound
 from .tables import LibrariesTable, CompoundsTable, ModalEditLibrariesTable, ExperimentsTable
-from import_ZINC.filters import CompoundFilter, LibraryFilter
+from lib.filters import CompoundFilter, LibraryFilter
 from django_tables2.views import SingleTableMixin
 from django_filters.views import FilterView
 from .decorators import is_users_library
@@ -62,16 +62,27 @@ def modify_lib_compounds(request, pk_lib):
 def lib_compounds(request, pk_lib):
     lib_qs = Library.objects.filter(id=pk_lib)
     lib = lib_qs.first()
-    expsTable = ExperimentsTable(data=lib.experiments.all(), exclude=['project', 'library', 'protein','owner','expChecked'],)
+    expsTable = ExperimentsTable(data=lib.experiments.all(), exclude=['project', 'library', 'protein','owner','checked'],)
     compounds = lib.compounds.filter()
-    compounds_filter = CompoundFilter(request.GET, queryset=compounds)
-    table = CompoundsTable(compounds_filter.qs)
+    compounds_filter = CompoundFilter(
+        data=request.GET, 
+        queryset=compounds,
+        filter_id='compounds_filter', 
+        form_id='compounds_filter_form'
+        )
+    table = CompoundsTable(
+        exclude=['id', 'chemicalName','chemicalFormula', 'smiles', 'zincURL', ],
+        data=compounds_filter.qs,
+        table_id='compounds_table',
+        form_id='compounds_table_form',
+        form_action=reverse('modify_lib_compounds', kwargs={'pk_lib':pk_lib}),
+        )
     RequestConfig(request, paginate={'per_page': 10}).configure(table)
 
     url_class = "compounds_edit_url"
     modal_id = "compounds_edit_modal"
 
-    exc = list(ModalEditLibrariesTable.Meta.fields)
+    exc = list(ModalEditLibrariesTable.Meta.fields) 
     libTable = ModalEditLibrariesTable(data=lib_qs, data_target=modal_id, a_class="btn btn-info " + url_class,
         exclude=exc, attrs={'th': {'id': 'lib_table_header'}})
     buttons = [
@@ -84,37 +95,37 @@ def lib_compounds(request, pk_lib):
         {'url_class': 'update_compounds_from_file_url', 'modal_id': 'update_compounds_from_file_modal', 
         'form_class': "update_compounds_from_file_url_form"},
         ]
-    # context = filter_table_context_builder(compounds_filter, table, modals, buttons)
-    # context.update({
-        # 'expsTable': expsTable,
-        # 'lib': lib,
-        # 'libTable': libTable,
-    # })
-    context = {
+    context = filter_table_context_builder(compounds_filter, table, modals, buttons)
+    context.update({
         'expsTable': expsTable,
         'lib': lib,
         'libTable': libTable,
-        'filter': {
-            'filter': compounds_filter, 
-            'form':compounds_filter.form,
-            'filter_id': 'compounds_filter',
-            'filter_form_id': 'compounds_filter_form',
-            },
-        'table': {
-            'table': table,
-            'table_id': 'compounds_table',
-            'table_form_id': 'compounds_table_form',
-            'form_action_url': reverse('modify_lib_compounds', kwargs={'pk_lib':pk_lib}),
-            },
-        'modals': {
-            'modals': modals,
-            'json': json.dumps(modals),
-            },
-        'btn': {
-            'buttons': buttons,
-            'json': json.dumps(buttons)
-            },
-    }
+    })
+    # context = {
+    #     'expsTable': expsTable,
+    #     'lib': lib,
+    #     'libTable': libTable,
+    #     'filter': {
+    #         'filter': compounds_filter, 
+    #         'form':compounds_filter.form,
+    #         'filter_id': compounds_filter.filter_id, 
+    #         'filter_form_id': compounds_filter.form_id,
+    #         },
+    #     'table': {
+    #         'table': table,
+    #         'table_id': table.table_id,
+    #         'table_form_id': table.form_id,
+    #         'form_action_url': table.form_action,
+    #         },
+    #     'modals': {
+    #         'modals': modals,
+    #         'json': json.dumps(modals),
+    #         },
+    #     'btn': {
+    #         'buttons': buttons,
+    #         'json': json.dumps(buttons)
+    #         },
+    # }
     return render(request, 'experiment/lib_templates/library_compounds.html', context)
 
 @is_users_library

@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User, Group
-from import_ZINC.models import Compound, Library
+from lib.models import Compound, Library
 import django_filters
 
 class CompoundFilter(django_filters.FilterSet):

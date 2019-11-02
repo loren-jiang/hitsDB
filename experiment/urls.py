@@ -31,6 +31,7 @@ urlpatterns = [
     re_path(r'^home/projs/simple_edit/(?P<pk_proj>\d+)/$', project_views.project_edit_simple, name='proj_edit_simple'),
     # re_path(r'^home/proj_libraries/(?P<pk_proj>\d+)/$', project_views.proj_libraries, name='proj_libs'),
     re_path(r'^home/projs/$', project_views.projects, name='projects'),
+    re_path(r'^home/projs/new$', project_views.project_new, name='project_new'),
     re_path(r'^home/projs/delete_projs/(?P<pks>\d*(?:_\d+)*)$', project_views.delete_projects, name='delete_projs'),
     re_path(r'^home/projs/(?P<pk_proj>\d+)/$', project_views.project, name='proj'),
     re_path(r'^home/projs/(?P<pk_proj>\d+)/exps/$', project_views.proj_exps, name='proj_exps'),

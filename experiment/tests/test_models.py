@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth.models import User
 from experiment.models import Experiment, Plate, PlateType, Project, Soak, SubWell, Well
-from import_ZINC.models import Library, Compound
+from lib.models import Library, Compound
 from datetime import datetime
 from django.utils.timezone import make_aware
 # from my_utils.utility_functions import PIX_TO_UM, UM_TO_PIX, IMG_SCALE
