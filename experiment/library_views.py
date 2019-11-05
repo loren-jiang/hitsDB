@@ -9,7 +9,7 @@ from .decorators import is_users_library
 from .forms import LibraryForm
 from .models import Experiment
 from .querysets import user_accessible_libs
-from hitsDB.views_helper import filter_table_context_builder
+from hitsDB.views_helper import build_filter_table_context
 
 @login_required(login_url="/login")
 def user_compounds(request):
@@ -95,7 +95,7 @@ def lib_compounds(request, pk_lib):
         {'url_class': 'update_compounds_from_file_url', 'modal_id': 'update_compounds_from_file_modal', 
         'form_class': "update_compounds_from_file_url_form"},
         ]
-    context = filter_table_context_builder(compounds_filter, table, modals, buttons)
+    context = build_filter_table_context(compounds_filter, table, modals, buttons)
     context.update({
         'expsTable': expsTable,
         'lib': lib,
@@ -180,7 +180,7 @@ def libs(request):
         form_id='lib_filter_form'
         )
     table = ModalEditLibrariesTable(
-        data=libs_filter.qs, 
+        data=libs_filter.qs.order_by('-modified_date'), 
         order_by="id", 
         data_target=modalFormData['edit']['modal_id'], 
         a_class="btn btn-info " + modalFormData['edit']['url_class'],
@@ -191,48 +191,27 @@ def libs(request):
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
     buttons = [
         {'id': 'delete_libs', 'text': 'Delete Selected','class': 'btn-danger btn-confirm'},
-        modalFormData['new']['button']
-        # {'id': 'lib_new','text': 'New Library','class': 'btn-primary ' + 'lib_new_url', 
-        #     'href':reverse('new_lib_from_file', kwargs={'form_class':"lib_new_form"})},
+        # modalFormData['new']['button']
+        {'id': 'new_lib_btn','text': 'New Library','class': 'btn-primary ' + 'lib_new_url', 
+            'href':reverse('lib_new', kwargs={'form_class':"lib_new_form"})},
         ]
     modals = [
         modalFormData['edit'],
         modalFormData['new'],
         ]
-    context = filter_table_context_builder(libs_filter, table, modals, buttons)
-
-    # context = {
-    #     'filter': {
-    #         'filter': libs_filter, 
-    #         'form':libs_filter.form,
-    #         'filter_id': libs_filter.filter_id,
-    #         'filter_form_id': libs_filter.form_id,
-    #         },
-    #     'table': {
-    #         'table': table,
-    #         'table_id': table.table_id,
-    #         'table_form_id': table.form_id,
-    #         'form_action_url': table.form_action,
-    #         },
-    #     'modals': {
-    #         'modals': modals,
-    #         'json': json.dumps(modals),
-    #         },
-    #     'btn': {
-    #         'buttons': buttons,
-    #         'json': json.dumps(buttons)
-    #         },
-    # }
+    context = build_filter_table_context(libs_filter, table, modals, buttons)
     return render(request,'experiment/lib_templates/libraries.html', context)
 
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
 def modify_libs(request):
+    prev = request.META.get('HTTP_REFERER')
     if request.method=="POST":
         form = request.POST
-        prev = request.META.get('HTTP_REFERER')
-        pks_libs = form.getlist('checked') #list of lib pks
-        libs_qs = Library.objects.filter(id__in=pks_libs)
-        if form['btn']=="delete_libs":
-            libs_qs.delete()
+        btn_id = form['btn']
+        if btn_id:
+            pks_libs = form.getlist('checked') #list of lib pks
+            libs_qs = Library.objects.filter(id__in=pks_libs)
+            if btn_id=="delete_libs":
+                libs_qs.delete()
     return redirect(prev)

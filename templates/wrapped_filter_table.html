@@ -3,7 +3,8 @@
 {% load render_table from django_tables2 %} 
 {% block content %}
   
-  {% with table=table filter=filter modals=modals buttons=buttons%}
+  {% with table=table filter=filter modals=modals btn=btn%}
   {% include 'filter_table.html' %}
   {% endwith %}
+  
 {% endblock %}

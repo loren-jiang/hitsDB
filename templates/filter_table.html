@@ -25,7 +25,7 @@
                 {% csrf_token %}
                 {% render_table table.table %}
             </form>
-            {% for button in btn.buttons %}
+            {% for button in buttons.buttons %}
                 <a id="{{button.id}}" href="{{button.href}}" role="button" class="btn {{button.class}}" msg="{{button.msg}}"> {{button.text}} </a>
             {% endfor %}
         </div>  
@@ -47,11 +47,12 @@
         modals.forEach(modal => {
             setUpModalForm(modal.url_class, modal.modal_id, modal.form_class);
         });
-        buttons_json = '{{btn.json|safe}}';
+        buttons_json = '{{buttons.json|safe}}';
         buttons = JSON.parse(buttons_json);
         $buttons = $("a.btn-confirm");
-        $buttons.click( function(e) {
+        $buttons.on('click', function(e) {
             btn = $(this)['0'];
+            console.log($(this));
             e.preventDefault();
             let msg = '';
             if (btn.msg) {

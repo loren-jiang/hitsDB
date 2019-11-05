@@ -21,15 +21,40 @@ from s3.models import PrivateFile, PrivateFileJSON
 import json 
 import csv 
 from django.db import transaction, IntegrityError
+from django.urls import reverse, reverse_lazy
 
 # Create your models here.
 class Project(models.Model):
     name = models.CharField(max_length=30)
     owner = models.ForeignKey(User, related_name='projects',on_delete=models.CASCADE)
-    dateTime = models.DateTimeField(auto_now_add=True, verbose_name='Created')
     description = models.CharField(max_length=300, blank=True, null=True)
     collaborators = models.ManyToManyField(User, related_name='collab_projects',blank=True) 
-    
+    created_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def getModalFormData(cls):
+        """
+        Class method to return data needed for modal form to edit and make new instance of model
+        """
+        new_ = 'proj_new'
+        edit_= 'proj_edit'
+        return {
+            'new': {
+                'url_class': '%s_url' % new_,
+                'modal_id': '%s_modal' % new_,
+                'form_class': '%s_form' % new_,
+                # 'button': {'id': new_, 'text': 'New Project','class': 'btn-primary ' + '%s_url' % new_, 
+                #     'href':reverse('project_new', kwargs={'form_class':"%s_form" % new_})},
+            },
+            'edit': {
+                'url_class': '%s_url' % edit_,
+                'modal_id': '%s_modal' % edit_, 
+                'form_class': '%s_form' % edit_,
+            }
+            
+        }
+
     def getExperimentsTable(self, exc=[]):
         """
         Get table of project's experiments
@@ -70,7 +95,7 @@ class Project(models.Model):
         return LibrariesTable(libs_qs, exclude=exc)
 
     class Meta:
-        get_latest_by = "dateTime"
+        get_latest_by = "modified_date"
 
     def get_absolute_url(self):
         return "/projects/%i/" % self.id
@@ -91,7 +116,6 @@ class Experiment(models.Model):
     prev_library_id = None #prev library to check if library has changed
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='experiments')
     description = models.CharField(max_length=300, blank=True, null=True)
-    dateTime = models.DateTimeField(auto_now_add=True)
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)
     srcPlateType = models.ForeignKey('PlateType', null=True, blank=True, on_delete=models.CASCADE, related_name='experiments_src') #only one src plate type per experiment
@@ -102,9 +126,11 @@ class Experiment(models.Model):
     initDataJSON = JSONField(default=dict)
     initData = models.OneToOneField(PrivateFileJSON, null=True, blank=True, on_delete=models.CASCADE, related_name='experiment')
     prev_initData_id = None #prev library to check if initData file has changed
-    
+    created_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
+
     class Meta:
-        get_latest_by="dateTime"
+        get_latest_by="modified_date"
 
     @property
     def initDataValid(self):
@@ -577,6 +603,8 @@ class Ingredient(models.Model):
     name = models.CharField(max_length=100,)
     manufacturer = models.CharField(max_length=100, default='')
     date_dispensed = models.DateField(default=timezone.now, blank=True)
+    created_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.name
@@ -691,6 +719,9 @@ class PlateType(models.Model):
 
     maxDropVol = models.DecimalField(max_digits=10, decimal_places=0,default=5.0) #in uL
     minDropVol = models.DecimalField(max_digits=10, decimal_places=0, default=0.5) #in uL
+
+    created_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
 
     # returns number of reservoir wells
     @property 
@@ -841,6 +872,9 @@ class Soak(models.Model):
     useSoak = models.BooleanField(default=False)
     saveCount = models.PositiveIntegerField(default=0)
 
+    created_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
+    
     @property
     def transferVol(self):
         return RadiusToVolume(float(self.drop_radius) * UM_TO_PIX) #arg should be in pixels, return should be in uL

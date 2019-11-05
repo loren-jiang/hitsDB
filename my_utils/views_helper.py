@@ -1,8 +1,22 @@
 import json 
 
+def build_modal_form_context(*args, **kwargs):
+    """
+    Function to help build the context for the 'modals/modal_form.html' template
+    """
+
+    return {
+        'modal_title': getattr(kwargs, 'modal_title',  ''), 
+        'form_class': getattr(kwargs, 'form_class',  ''), 
+        'action': getattr(kwargs, 'action',  ''), 
+        'use_ajax': getattr(kwargs, 'use_ajax',  False), 
+        'form': getattr(kwargs, 'form',  ''), 
+    }
+
+
 def build_filter_table_context(filt, table, modals, buttons):
     """
-    Function help build the context for the 'filter_table.html' template
+    Function to help build the context for the 'filter_table.html' template
     """
     # buttons = [
     #     {'id': 'delete', 'text': 'Delete Selected','class': 'btn-danger btn-confirm'},
@@ -11,7 +25,7 @@ def build_filter_table_context(filt, table, modals, buttons):
     #     ]
 
     # modals = [
-    #     {'url_class': url_class, 'modal_id': modal_id, 'form_class': "lib_edit_form"},
+    #     {'url_class': url_class, 'modal_id': modal_id, 'form_class': "lib_edit_idform"},
     #     {'url_class': 'new_lib_url', 'modal_id': 'new_lib_modal', 'form_class': "new_lib_form"},
     #     ]
 

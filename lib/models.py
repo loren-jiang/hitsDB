@@ -11,6 +11,7 @@ from my_utils.orm_functions import bulk_add
 from itertools import compress
 from my_utils.utility_functions import chunks
 from .validators import validate_prefix
+# from my_utils.views_helper import build_modal_form_context
 
 # Create your models here.
 
@@ -24,7 +25,7 @@ class Compound(models.Model):
     concentration = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     purity = models.PositiveSmallIntegerField(default=100, validators=[MaxValueValidator(100), MinValueValidator(0)])
     active = models.BooleanField(default=True)
-
+    
     def save(self, *args, **kwargs):
         if self.zinc_id:
             self.zincURL = self.get_absolute_url()
@@ -50,6 +51,13 @@ class Library(models.Model):
     compounds = models.ManyToManyField(Compound, related_name='libraries', blank=True)
     active = models.BooleanField(default=True)
 
+    created_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
+
+    new_instance_viewname = 'lib_new'
+    edit_instance_viewname = 'lib_edit'
+    model_name = 'Library'
+
     def get_absolute_url(self):
         return "/libraries/%i/" % self.id
 
@@ -57,24 +65,43 @@ class Library(models.Model):
         return self.name
 
     @classmethod
+    def newInstanceUrl(cls):
+        """
+        Class method to return url to create new instance; compared to editInstanceUrl, this function should be a class method
+        vs instance property because instance data (self.pk) is not needed
+        """
+        return reverse(cls.new_instance_viewname, kwargs={'form_class':"lib_new_form"})
+
+    @property
+    def editInstanceUrl(self):
+        """
+        Returns url to edit class instance; should be @property because instance data is needed
+        """
+        return reverse(self.edit_instance_viewname, kwargs={'pk_lib':self.pk})
+
+    @classmethod
     def getModalFormData(cls):
         """
         Class method to return data needed for modal form to edit and make new instance of model
-        """
-        new_ = 'lib_new'
-        edit_= 'lib_edit'
+        """ 
+        new_id = cls.new_instance_viewname
+        edit_id = cls.edit_instance_viewname
+        model_name = cls.model_name
+
         return {
             'new': {
-                'url_class': '%s_url' % new_,
-                'modal_id': '%s_modal' % new_,
-                'form_class': '%s_form' % new_,
-                'button': {'id': new_, 'text': 'New Library','class': 'btn-primary ' + '%s_url' % new_, 
-                    'href':reverse('new_lib_from_file', kwargs={'form_class':"%s_form" % new_})},
+                'url_class': '%s_url' % new_id,
+                'modal_id': '%s_modal' % new_id,
+                'form_class': '%s_form' % new_id,
+                'button': {'id': new_id, 'text': 'New %s' % model_name,'class': 'btn-primary ' + '%s_url' % new_id, 
+                    'href':reverse(new_id, kwargs={'form_class':"%s_form" % new_id})},
             },
             'edit': {
-                'url_class': '%s_url' % edit_,
-                'modal_id': '%s_modal' % edit_, 
-                'form_class': '%s_form' % edit_,
+                'url_class': '%s_url' % edit_id,
+                'modal_id': '%s_modal' % edit_id, 
+                'form_class': '%s_form' % edit_id,
+                # 'button': {'id': edit_id, 'text': 'Edit %s' % model_name,'class': 'btn-primary ' + '%s_url' % edit_id, 
+                #     'href':reverse(edit_id, kwargs={'form_class':"%s_form" % edit_id})},
             }
             
         }

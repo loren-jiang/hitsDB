@@ -55,11 +55,11 @@ class SoaksTable(tables.Table):
         template_name = 'django_tables2/bootstrap-responsive.html'
         fields = ('id','transferVol','transferCompound','srcWell', 'destSubwell','selection')
 
-def modifyColumn(data_target, a_class, view_name, verbose_name='', orderable=False):
+def modifyColumn(data_target, a_class, view_name, verbose_name='', orderable=False, accessor='pk'):
     return tables.Column(verbose_name=verbose_name, 
                 orderable=orderable, 
                 empty_values=(),
-                linkify=(view_name, [A('pk')]), 
+                linkify=(view_name, [A(accessor)]), 
                 attrs={'a': {
                                 "data-toggle":"modal", 
                                 "data-target":"#" + data_target,
@@ -103,13 +103,16 @@ class ExperimentsTable(tables.Table):
     library = tables.Column(linkify=('lib',[A('library.pk')]))
     project = tables.Column(linkify=('proj',[A('project.pk')]))
 
-    def render_dateTime(self, value):
+    def render_date_created(self, value):
+        return formatDateTime(value)
+
+    def render_date_modified(self, value):
         return formatDateTime(value)
 
     class Meta:
         model = Experiment 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('name','project','library', 'dateTime','protein','owner','checked')
+        fields = ('name','project','library', 'created_date','modified_date','protein','owner','checked')
         empty_text = ("There are no experiments yet...")
 
 class ProjectsTable(tables.Table):
@@ -119,25 +122,22 @@ class ProjectsTable(tables.Table):
     collaborators = tables.ManyToManyColumn()
     experiments = tables.ManyToManyColumn(separator=', ',verbose_name="Experiments",
         linkify_item=('exp',{'pk_proj':A('project.pk'),'pk_exp':A('pk')}))
-    # modify = tables.Column(verbose_name='', 
-    #     orderable=False, 
-    #     empty_values=(),
-    #     linkify=('proj_edit', [A('pk')]), 
-    #     attrs ={'a': {"class": "btn btn-info"} }
-    #     ) 
     
-    def render_dateTime(self, value):
+    def render_date_modified(self, value):
         return formatDateTime(value)
     
+    def render_date_created(self, value):
+        return formatDateTime(value)
 
     class Meta:
         model = Project 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('name','owner','dateTime','experiments','collaborators','checked')
+        fields = ('name','owner','created_date','modified_date','experiments','collaborators','checked')
 
 class ModalEditProjectsTable(ProjectsTable):
     def render_modify(self):
         return "Edit"
+
     def __init__(self, data_target=None, a_class=None, *args, **kwargs):
         
         if data_target and a_class:
@@ -238,8 +238,8 @@ def get_user_libraries(request, exc=[], num_per_page=5):
     return libsTable
 
 def get_user_recent_exps(request, exc=[], num_per_page=5, num_exps=3):
-    # recent_exps =[e.pk for e in  request.user.experiments.order_by('-dateTime')][:num_exps]
-    qs = request.user.experiments.order_by('-dateTime')[:num_exps]
+    # recent_exps =[e.pk for e in  request.user.experiments.order_by('-modified_date')][:num_exps]
+    qs = request.user.experiments.order_by('-modified_date')[:num_exps]
     # qs = Experiment.objects.filter(id__in=recent_exps)
     #print(qs)
     table = ExperimentsTable(data=qs, exclude=exc,orderable=False)

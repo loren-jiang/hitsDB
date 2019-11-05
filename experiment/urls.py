@@ -3,6 +3,7 @@ from django.conf.urls import url
 from django.urls import path, re_path
 from . import views, library_views, project_views, experiment_views, soak_views
 from django.contrib.auth.models import User
+from .forms import LibraryForm
 
 urlpatterns = [
     # --------------- urls to Main app views ------------------------------
@@ -12,7 +13,9 @@ urlpatterns = [
     # --------------- urls to Library views ------------------------------
     # re_path(r'^home/lib_compounds/(?P<pk_lib>\d+)/$', library_views.lib, name='lib_compounds'),
     re_path(r'^home/libs/(?P<pk_lib>\d+)/$', library_views.lib_compounds, name='lib'),
-    re_path(r'^home/libs/(?P<pk_lib>\d+)/edit/$', library_views.lib_edit, name='lib_edit'),
+    # re_path(r'^home/libs/(?P<pk_lib>\d+)/edit/$', library_views.lib_edit, name='lib_edit'),
+    re_path(r'^home/libs/(?P<pk_lib>\d+)/edit/$', views.ModalEditView.as_view(
+        model=LibraryForm.Meta.model, form_class=LibraryForm,pk_url_kwarg='pk_lib'), name='lib_edit'),
     re_path(r'^home/libs/(?P<pk_lib>\d+)/modify_lib_compounds/$', 
         library_views.modify_lib_compounds, name='modify_lib_compounds'),
     re_path(r'^home/libs/$', library_views.libs, name='libs'),

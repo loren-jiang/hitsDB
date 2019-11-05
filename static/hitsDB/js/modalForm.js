@@ -26,7 +26,7 @@ function setUpModalForm(urlClass, modalId, formClass) {
             }
         }
     });
-    $(document).on('submit','.' + formClass + '.ajax_form', function(ev) {
+    $(document).on('submit', '.ajax_form', function(ev) {
         ev.preventDefault();
         let data_ = new FormData($(this)[0]);
         $.ajax({ 
@@ -38,8 +38,8 @@ function setUpModalForm(urlClass, modalId, formClass) {
             processData: false,
             contentType: false,
             success: function(data, status) {
-                // $('#' + modalId).html(data);
-                location.reload();
+                location.reload(true); //reload to original location
+                // window.location.href=window.location.href;
             },
             error: function(data, xhr, ajaxOptions, thrownError) {
                 const errors = JSON.parse(data.responseJSON.errors);
@@ -47,23 +47,22 @@ function setUpModalForm(urlClass, modalId, formClass) {
                 var i;
                 for (i = 0; i < keys.length; i++) {
                     const selector = '#div_id_' + keys[i];
-                    $(selector).find('input').addClass('form-control is-invalid');
+                    $sel = $(selector);
+                    $sel.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
+                    $sel.find('input').addClass('form-control is-invalid');
                     errors[keys[i]].forEach((err)=> {
-                        $(selector).append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
+                        $sel.append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
                     });
                     
                   }
             }
-            // error: function(xhr, ajaxOptions, thrownError) { // on error..
-            //     console.log(JSON.parse(xhr.responseJSON.errors));
-            // }
         });
         return false;
     });
 
-    $("." + urlClass).click(function(ev) { // for each edit modal url
+    $("." + urlClass).click(function(ev) { // for each modal url
         ev.preventDefault(); // prevent navigation
-        var url = $(this).attr('href'); // get the project_edit form href
+        var url = $(this).attr('href'); // get the href
         $("#" + modalId).load(url, function() { // load the url into the modal
             $(this).modal('show'); // display the modal on url load
         });

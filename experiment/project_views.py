@@ -9,7 +9,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from .decorators import is_users_project
 from my_utils.orm_functions import make_instance_from_dict, copy_instance
 from .querysets import user_accessible_projects
-from hitsDB.views_helper import filter_table_context_builder
+from hitsDB.views_helper import build_filter_table_context
+from .filters import ProjectFilter
 
 # PROJECT VIEWS ------------------------------------------------------------------
 class ProjectView(LoginRequiredMixin, TemplateView):
@@ -82,13 +83,27 @@ def get_user_projects(request, exc=[]):
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
 def projects(request):
-    projectsTable = ProjectsTable(user_accessible_projects(request.user))
-    RequestConfig(request, paginate={'per_page': 20}).configure(projectsTable)
-    data = {"projectsTable": projectsTable} 
+    modalFormData = Project.getModalFormData()
+    # table = ProjectsTable(user_accessible_projects(request.user))
+    projectFilter = ProjectFilter(
+        data=request.GET,
+        request=request, 
+        queryset=user_accessible_projects(request.user),
+        filter_id='proj_filter',
+        form_id='proj_filter_form',
+    )
+    table = ModalEditProjectsTable(
+        data=projectFilter.qs,
+        data_target=modalFormData['edit']['modal_id'], 
+        a_class="btn btn-info " + modalFormData['edit']['url_class'], 
+        )
+    RequestConfig(request, paginate={'per_page': 20}).configure(table)
+    data = {"projectsTable": table} 
     
     form = ProjectForm(user=request.user)
     data['form'] = form
-    # context = filter_table_context_builder(projs_filter, table, modals, buttons)
+    # context = build_filter_table_context(projectFilter, table, modals, buttons)
+    
 
     if request.method == 'POST':
         form = ProjectForm(request.user,request.POST)

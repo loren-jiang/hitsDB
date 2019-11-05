@@ -19,7 +19,7 @@ from hitsDB.views_import import * #common imports for views
 # upload file (.csv or .json), create new library, and import compounds 
 def upload_file(request):
     if request.method == 'POST':
-        form = UploadCompoundsNewLib(request.POST, request.FILES,request=request)
+        form = UploadCompoundsNewLib(request.POST, request.FILES,user=request.user)
         if form.is_valid():
             f = TextIOWrapper(request.FILES['file'], encoding=request.encoding)
             lib_name = form.cleaned_data['name'] #assumes lib_name is unique
@@ -38,7 +38,7 @@ def upload_file(request):
                 context['form']._errors['file'] = [repr(e)]
             return render(request, 'upload_file.html', context)
     else:
-        form = UploadCompoundsNewLib()
+        form = UploadCompoundsNewLib(user=request.user)
     return render(request, 'upload_file.html', {'form': form})
 
 # upload file (.csv or .json), create new library, and import compounds 
@@ -46,14 +46,14 @@ def upload_file(request):
 @user_passes_test(user_base_tests)
 def new_lib_from_file(request, form_class="new_lib_form"):
     context = {
-        "form":UploadCompoundsNewLib(),
+        "form":UploadCompoundsNewLib(user=request.user),
         "modal_title":"New Library",
-        "action":reverse('new_lib_from_file', kwargs={'form_class':form_class}), 
+        "action":reverse('lib_new', kwargs={'form_class':form_class}), 
         "form_class":form_class,
         "use_ajax":True, 
     }
     if request.method == 'POST':# and request.is_ajax():
-        form = UploadCompoundsNewLib(request.POST, request.FILES, request=request)
+        form = UploadCompoundsNewLib(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             cd = form.cleaned_data
             fi = cd.pop('file')
