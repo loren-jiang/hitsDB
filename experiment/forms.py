@@ -9,6 +9,8 @@ from django.core.exceptions import ValidationError
 from crispy_forms.bootstrap import InlineField
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
+from django.core.validators import FileExtensionValidator
+from django.utils import timezone
 
 class SoakForm(forms.ModelForm):
     class Meta:
@@ -38,10 +40,6 @@ class MultipleForm(forms.Form):
 # simple form to edit Project fields (name, description)
 class SimpleProjectForm(forms.ModelForm):
     class Media:
-        # Django also includes a few javascript files necessary
-        # for the operation of this form element. You need to
-        # include <script src="/static/admin/js/jsi18n.js"></script>
-        # in the template.
         css = {
             'all': ('/static/admin/css/widgets.css',)
         }
@@ -52,28 +50,29 @@ class SimpleProjectForm(forms.ModelForm):
 
 class ProjectForm(forms.ModelForm):
     class Media:
-        # Django also includes a few javascript files necessary
-        # for the operation of this form element. You need to
-        # include <script src="/static/admin/js/jsi18n.js"></script>
-        # in the template.
         css = {
             'all': ('/static/admin/css/widgets.css',)
         }
-        js=('/static/admin/js/jsi18n.js',)
+        js = ('/static/admin/js/jsi18n.js',)
 
     class Meta:
         model = Project
         fields=('name','description','collaborators', 'owner')
 
-    def __init__(self, user, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('user'):
+            self.user = kwargs.pop('user', None)
         super(ProjectForm, self).__init__(*args, **kwargs)
-        self.fields['owner'] = forms.ModelChoiceField(queryset=User.objects.filter(id=user.id), initial=0, widget=forms.HiddenInput()) 
-        collab_qs=User.objects.filter(groups__in=user.groups.all(), is_active=True).exclude(id=user.id)    
-        self.fields['collaborators'] = forms.ModelMultipleChoiceField(
-            queryset=collab_qs,
-            widget=FilteredSelectMultiple("User", 
-                is_stacked=False, attrs={'rows':'5'}),
-                required=False)
+        if self.user:
+            self.fields['owner'] = forms.ModelChoiceField(queryset=User.objects.filter(id=self.user.id), initial=self.user.id, widget=forms.HiddenInput())  
+            collab_qs=User.objects.filter(groups__in=self.user.groups.all(), is_active=True).exclude(id=self.user.id)    
+            self.fields['collaborators'] = forms.ModelMultipleChoiceField(
+                queryset=collab_qs,
+                # widget=forms.CheckboxSelectMultiple,
+                widget=FilteredSelectMultiple("User", 
+                    is_stacked=False, attrs={'rows':'5'}),
+                    required=False
+                    )
 
 
 class ExperimentModelForm(forms.ModelForm):
@@ -82,7 +81,7 @@ class ExperimentModelForm(forms.ModelForm):
     
     class Meta:
         model = Experiment
-        fields = ("name", "description", "protein", "srcPlateType", "destPlateType","library",)
+        fields = ("name","description", "protein", "srcPlateType", "destPlateType","library",)
         
     def __init__(self, *args, **kwargs):
         super(ExperimentModelForm, self).__init__(*args, **kwargs)
@@ -94,69 +93,79 @@ class ExperimentModelForm(forms.ModelForm):
         self.fields['destPlateType'] = forms.ModelChoiceField(queryset=destPlateType_qs, 
             label="Destination plate type",
             initial=destPlateType_qs.first())
+        
             
-# class SourcePlateForm(forms.ModelForm):
-#     class Meta:
-#         model = Plate
-#         fields = ("formatType",)
+
 
 # MultiForms -------------------------------------------------------------------------
 
-class ExpAsMultiForm(MultipleForm):
-    # name = forms.CharField(max_length=30)
-    # description = forms.CharField(widget=forms.Textarea(), max_length=300)
-    # description = forms.CharField(max_length=300)
-    # protein = forms.CharField(max_length=30)
-    # library = forms.ModelChoiceField(queryset=Library.objects.all(),initial=0, required=False)
+class ExpAsMultiForm(MultipleForm, ExperimentModelForm):
 
     """populate form with current values"""
-    def __init__(self, user, exp, lib_qs=None, *args, **kwargs):
+    def __init__(self, user, lib_qs=None, *args, **kwargs):
         super(ExpAsMultiForm, self).__init__(*args, **kwargs)
-        self.fields['name'] = forms.CharField(max_length=30, initial=getattr(exp,'name'))
-        self.fields['description'] = forms.CharField(max_length=300, initial=getattr(exp,'description'), required=False)
-        self.fields['protein'] = forms.CharField(max_length=30, initial=getattr(exp,'protein'), required=False)
-        self.fields['srcPlateType'] = forms.ModelChoiceField(queryset=PlateType.objects
-            .filter(isSource=True), 
-            label="Source plate type",
-            initial=exp.srcPlateType)
-        self.fields['destPlateType'] = forms.ModelChoiceField(queryset=PlateType.objects
-            .filter(isSource=False), 
-            label="Destination plate type",
-            initial=exp.destPlateType)
-        lib_id = getattr(exp,'library_id')
-        qs = user.libraries.filter()
-        if lib_qs:
-            qs = lib_qs
-        self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, required=False)
+        # self.fields['name'] = forms.CharField(max_length=30, initial=getattr(exp,'name'))
+        # self.fields['description'] = forms.CharField(max_length=300, initial=getattr(exp,'description'), required=False)
+        # self.fields['protein'] = forms.CharField(max_length=30, initial=getattr(exp,'protein'), required=False)
+        # self.fields['srcPlateType'] = forms.ModelChoiceField(queryset=PlateType.objects
+        #     .filter(isSource=True), 
+        #     label="Source plate type",
+        #     initial=exp.srcPlateType)
+        # self.fields['destPlateType'] = forms.ModelChoiceField(queryset=PlateType.objects
+        #     .filter(isSource=False), 
+        #     label="Destination plate type",
+        #     initial=exp.destPlateType)
+        exp = getattr(kwargs, 'instance', None)
+        if exp:
+            lib_id = getattr(exp,'library')
+            qs = user.libraries.filter()
+            if lib_qs:
+                qs = lib_qs
+            self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, required=False)
+
+    class Meta(ExperimentModelForm.Meta):
+        fields = list(ExperimentModelForm.Meta.fields) + ['project']
     
+
     # put form validation here 
-    def clean(self):
-        cd = self.cleaned_data
-        cd_copy = cd.copy()
-        fields = [k for k in self.fields]
-        # if len(cd['name']) < 3:
-        #     self._errors['name'] = ["Name not greater than 3 chars."]
-        for key in cd_copy:
-            if not key in fields:
-                cd.pop(key)
-        return cd
-
-class ExpInitMultiForm(MultipleForm):
-    def __init__(self, exp, *args, **kwargs):
-        super(ExpInitMultiForm, self).__init__(*args,**kwargs)
-        self.fields['init_data_file'] = forms.FileField()
-
+    # def clean(self, *args, **kwargs):
+    #     cd =  super(ExpAsMultiForm, self).clean(*args, **kwargs)
+    # #     # cd = self.cleaned_data
+    # #     cd_copy = cd.copy()
+    # #     fields = [k for k in self.fields]
+    #     if len(cd['name']) < 3:
+    #         self._errors['name'] = ["Name not greater than 3 chars."]
+    # #     for key in cd_copy:
+    # #         if not key in fields:
+    # #             cd.pop(key)
+    #     return cd
 
 class ExpInitDataMultiForm(MultipleForm):
+    initDataFile = forms.FileField(label="File upload",
+            validators=[FileExtensionValidator(['json'])],
+            widget=forms.FileInput)
     def __init__(self, exp, *args, **kwargs):
         super(ExpInitDataMultiForm, self).__init__(*args,**kwargs)
-        self.fields['initDataFile'] = forms.FileField()
+        # self.fields['initDataFile'] = forms.FileField(label="File upload",
+        #     validators=[FileExtensionValidator(['json'])])
 
-class CreateSrcPlatesFromLibMultiForm(MultipleForm):
+class CreateSrcPlatesMultiForm(MultipleForm):
+    numSrcPlates = forms.IntegerField(required=False)
+    plateLibDataFile = forms.FileField(required=False)
+    templateSrcPlates = forms.ModelMultipleChoiceField(
+        queryset=Plate.objects.filter(isSource=True, isTemplate=True), 
+        required=False)
+
     def __init__(self, exp, *args, **kwargs):
-        super(CreateSrcPlatesFromLibMultiForm, self).__init__(*args, **kwargs)
-        self.fields['numSrcPlates'] = forms.IntegerField()
-        self.fields['plateLibDataFile'] = forms.FileField()
+        super(CreateSrcPlatesMultiForm, self).__init__(*args, **kwargs)
+    def clean(self):
+        cd = self.cleaned_data
+        fromFile = cd['numSrcPlates'] and cd['plateLibDataFile']
+        fromTemplates = cd['templateSrcPlates']
+        if not(fromFile or fromTemplates):
+            self.add_error(None,'Please choose one option.')
+
+        return cd
 
 class PlatesSetupMultiForm(MultipleForm):
     subwells = (
@@ -197,28 +206,35 @@ class PlatesSetupMultiForm(MultipleForm):
         return cd
 
 class SoaksSetupMultiForm(MultipleForm):
+    soakVolumeOverride = forms.IntegerField(required=False, label="Override Soak Volume")
+    soakDate = forms.DateTimeField(initial=timezone.now().strftime('%d/%m/%Y %H:%M'), 
+        input_formats=['%d/%m/%Y %H:%M'], label="Desired soak date", required=False)
+
     def __init__(self, exp, *args, **kwargs):
         super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)
-        soakVolume = 25
-        soakOffsetX = 0
-        soakOffsetY = 0
-        if exp.soaks.count():
-            s = exp.soaks.all()[0]
-            soakVolume = s.soakVolume
-            soakOffsetX = s.soakOffsetX
-            soakOffsetY = s.soakOffsetY
-        self.fields['soakVolume'] = forms.IntegerField(initial=soakVolume)
-        self.fields['soakOffsetX'] = forms.DecimalField(max_digits=10, decimal_places=2,initial=soakOffsetX)
-        self.fields['soakOffsetY'] = forms.DecimalField(max_digits=10, decimal_places=2,initial=soakOffsetY)
+# class SoaksSetupMultiForm(MultipleForm):
+#     def __init__(self, exp, *args, **kwargs):
+#         super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)
+#         soakVolume = 25
+#         soakOffsetX = 0
+#         soakOffsetY = 0
+#         if exp.soaks.count():
+#             s = exp.soaks.all()[0]
+#             soakVolume = s.soakVolume
+#             soakOffsetX = s.soakOffsetX
+#             soakOffsetY = s.soakOffsetY
+#         self.fields['soakVolume'] = forms.IntegerField(initial=soakVolume)
+#         self.fields['soakOffsetX'] = forms.DecimalField(max_digits=10, decimal_places=2,initial=soakOffsetX)
+#         self.fields['soakOffsetY'] = forms.DecimalField(max_digits=10, decimal_places=2,initial=soakOffsetY)
     
-    def clean(self):
-        cd = self.cleaned_data
-        if cd['soakVolume'] <= 0:
-            self._errors['soakVolume'] = ["Must be positive."]
-        cd_copy = cd.copy()
-        fields = [k for k in self.fields]
-        for key in cd_copy:
-            if not key in fields:
-                cd.pop(key)
-        return cd
+#     def clean(self):
+#         cd = self.cleaned_data
+#         if cd['soakVolume'] <= 0:
+#             self._errors['soakVolume'] = ["Must be positive."]
+#         cd_copy = cd.copy()
+#         fields = [k for k in self.fields]
+#         for key in cd_copy:
+#             if not key in fields:
+#                 cd.pop(key)
+#         return cd
 

@@ -27,16 +27,19 @@ class MultiFormMixin(ContextMixin):
     
     def get_form_kwargs(self, form_name):
         kwargs = {}
-        kwargs.update({'initial':self.get_initial(form_name)})
+        initial = self.get_initial(form_name)
+        kwargs.update({'initial':initial})
         kwargs.update({'prefix':self.get_prefix(form_name)})
         if self.request.method in ('POST', 'PUT'):
-            kwargs.update({
-                'data': self.request.POST,
-                'files': self.request.FILES,
-            })
+            if self.request.POST['action'] == initial['action']:
+                kwargs.update({
+                    'data': self.request.POST,
+                    'files': self.request.FILES,
+                })
         form_arguments = self.get_form_arguments(form_name)
         if form_arguments:
             kwargs.update(form_arguments)
+        print(kwargs)
         return kwargs
     
     def forms_valid(self, forms, form_name):
@@ -64,7 +67,6 @@ class MultiFormMixin(ContextMixin):
 
     def _create_form(self, form_name, form_class):
         form_kwargs = self.get_form_kwargs(form_name)
-        print(form_kwargs)
         form = form_class(**form_kwargs)
         return form
 
@@ -79,11 +81,6 @@ class ProcessMultipleFormsView(ProcessFormView):
     def post(self, request, *args, **kwargs):
         form_classes = self.get_form_classes()
         form_name = request.POST.get('action')
-        # form_names = request.POST.getlist('action')
-        # form_name = None
-        # for name in form_names:
-        #     if name in request.POST:
-        #         form_name = name
         return self._process_individual_form(form_name, form_classes)
         
     def _process_individual_form(self, form_name, form_classes):
@@ -92,11 +89,8 @@ class ProcessMultipleFormsView(ProcessFormView):
         if not form:
             return HttpResponseForbidden()
         elif form.is_valid():
-            print('FORM VALID')
             return self.forms_valid(forms, form_name)
         else:
-            print('FORM INVALID')
-            print(form.errors)
             return self.forms_invalid(forms, form_name)
  
  

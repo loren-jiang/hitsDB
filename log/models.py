@@ -10,13 +10,13 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     bio = models.TextField(max_length=500, blank=True, null=True)
 
-    # returns profile/user projects as django tables 2
-    # argument should be request for pagination to work properly
-    def getProjects(self, excludeCols=[]):
-        user_proj_qs = self.user.projects.all()
-        user_collab_proj_qs = self.user.collab_projects.all()
-        projectsTable = ProjectsTable(data=user_proj_qs.union(user_collab_proj_qs),exclude=excludeCols)
-        return projectsTable
+    # # returns profile/user projects as django tables 2
+    # # argument should be request for pagination to work properly
+    # def getProjects(self, excludeCols=[]):
+    #     user_proj_qs = self.user.projects.all()
+    #     user_collab_proj_qs = self.user.collab_projects.all()
+    #     projectsTable = ProjectsTable(data=user_proj_qs.union(user_collab_proj_qs),exclude=excludeCols)
+    #     return projectsTable
         
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):

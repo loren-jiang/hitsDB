@@ -3,7 +3,7 @@ from django.contrib.auth.models import User, Group
 from django.utils import timezone
 from lib.models import Library, Compound
 from .exp_view_process import formatSoaks, split_list, getWellIdx, getSubwellIdx
-from django.db.models.signals import post_save, post_init, pre_save
+from django.db.models.signals import post_save, post_init, pre_save, m2m_changed
 from django.dispatch import receiver
 from django.utils.functional import cached_property 
 from my_utils.orm_functions import bulk_add, bulk_one_to_one_add
@@ -22,6 +22,7 @@ import json
 import csv 
 from django.db import transaction, IntegrityError
 from django.urls import reverse, reverse_lazy
+from my_utils.utility_functions import lists_diff, lists_equal
 
 # Create your models here.
 class Project(models.Model):
@@ -29,31 +30,55 @@ class Project(models.Model):
     owner = models.ForeignKey(User, related_name='projects',on_delete=models.CASCADE)
     description = models.CharField(max_length=300, blank=True, null=True)
     collaborators = models.ManyToManyField(User, related_name='collab_projects',blank=True) 
+    editors = models.ManyToManyField(User, related_name='editor_projects', blank=True)
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
+
+    new_instance_viewname = 'proj_new'
+    edit_instance_viewname = 'proj_edit'
+    model_name = 'Project'
+
+    @classmethod
+    def newInstanceUrl(cls):
+        """
+        Class method to return url to create new instance; compared to editInstanceUrl, this function should be a class method
+        vs instance property because instance data (self.pk) is not needed
+        """
+        return reverse(cls.new_instance_viewname)
+
+    @property
+    def editInstanceUrl(self):
+        """
+        Returns url to edit class instance; should be @property because instance data is needed
+        """
+        return reverse(self.edit_instance_viewname, kwargs={'pk_proj':self.pk})
 
     @classmethod
     def getModalFormData(cls):
         """
         Class method to return data needed for modal form to edit and make new instance of model
-        """
-        new_ = 'proj_new'
-        edit_= 'proj_edit'
+        """ 
+        new_id = cls.new_instance_viewname
+        edit_id = cls.edit_instance_viewname
+        model_name = cls.model_name
+
         return {
             'new': {
-                'url_class': '%s_url' % new_,
-                'modal_id': '%s_modal' % new_,
-                'form_class': '%s_form' % new_,
-                # 'button': {'id': new_, 'text': 'New Project','class': 'btn-primary ' + '%s_url' % new_, 
-                #     'href':reverse('project_new', kwargs={'form_class':"%s_form" % new_})},
+                'url_class': '%s_url' % new_id,
+                'modal_id': '%s_modal' % new_id,
+                'form_class': '%s_form' % new_id,
+                # 'button': {'id': new_id, 'text': 'New %s' % model_name,'class': 'btn-primary ' + '%s_url' % new_id, 
+                #     'href':reverse(new_id, kwargs={'form_class':"%s_form" % new_id})},
             },
             'edit': {
-                'url_class': '%s_url' % edit_,
-                'modal_id': '%s_modal' % edit_, 
-                'form_class': '%s_form' % edit_,
+                'url_class': '%s_url' % edit_id,
+                'modal_id': '%s_modal' % edit_id, 
+                'form_class': '%s_form' % edit_id,
+                # 'button': {'id': edit_id, 'text': 'Edit %s' % model_name,'class': 'btn-primary ' + '%s_url' % edit_id, 
+                #     'href':reverse(edit_id, kwargs={'form_class':"%s_form" % edit_id})},
             }
             
-        }
+        }   
 
     def getExperimentsTable(self, exc=[]):
         """
@@ -110,10 +135,8 @@ def defaultSubwellLocations():
     return list([1])
 
 class Experiment(models.Model):
-    name = models.CharField(max_length=30)
-    library = models.ForeignKey(Library, related_name='experiments',
-        on_delete=models.CASCADE)
-    prev_library_id = None #prev library to check if library has changed
+    name = models.CharField(max_length=30,)
+    library = models.ForeignKey(Library, related_name='experiments', on_delete=models.CASCADE, blank=True, null=True)
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='experiments')
     description = models.CharField(max_length=300, blank=True, null=True)
     protein = models.CharField(max_length=100)
@@ -125,12 +148,29 @@ class Experiment(models.Model):
         size=3, default=defaultSubwellLocations) 
     initDataJSON = JSONField(default=dict)
     initData = models.OneToOneField(PrivateFileJSON, null=True, blank=True, on_delete=models.CASCADE, related_name='experiment')
-    prev_initData_id = None #prev library to check if initData file has changed
+
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
 
+    prev_initData_id = None #prev library to check if initData file has changed
+    prev_library_id = None #prev library to check if library has changed
+
+    soak_export_date = models.DateTimeField(blank=True, null=True)
+
     class Meta:
         get_latest_by="modified_date"
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'project'], name='unique_experiment_name_per_project'),
+        ]
+
+    @property
+    def soakTime(self):
+        """
+        Returns time difference between current datetime and export_date
+        """
+        if self.soak_export_date:
+            return timezone.now - self.soak_export_date
+        return None
 
     @property
     def initDataValid(self):
@@ -146,11 +186,13 @@ class Experiment(models.Model):
         """
         Gets the current step of the experiment; used for rendering main experiment view
         """
-        cond0 = bool(self)
-        cond1 = self.libraryValid and self.initDataValid
+        cond0 = self.srcPlateType_id and self.destPlateType_id # has srcPlateType and destPlateType
+        # cond1 = self.libraryValid and self.initDataValid
+        cond1 = self.initDataValid 
         cond2 = self.destPlatesValid
         cond3 = self.srcPlatesValid
-        # cond3 = self.soaksValid
+        cond4 = self.soaksValid
+        print(cond4)
         conds = [cond0, cond1, cond2, cond3] # cond1 corresponds to step 1
         if all(conds[0:4]): #might want to more robust check (e.g. # soaks = # compounds in library)
             return 4
@@ -190,7 +232,7 @@ class Experiment(models.Model):
         for s in self.soaks.select_related('src__plate', 'dest__parentWell__plate'):
             if not(s.src_id and s.dest_id):
                 return False
-            if not(s.src.plate.id==self.id and s.dest.parentWell.plate.id==self.id):
+            if not(s.src.plate.experiment_id==self.id and s.dest.parentWell.plate.experiment_id==self.id):
                 return False
         return True
 
@@ -199,7 +241,7 @@ class Experiment(models.Model):
         """
         Returns True if experiment library has compounds, else False
         """
-        return bool(self.library.compounds.count())
+        return self.library and self.library.compounds.count()
 
     @property
     def srcPlatesValid(self):
@@ -276,23 +318,36 @@ class Experiment(models.Model):
         """
         Returns ordered subwells in the experiment's destination plates
         """
-        return SubWell.objects.filter(parentWell__plate__isSource=False).order_by('parentWell__plate__plateIdxExp', 'idx')
+        return SubWell.objects.filter(parentWell__plate__in=
+            self.plates.filter(isSource=False)).order_by('parentWell__plate__plateIdxExp', 'idx')
 
     @property
     def srcWells(self):
         """
         Returns ordered wells in the experiment's source plates
         """
-        return Well.objects.filter(plate__isSource=True).filter().order_by('plate__plateIdxExp', 'name')
+        return Well.objects.filter(plate__in=
+            self.plates.filter(isSource=True)).order_by('plate__plateIdxExp', 'name')
     
     @property
     def srcWellsWithCompounds(self):
         """
         Returns the wells in the experiment's source plates with compounds
         """
-        return self.srcWells.exclude(compounds__isnull=True)
+        return self.srcWells.exclude(compound__isnull=True)
+    
+    def importTemplateSourcePlates(self, templateSrcPlates):
+        """
+        Makes new source plates from template source plates, usually with compounds
 
-    def createSrcPlatesFromLibFile(self, numPlates=0, file=''):
+        Parameters:
+        templateSrcPlates (list): list of plates that are template and source
+        """
+        plates = self.makeSrcPlates(len(templateSrcPlates))
+        for p1, p2 in zip(plates, templateSrcPlates):
+            p1.copyCompoundsFromOtherPlate(p2)
+
+    def createSrcPlatesFromLibFile(self, numPlates=0, file=None):
         """
         Creates source plates from CSV file (https://docs.google.com/spreadsheets/d/1FRBm6wVNSpwg4d3zGCYKLQkEZjf4BP9JL0YkEJzSojw/edit?usp=sharing)
         Then update wells with the appropriate compounds specified from csv file
@@ -314,17 +369,42 @@ class Experiment(models.Model):
 
                 compound_dict = {}
                 for row in file_reader:
+                    
+                    if int(row[plate_idx_idx]) not in plateIdxRange:
+                        raise IntegrityError
+
                     compound_dict[row[zinc_id_idx]] = {
                         'plate_idx': row[plate_idx_idx],
                         'well_name':row[well_idx],
                     }
+                grouped_compound_dict_by_plate  = {}
+                for k, v in compound_dict.items():
+                    plate = grouped_compound_dict_by_plate.get(v['plate_idx'], None)
+                    if not(plate):
+                        grouped_compound_dict_by_plate[v['plate_idx']] = {v['well_name']:k}
+                    else:
+                        plate.update({v['well_name']:k})
+                        
+                # import pdb; pdb.set_trace();
+
+                    # grouped_compound_dict.setdefault(v['plate_idx'], []).append(key)
                 #retrieve existing compounds 
-                existing_compounds_qs = Compound.objects.filter(zinc_id__in=compound_dict.keys())
-                existing_compounds_dict = {}
-                for c in existing_compounds_qs:
+                compounds_existed = [c for c in Compound.objects.filter(zinc_id__in=compound_dict.keys())]
+                zincs_existed = [c.zinc_id for c in compounds_existed]
+
+                zincs_created = lists_diff(compound_dict.keys(), zincs_existed)
+
+                compounds = [Compound(zinc_id=z) for z in zincs_created]
+                compounds_created = Compound.objects.bulk_create(compounds)
+                
+                compounds_all = []
+                compounds_all.extend(compounds_created)
+                compounds_all.extend(compounds_existed)
+                well_compounds_dict = {}
+                for c in compounds_all:
                     key_ = compound_dict[c.zinc_id]['plate_idx'] + '_' + compound_dict[c.zinc_id]['well_name']
-                    existing_compounds_dict[key_] = c
-                existing_compounds_ids = [existing_compounds_dict[k_].id for k_ in existing_compounds_dict.keys()]
+                    well_compounds_dict[key_] = c
+                well_compounds_ids = [well_compounds_dict[k_].id for k_ in well_compounds_dict.keys()]
                 
                 #retrieve and update existing wells with appropriate compound
                 wells_qs = Well.objects.filter(plate__in=platesMade
@@ -332,12 +412,19 @@ class Experiment(models.Model):
                     ).prefetch_related('compounds'
                     ).annotate(plate_idx=F('plate__plateIdxExp'))
                 wells_dict = {}
+                
                 for w in wells_qs:
                     wells_dict[str(w.plate_idx) + '_' + w.name] = w
 
-                wells_with_compounds_ids = [wells_dict[k_].id for k_ in existing_compounds_dict.keys()]
+                for k in well_compounds_dict.keys():
+                    wells_dict[k].compound_id = well_compounds_dict[k].id
+
+                Well.objects.bulk_update([v for k, v in wells_dict.items()], ['compound_id'], batch_size=500)
+
+                ### TODO: remove bulk_one_to_one_add since we already have well->compound relationship
+                wells_with_compounds_ids = [wells_dict[k_].id for k_ in well_compounds_dict.keys()]
                 throughRel = Well.compounds.through
-                bulk_one_to_one_add(throughRel, wells_with_compounds_ids, existing_compounds_ids, 'well_id', 'compound_id')
+                bulk_one_to_one_add(throughRel, wells_with_compounds_ids, well_compounds_ids, 'well_id', 'compound_id')
         except IntegrityError as e:
             print(e)
         except KeyError as e:
@@ -449,7 +536,13 @@ class Experiment(models.Model):
             return False
     
     def makeSrcPlates(self, num_plates):
-        self.plates.filter(isSource=True).delete()
+        src_plate_qs = self.plates.filter(isSource=True)
+        for p in src_plate_qs:
+            if p.isTemplate:
+                self.plates.remove(p, bulk=False)
+            else:
+                p.delete()
+        # self.plates.filter(isSource=True).delete()
         if (self.srcPlateType):
             return self.makePlates(num_plates, self.srcPlateType)
         else:
@@ -494,7 +587,7 @@ class Experiment(models.Model):
             date_time = plate_data.pop("date_time", None)
             plate = lst_plates[i]
             plate.rockMakerId = plate_id
-            plate.dateTime = make_aware(datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f'))
+            plate.created_date = make_aware(datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f'))
             plate.save()
 
             # loop through well keys and create soaks w/ appropriate data
@@ -610,16 +703,33 @@ class Ingredient(models.Model):
         return self.name
 
 class Plate(models.Model):
-    name = models.CharField(max_length=20)
-    plateType = models.ForeignKey('PlateType', related_name='plates', on_delete=models.SET_NULL, null=True)
-    experiment = models.ForeignKey(Experiment, related_name='plates', on_delete=models.CASCADE)
+    name = models.CharField(max_length=50)
+    plateType = models.ForeignKey('PlateType', related_name='plates', on_delete=models.SET_NULL, null=True, blank=True)
+    experiment = models.ForeignKey(Experiment, related_name='plates', on_delete=models.SET_NULL, null=True, blank=True)
     isSource = models.BooleanField(default=False) #is it a source plate? if not, it's a dest plate
     plateIdxExp = models.PositiveIntegerField(default=1,null=True, blank=True)
     dataSheetURL = models.URLField(max_length=200, null=True, blank=True)
     echoCompatible = models.BooleanField(default=False)
     rockMakerId = models.PositiveIntegerField(unique=True, null=True, blank=True)
-    dateTime = models.DateTimeField(null=True, blank=True)
+    isTemplate = models.BooleanField(default=False) #template plates can be copied; should only apply for source plates
 
+    created_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('id',)
+        constraints = [
+            models.UniqueConstraint(fields=['plateIdxExp', 'isSource', 'experiment'], name='unique_src_dest_plate_idx'),
+            models.CheckConstraint(check=~(models.Q(isSource=False) & models.Q(isTemplate=True)), 
+                name='source_can_only_be_template')
+        ]
+        # unique_together = ('plateIdxExp', 'isSource', 'experiment')
+
+    def __str__(self):
+        string = ''
+        if self.isTemplate:
+            string += 'Template: '
+        return string + ' ' + self.name + ' ' + str(self.id)
     def get_absolute_url(self):
         return "/plate/%i/" % self.id
     
@@ -641,12 +751,9 @@ class Plate(models.Model):
         if self.plateType:
             return self.plateType.numCols * self.plateType.numRows
 
-    class Meta:
-        ordering = ('id',)
-        constraints = [
-            models.UniqueConstraint(fields=['plateIdxExp', 'isSource', 'experiment'], name='unique_src_dest_plate_idx')
-        ]
-        # unique_together = ('plateIdxExp', 'isSource', 'experiment')
+    @property
+    def compounds(self):
+        return Compound.objects.filter(my_wells__in=self.wells.all()).order_by('my_wells__name')
 
     # creates appropriate wells for plate instance
     def createPlateWells(self):
@@ -655,9 +762,10 @@ class Plate(models.Model):
         """
         wells = None
         plateType = self.plateType
-        wellDict = plateType.wellDict
-        well_lst = [None]*len(wellDict)
+        
         if plateType:
+            wellDict = plateType.wellDict
+            well_lst = [None]*len(wellDict)
             for key, val in wellDict.items():
                 well_props = val
                 wellIdx = well_props['wellIdx']
@@ -665,7 +773,7 @@ class Plate(models.Model):
                 wellColIdx = well_props['wellColIdx']
 
                 well_lst[wellIdx] = Well(name=key, wellIdx=wellIdx, wellRowIdx=wellRowIdx, wellColIdx=wellColIdx,
-                    maxResVol=130, minResVol=10, plate_id=self.pk)
+                    maxResVol=130, minResVol=10, plate=self)
 
             Well.objects.bulk_create(well_lst)
             wells = self.wells.all()
@@ -678,17 +786,39 @@ class Plate(models.Model):
                     SubWell.objects.bulk_create(subwells_lst)
         return wells
 
-@receiver(post_save, sender=Plate)
-def createPlateWells(sender, instance, created, **kwargs):
-    """
-        TODO: write DOCSTRING
-    """
-    if created: # we only want to create wells and subwells once for plates on model creation
-        instance.createPlateWells()
-    return 
+    def updateCompounds(self, compounds, compound_dict={}):
+        if compounds:
+            my_wells = [w for w in self.wells.all().order_by('name')]
+            num_my_wells = len(my_wells)
+            num_compounds = len(compounds)
+            assert num_compounds >= num_my_wells
+            
+            if compound_dict:
+                pass
+            else: #no compound_dict provided so update one-by-one in order
+                for i in range(num_my_wells):
+                    my_wells[i].compound = compounds[i] 
+                Well.objects.bulk_update(my_wells, fields=['compound'])
+
+
+    def copyCompoundsFromOtherPlate(self, plate):
+        """
+        Takes other plate (isTemplate must be True) and copy its compounds in the appropriate well locations
+        """
+        assert plate.isTemplate #only template plates can be copied from 
+        compounds_to_copy = [c for c in plate.compounds.all()]
+        if compounds_to_copy:
+            my_wells = [w for w in self.wells.all().order_by('name')]
+            num_my_wells = len(my_wells)
+            num_compounds = len(compounds_to_copy)
+            assert num_compounds >= num_my_wells
+
+            for i in range(num_my_wells):
+                my_wells[i].compound = compounds_to_copy[i] 
+            Well.objects.bulk_update(my_wells, fields=['compound'])
 
 class PlateType(models.Model):
-    name = models.CharField(max_length=30, default="",unique=True) 
+    name = models.CharField(max_length=50, unique=True) 
     numCols = models.PositiveIntegerField(default=12, 
         validators=[
             MaxValueValidator(99),
@@ -800,6 +930,7 @@ class Well(models.Model):
     name = models.CharField(max_length=3, 
         validators=[validWellName]
         ) #format should be A01, X10, etc.
+    compound = models.ForeignKey(Compound, related_name='my_wells', null=True, blank=True, on_delete=models.SET_NULL)
     compounds = models.ManyToManyField(Compound, related_name='wells', blank=True) #can a well have more than one compound???
     maxResVol = models.DecimalField(max_digits=10, decimal_places=0)
     minResVol = models.DecimalField(max_digits=10, decimal_places=0)
@@ -874,10 +1005,13 @@ class Soak(models.Model):
 
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
-    
+    # soak_export_date = models.DateTimeField(blank=True, null=True)
+
+
+
     @property
     def transferVol(self):
-        return RadiusToVolume(float(self.drop_radius) * UM_TO_PIX) #arg should be in pixels, return should be in uL
+        return RadiusToVolume(float(self.drop_radius) * UM_TO_PIX) #arg should be in um, return should be in uL
 
     @property 
     def offset_XY_um(self):
@@ -941,18 +1075,27 @@ def createWellDict(numRows, numCols):
 
 
 # SIGNALS -----------------------------------------------------
+@receiver(m2m_changed, sender=Project.editors.through)
+def ensure_editor_is_collaborator(sender, instance, action, reverse, model, pk_set, using, **kwargs ):
+    """
+    If project's editor is not a collaborator, add as collaborator
+    """
+    if action == 'post_add':
+        instance.collaborators.add(*[u for u in User.objects.filter(pk__in=list(pk_set))])
+
 @receiver(post_save, sender=Experiment)
 def delete_plates_soaks_on_library_change(sender, instance, created, **kwargs):
     """
     Delete experiment plates and soaks on library change
     """
-    if instance.prev_library_id != instance.library_id and not(created):
-        instance.plates.all().delete()
-        instance.soaks.all().delete()
-        reset = {'srcPlateType':None, 'destPlateType':None, 'subwell_locations':[]}
-        Experiment.objects.filter(id=instance.id).update(**reset) # does not call save() so not signals emitted
-        # set state of current library
-        instance.prev_library_id = instance.library_id
+    pass
+    # if instance.prev_library_id != instance.library_id and not(created):
+    #     instance.plates.all().delete()
+    #     instance.soaks.all().delete()
+    #     reset = {'srcPlateType':None, 'destPlateType':None, 'subwell_locations':[]}
+    #     Experiment.objects.filter(id=instance.id).update(**reset) # does not call save() so no signals emitted
+    #     # set state of current library
+    #     instance.prev_library_id = instance.library_id
 
 @receiver(post_save, sender=Experiment)
 def create_plates_and_soaks_init_data(sender, instance, created, **kwargs):
@@ -986,5 +1129,25 @@ def remember_experiment_state(sender, instance, **kwargs):
 
 @receiver(pre_save, sender=Soak)
 def increment_save_count(sender, instance, **kwargs):
-    # #print(instance.saveCount)
     instance.saveCount += 1
+
+@receiver(post_save, sender=Plate)
+def createPlateWellsPostSave(sender, instance, created, **kwargs):
+    """
+    On post_save signal, create wells based on instance's plateType
+    """
+    if created: # we only want to create wells and subwells once for plates on model creation
+        instance.createPlateWells()
+    return 
+
+@receiver(post_save, sender=Plate)
+def sourcePlateSetToTemplatePostCreate(sender, instance, created, **kwargs):
+    """
+    On post_save signal, set isTemplate to True if plate is created and is a source plate
+    """
+    if instance.isSource and created:
+            instance.isTemplate = True
+            post_save.disconnect(sourcePlateSetToTemplatePostCreate, sender=Plate)
+            instance.save()
+            post_save.connect(sourcePlateSetToTemplatePostCreate, sender=Plate)
+    return 

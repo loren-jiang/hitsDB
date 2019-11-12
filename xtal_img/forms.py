@@ -17,7 +17,7 @@ class SoakGUIForm(forms.ModelForm):
     class Meta:
         model = Soak
         fields = ('soakOffsetX', 'soakOffsetY', 'soakVolume', 'well_x',
-                  'well_y', 'well_radius', 'useSoak', 'src')
+                  'well_y', 'well_radius', 'useSoak',)# 'src')
         labels = {
             'soakOffsetX': 'X (\u03BCm)',
             'soakOffsetY': 'Y (\u03BCm)',
@@ -25,14 +25,14 @@ class SoakGUIForm(forms.ModelForm):
             'well_x': 'X (\u03BCm)',
             'well_y': 'Y (\u03BCm)',
             'well_radius': 'Radius (\u03BCm)',
-            'src':'Source well'
+            # 'src':'Source well'
         }
 
     def __init__(self, src_qs, *args, **kwargs):
         
         super().__init__(*args, **kwargs)
-        self.fields['src'].queryset = src_qs
-        self.initial['src'] = src_qs.first()
+        # self.fields['src'].queryset = src_qs
+        # self.initial['src'] = src_qs.first()
         # make form crispy
         self.helper = FormHelper()
         

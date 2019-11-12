@@ -6,7 +6,12 @@
 -->
 {% load crispy_forms_tags %}
 {% block content %}
-{{ form.media }}
+{% if form.media %}
+  {{ form.media }}
+{% else %}
+  <script src="/static/admin/js/jsi18n.js"> </script>
+  <link href="/static/admin/css/widgets.css" rel="stylesheet">
+{% endif %}
 
 <div class="modal-dialog">
   {% if use_ajax %}

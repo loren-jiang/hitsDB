@@ -1,4 +1,19 @@
-### ORM (object-relational mapping layer) functions
+### ORM (object-relational mapping layer) functions to interact with DB
+def upddate_instance(instance, fields, cleaned_data):
+    for field in fields:
+        new_field_data = cleaned_data[field]
+        old_field_data = getattr(instance, field)
+        if (new_field_data != old_field_data):
+            setattr(instance, field, new_field_data)
+    instance.save(update_fields=fields)
+
+def bulk_create_get(model_class, objs):
+    """
+    Like built-in bulk_create (https://docs.djangoproject.com/en/2.2/ref/models/querysets/#bulk-create)
+    but returns objects created and objects not created (existing)
+    """
+    # existing_qs = model_class.objects.filter(zinc_id__in=compound_dict.keys())
+    pass
 
 def bulk_add(throughRel, a_pks, b_pks, a_col_name, b_col_name): 
     """

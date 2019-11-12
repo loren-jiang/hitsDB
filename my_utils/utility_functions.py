@@ -1,6 +1,12 @@
 from functools import reduce 
 from operator import mul
 
+def lists_equal(L1, L2):
+    return len(L1) == len(L2) and sorted(L1) == sorted(L2)
+
+def lists_diff(list1, list2):
+    return list(set(list1).symmetric_difference(set(list2)))  # or return list(set(list1) ^ set(list2))
+
 def tests_wrapper(tests):
     """
     Wrapper which returns a function that returns True if all tests pass

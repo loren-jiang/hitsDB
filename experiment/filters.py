@@ -1,12 +1,14 @@
 from django.contrib.auth.models import User, Group
 from .models import Soak, Project
 import django_filters
+from .querysets import user_collaborators
 
 class CustomFilterMixin:
     def __init__(self, *args, **kwargs):
         self.filter_id = kwargs.pop('filter_id', '')
         self.form_id = kwargs.pop('form_id', '')
-        super().__init__(*args, **kwargs)
+        self.request = getattr(kwargs, 'request', None)
+        super(CustomFilterMixin, self).__init__(*args, **kwargs)
         
 
 class SoakFilter(django_filters.FilterSet):
@@ -18,12 +20,18 @@ class SoakFilter(django_filters.FilterSet):
         model = Soak
         fields = ('id','transferCompound', 'srcWell','destSubwell')
 
-class ProjectFilter(CustomFilterMixin,django_filters.FilterSet):
+def collaborators(request):
+    if request is None:
+        return User.objects.none()
+    return user_collaborators(request.user)
+
+class ProjectFilter(CustomFilterMixin, django_filters.FilterSet):
+
+    collaborators = django_filters.ModelMultipleChoiceFilter(queryset=collaborators)
 
     class Meta:
         model = Project
         fields = {
             'name':['icontains'], 
-            'owner':['exact']
+            'owner':['exact'],
             }
-

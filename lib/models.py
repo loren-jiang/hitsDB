@@ -20,26 +20,29 @@ class Compound(models.Model):
     chemicalFormula = models.CharField(max_length=100, default='')
     zinc_id = models.CharField(max_length=30, unique=True, validators=[validate_prefix("ZINC"), validate_prefix("zinc")])
     smiles = models.CharField(max_length=300,null=True, blank=True)
-    zincURL = models.URLField(null=True, blank=True)
-    molWeight = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    concentration = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # zincURL = models.URLField(null=True, blank=True)
+    molWeight = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True) #g/mol
+    concentration = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True) #percent
     purity = models.PositiveSmallIntegerField(default=100, validators=[MaxValueValidator(100), MinValueValidator(0)])
     active = models.BooleanField(default=True)
     
-    def save(self, *args, **kwargs):
-        if self.zinc_id:
-            self.zincURL = self.get_absolute_url()
-        super(Compound, self).save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     if self.zinc_id:
+    #         self.zincURL = self.get_absolute_url()
+    #     super(Compound, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.zinc_id
 
     def get_absolute_url(self):
         return 'https://zinc15.docking.org/substances/' + self.zinc_id + '/'
+    
+    @property
+    def zincURL(self):
+        return self.get_absolute_url()
 
 class Library(models.Model):
     name = models.CharField(max_length=30, unique=True)
-    # name = models.CharField(max_length=30, )
     description = models.CharField(max_length=300, default='')
     isCommerical = models.BooleanField(default=False)
     sourceURL = models.URLField(null=True, blank=True)
@@ -87,7 +90,7 @@ class Library(models.Model):
         new_id = cls.new_instance_viewname
         edit_id = cls.edit_instance_viewname
         model_name = cls.model_name
-
+    
         return {
             'new': {
                 'url_class': '%s_url' % new_id,

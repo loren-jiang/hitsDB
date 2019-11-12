@@ -5,6 +5,47 @@ from lib.models import Compound, Library
 from django.contrib.auth.models import User, Group
 from django_tables2 import RequestConfig
 
+def modifyColumn(data_target, a_class, view_name, verbose_name='', orderable=False, accessor='pk'):
+    return tables.Column(verbose_name=verbose_name, 
+                orderable=orderable, 
+                empty_values=(),
+                linkify=(view_name, [A(accessor)]), 
+                attrs={'a': {
+                                "data-toggle":"modal", 
+                                "data-target":"#" + data_target,
+                                "class":a_class
+                            }
+                    })
+
+class ModalEditMixin(tables.Table):
+    """
+    Table mixin to create 'modify' column which links to a modal edit form for the model instance
+    """
+    def render_modify(self, value):
+        return "Edit"
+    class Meta:
+        attrs = {'class': 'table modify-table'}
+
+    def __init__(self, *args, **kwargs):
+        self.table_id = kwargs.pop('table_id', '')
+        self.form_id =  kwargs.pop('form_id', '')
+        self.data_target =  kwargs.pop('data_target', '')
+        self.a_class =  kwargs.pop('a_class', '')
+        self.form_action = kwargs.pop('form_action', '')
+        self.view_name = kwargs.pop('view_name','')
+
+        if all([self.data_target, self.a_class, self.form_action, self.view_name]):
+            modify = modifyColumn(**{
+                'data_target': self.data_target, 
+                'a_class': self.a_class,
+                'view_name': self.view_name
+            })
+            kwargs.update(
+                {
+                    'extra_columns':[('modify',modify)],
+                })
+        super( ModalEditMixin, self ).__init__(*args, **kwargs)
+
 class ModifyTable:
     attrs = {'class': 'table modify-table'}
 
@@ -55,40 +96,9 @@ class SoaksTable(tables.Table):
         template_name = 'django_tables2/bootstrap-responsive.html'
         fields = ('id','transferVol','transferCompound','srcWell', 'destSubwell','selection')
 
-def modifyColumn(data_target, a_class, view_name, verbose_name='', orderable=False, accessor='pk'):
-    return tables.Column(verbose_name=verbose_name, 
-                orderable=orderable, 
-                empty_values=(),
-                linkify=(view_name, [A(accessor)]), 
-                attrs={'a': {
-                                "data-toggle":"modal", 
-                                "data-target":"#" + data_target,
-                                "class":a_class
-                            }
-                    })
-
-class ModalEditSoaksTable(SoaksTable):
-    def render_modify(self, value):
-        return "Edit"
-
-    def __init__(self, data_target=None, a_class=None, *args, **kwargs):
-        if data_target and a_class:
-            modify = tables.Column(verbose_name='', 
-                orderable=False, 
-                empty_values=(),
-                linkify=('soak_edit', [A('pk')]), 
-                attrs={'a': {
-                                "data-toggle":"modal", 
-                                "data-target":"#" + data_target,
-                                "class":a_class
-                            }}#shoud be a button to a modal
-                ) 
-            kwargs.update({'extra_columns':[('modify',modify)]})
-        super( ModalEditSoaksTable, self ).__init__(*args, **kwargs)
-
-    class Meta(SoaksTable.Meta, ModifyTable):
-        exclude=('id',)
-        # attrs = {'class': 'modify-table'}
+class ModalEditSoaksTable(ModalEditMixin, SoaksTable):
+    class Meta(ModalEditMixin.Meta, SoaksTable.Meta):
+        exclude = ()
         
 
 class CollaboratorsTable(tables.Table):
@@ -134,23 +144,8 @@ class ProjectsTable(tables.Table):
         template_name = 'django_tables2/bootstrap-responsive.html'
         fields = ('name','owner','created_date','modified_date','experiments','collaborators','checked')
 
-class ModalEditProjectsTable(ProjectsTable):
-    def render_modify(self):
-        return "Edit"
-
-    def __init__(self, data_target=None, a_class=None, *args, **kwargs):
-        
-        if data_target and a_class:
-            modify = modifyColumn(**{
-                'data_target': data_target, 
-                'a_class': a_class,
-                'view_name': "proj_edit"
-            })
-            kwargs.update({'extra_columns':[('modify',modify)]})
-        super( ModalEditProjectsTable, self ).__init__(*args, **kwargs)
-        
-
-    class Meta(ProjectsTable.Meta, ModifyTable):
+class ModalEditProjectsTable(ModalEditMixin, ProjectsTable):
+    class Meta(ModalEditMixin.Meta, ProjectsTable.Meta):
         exclude = ()
 
 class LibrariesTable(tables.Table):
@@ -165,36 +160,9 @@ class LibrariesTable(tables.Table):
         fields=('name','owner','numCompounds','supplier','checked')
         exclude=('id',)
 
-    
-class ModalEditLibrariesTable(LibrariesTable):
-    def render_modify(self, value):
-        return "Edit"
-
-    # def __init__(self, data_target=None, a_class=None, form_action=None, *args, **kwargs):
-    def __init__(self, *args, **kwargs):
-        self.table_id = kwargs.pop('table_id', '')
-        self.form_id =  kwargs.pop('form_id', '')
-        self.data_target =  kwargs.pop('data_target', '')
-        self.a_class =  kwargs.pop('a_class', '')
-        self.form_action = kwargs.pop('form_action', '')
-
-        if self.data_target and self.a_class and self.form_action:
-            modify = tables.Column(verbose_name='', 
-                orderable=False, 
-                empty_values=(),
-                linkify=('lib_edit', [A('pk')]), 
-                attrs={'a': {
-                                "data-toggle":"modal", 
-                                "data-target":"#" + self.data_target,
-                                "class": self.a_class
-                            }}#shoud be a button to a modal
-                ) 
-            kwargs.update({'extra_columns':[('modify',modify)]})
-        super( ModalEditLibrariesTable, self ).__init__(*args, **kwargs)
-        
-
-    class Meta(LibrariesTable.Meta, ModifyTable):
-        exclude=()
+class ModalEditLibrariesTable(ModalEditMixin, LibrariesTable):
+    class Meta(ModalEditMixin.Meta, LibrariesTable.Meta):
+        exclude = ()
 
 class CompoundsTable(tables.Table):
     selection = tables.CheckBoxColumn(accessor='pk')
@@ -213,7 +181,9 @@ class CompoundsTable(tables.Table):
         super(CompoundsTable, self ).__init__(*args, **kwargs)
 
 
-        
+class ModalEditCompoundsTable(ModalEditMixin, CompoundsTable):
+    class Meta(ModalEditMixin.Meta, CompoundsTable.Meta):
+        pass
 
 
 

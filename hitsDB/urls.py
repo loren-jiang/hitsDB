@@ -28,6 +28,7 @@ urlpatterns = [
     re_path(r'', include('log.urls')),
     re_path(r'', include('experiment.urls')),
     re_path(r'', include('lib.urls')),
+   
 ]
 
 if settings.DEBUG:

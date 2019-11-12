@@ -21,11 +21,13 @@ def upload_local_path(instance, filename):
     """
     return 'local/' +  user_upload_path(instance, filename) + str(instance.plate.id)+ '/'+ str(instance.file_name)
 
+def drop_image_upload_path_local(instance, filename):
+    path = user_upload_path(instance, filename) + 'dropimages/' +  str(instance.plate.id) + '/' + str(instance.key)
+    return 'local/' + path
+
 def drop_image_upload_path(instance, filename):
-    """
-    
-    """
     return user_upload_path(instance, filename) + 'dropimages/' +  str(instance.plate.id) + '/' + str(instance.key)
+
 
 # Create your models here
 class DropImage(models.Model):
@@ -37,7 +39,7 @@ class DropImage(models.Model):
         message='Enter valid file name, e.g. A_01_2')])  #should be well name and subwell idx; e.g. A01_2
     plate = models.ForeignKey(Plate, related_name='drop_images', on_delete=models.SET_NULL, null=True, blank=True)
     useS3 = models.BooleanField(default=True) #if True, then use s3 upload; if False, use local_upload
-    local_upload = models.ImageField(upload_to=upload_local_path,storage=fs, null=True, blank=True)
+    local_upload = models.ImageField(upload_to=drop_image_upload_path_local,storage=fs, null=True, blank=True)
     
     def __str__(self):
         return self.file_name

@@ -3,6 +3,19 @@ from django.core.exceptions import PermissionDenied
 from .models import Project, Experiment, Plate
 from lib.models import Library
 
+def accessible_project_for_user(func):
+    @wraps(func)
+    def wrapped(request, *args, **kwargs):
+        proj = Project.objects.get(pk=kwargs['pk_proj'])
+        pks = [user.pk for user in proj.collaborators.all()]
+        pks.append(proj.owner.pk)
+        if request.user.pk in pks:
+            return func(request, *args, **kwargs)
+        else:
+            raise PermissionDenied
+    return wrapped
+    
+
 def is_users_project(func):
     @wraps(func)
     def wrapped(request, *args, **kwargs):
@@ -11,8 +24,6 @@ def is_users_project(func):
             return func(request, *args, **kwargs)
         else:
             raise PermissionDenied
-    # wrap.__doc__ = func.__doc__
-    # wrap.__name__ = func.__name__
     return wrapped
 
 def is_users_library(func):
@@ -23,8 +34,6 @@ def is_users_library(func):
             return func(request, *args, **kwargs)
         else:
             raise PermissionDenied
-    # wrap.__doc__ = func.__doc__
-    # wrap.__name__ = func.__name__
     return wrapped
 
 def is_users_experiment(func):
@@ -35,8 +44,6 @@ def is_users_experiment(func):
             return func(request, *args, **kwargs)
         else:
             raise PermissionDenied
-    # wrap.__doc__ = func.__doc__
-    # wrap.__name__ = func.__name__
     return wrapped
 
 def is_source_plate(func):

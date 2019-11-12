@@ -1,4 +1,14 @@
 function setUpModalForm(urlClass, modalId, formClass) {
+    function GoBackWithRefresh(event) {
+        if ('referrer' in document) {
+            window.location = document.referrer;
+            /* OR */
+            //location.replace(document.referrer);
+        } else {
+            window.history.back();
+        }
+    }
+
     function getCookie(name) {
         var cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -28,9 +38,11 @@ function setUpModalForm(urlClass, modalId, formClass) {
     });
     $(document).on('submit', '.ajax_form', function(ev) {
         ev.preventDefault();
+        ev.stopImmediatePropagation();
         let data_ = new FormData($(this)[0]);
         $.ajax({ 
             type: $(this).attr('method'), 
+            // type:'POST',
             url: this.action, 
             data: data_,
             context: this,
@@ -38,8 +50,9 @@ function setUpModalForm(urlClass, modalId, formClass) {
             processData: false,
             contentType: false,
             success: function(data, status) {
-                location.reload(true); //reload to original location
-                // window.location.href=window.location.href;
+                // GoBackWithRefresh(ev);
+                location.replace(location.origin + location.pathname);
+                
             },
             error: function(data, xhr, ajaxOptions, thrownError) {
                 const errors = JSON.parse(data.responseJSON.errors);

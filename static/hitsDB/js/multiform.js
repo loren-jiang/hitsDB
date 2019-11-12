@@ -15,5 +15,5 @@ function collectFormsData() {
 };
 
 $( document ).ready(function() {
-    collectFormsData();
+    // collectFormsData();
 });

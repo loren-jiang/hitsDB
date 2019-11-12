@@ -5,8 +5,6 @@
     background-color: #052049;
 }
 
-
-
 /* change the brand and text color */
 .navbar-custom .navbar-brand,
 .navbar-custom .navbar-text {
@@ -23,6 +21,11 @@
     color: rgba(255,255,255,1);
 }
 
+/* MESSAGES */
+
+.messages .error {
+  background-color: lightpink;
+}
 
 /* BUTTON STYLES */
 .btn-info, .btn-danger {
@@ -109,3 +112,8 @@
   .slider.round:before {
     border-radius: 50%;
   }
+
+/* JUMBOTRON */
+.jumbotron {
+  padding: 2rem 2rem !important;
+}

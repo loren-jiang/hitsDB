@@ -104,7 +104,7 @@ def DropImageViewGUI(request, *args, **kwargs):
     # print([w.soak for w in src_wells_with_soaks])
     p_drop_images= p.drop_images.all()
 
-    well_qs = p.wells.filter().prefetch_related('subwells__parentWell', 'subwells__soak')
+    well_qs = p.wells.all().prefetch_related('subwells','subwells__parentWell', 'subwells__soak').order_by('name')
     numWells = well_qs.count()
     wells_ = [w for w in well_qs]
     wells = [None] * len(wells_)
@@ -114,12 +114,13 @@ def DropImageViewGUI(request, *args, **kwargs):
         w = wells_[k]
         wells[k] = {'name': w.name}
         subwells = []
-        for s_w in w.subwells.order_by('name'):
+        for s_w in w.subwells.all():
             file_name_ = w.name+'_'+str(s_w.idx)
-            s_w_dict = {'id': s_w.id, 'idx':s_w.idx, 'saveCount': None, 'guiURL':'', 'file_name': file_name_}
+            s_w_dict = {'id': s_w.id, 'name':s_w.name, 'idx':s_w.idx, 'saveCount': None, 'guiURL':'', 'file_name': file_name_}
             
             try:
                 if s_w.soak:
+                    # print(s_w.name)
                     guiURL = reverse_lazy('imageGUI', kwargs={'plate_id':p.pk, 
                                 'user_id':request.user.pk, 
                                 'file_name': file_name_})
@@ -137,6 +138,7 @@ def DropImageViewGUI(request, *args, **kwargs):
                 pass
 
             subwells.append(s_w_dict)
+            subwells.sort(key=lambda s_w: s_w['name'])
         wells[k]['subwells'] = subwells
 
     wells_reshaped = reshape(wells, (p.numRows, p.numCols))
@@ -162,7 +164,7 @@ def DropImageViewGUI(request, *args, **kwargs):
     obj_keys = [w.key for w in p_drop_images]
     file_names = [w.file_name for w in p_drop_images]
     prefix_s3 = 'media/private/' + str(user_id) + '/' + str(plate_id) + '/'
-    prefix_local = '/media/local/' + str(user_id) + '/' + str(plate_id) + '/'
+    prefix_local = '/media/local/user_folder/' + str(user_id) + '/dropimages/' + str(plate_id) + '/'
     prefix = prefix_s3 if useS3 else prefix_local
 
     def get_prev_next_well(arr, f_n):
@@ -176,6 +178,7 @@ def DropImageViewGUI(request, *args, **kwargs):
         if request.user.id == int(user_id): #users can only see their own images
             soakOffset_xyr = soak.soak_XYR_um
             targetWell_xyr = well_XYR_um
+            print(wells_reshaped)
             context = {
                 "prev_well":prev_well,
                 "image_url":image_url,
@@ -222,9 +225,9 @@ def DropImageViewGUI(request, *args, **kwargs):
             return HttpResponse("bad request")
 
     if obj_keys:
-        curr_image_key = prefix + str(p_drop_images.filter(file_name=file_name)[0].key)
-        image_url_s3 = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, curr_image_key, 4000)
-        image_url_local = prefix + file_name 
+        curr_image_key = str(p_drop_images.filter(file_name=file_name)[0].key)
+        image_url_s3 = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, prefix +  curr_image_key, 4000)
+        image_url_local = prefix + curr_image_key 
         image_url = image_url_s3 if useS3 else image_url_local
         (prev_well, next_well) = get_prev_next_well(file_names, file_name)
     if request.method == 'POST':

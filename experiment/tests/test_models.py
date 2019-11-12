@@ -10,73 +10,148 @@ from django.utils.timezone import make_aware
 # import uuid
 from django.db import transaction
 from django.db.utils import IntegrityError
+from django.test import Client
+from log.tests import factories as logFactories
+from log.tests import fixtures as logFixtures
+from lib.tests.factories import LibraryFactory
+from lib.tests.fixtures import make_n_compounds
+from .factories import PlateFactory, SourcePlateFactory, DestPlateFactory, ExperimentFactory
+from django.db.utils import IntegrityError
+from random import randint
+from my_utils.utility_functions import lists_equal
+from django.core.exceptions import ValidationError
 
-class Tests(TestCase):
-    @classmethod
-    def setUp(cls):
-        cls.user = User.objects.get_or_create(username='testuser')[0]
-        cls.echo_src_plate = PlateType.createEchoSourcePlate()
-        cls.mrc3_dest_plate = PlateType.create96MRC3DestPlate()
-        cls.library = Library.objects.get_or_create(name="test_library")[0]
-        cls.project = Project.objects.get_or_create(name="test_proj", owner=cls.user)[0]
-        cls.experiment = Experiment.objects.get_or_create(
-            name="test_exp",
-            project=cls.project,
-            protein="test_protein",
-            owner=cls.user,
-            srcPlateType=cls.echo_src_plate,
-            destPlateType=cls.mrc3_dest_plate,
-            library=cls.library,
-        )[0]
+class ExperimentTests(TestCase):
+    def setUp(self):
+        self.client = Client()
 
-    def testExperimentMethods(self):
-        exp = self.experiment
-        num = 3
-        exp.makePlates(num, self.mrc3_dest_plate) #make 3 mrc3 dest plates 
-        exp.makePlates(num, self.echo_src_plate) #make 3 echo source plates 
+    def testExperimentAwareOfPreviousLibrary(self):
+        lib1 = LibraryFactory(compounds=make_n_compounds(randint(100,1000)))
+        lib2 = LibraryFactory(compounds=make_n_compounds(randint(100,1000)))
+        exp = ExperimentFactory(library=lib1)
+        self.assertEquals(exp.prev_library_id, lib1.id) #library id taken note of
+        exp.library = lib2
+        exp.save()  
+        self.assertEquals(exp.prev_library_id, lib2.id) #library id taken note of
 
-        """Check various instance properties """        
-        # Case: check destSubwells
-        with self.assertNumQueries(1):
-            self.assertEqual(exp.destSubwells.count(), num*96*3)
+    # def setUp(self):
+    #     self.user = User.objects.get_or_create(username='testuser')[0]
+    #     self.echo_src_plate = PlateType.createEchoSourcePlate()
+    #     self.mrc3_dest_plate = PlateType.create96MRC3DestPlate()
+    #     self.library = Library.objects.get_or_create(name="test_library")[0]
+    #     self.project = Project.objects.get_or_create(name="test_proj", owner=self.user)[0]
+    #     self.experiment = Experiment.objects.get_or_create(
+    #         name="test_exp",
+    #         project=self.project,
+    #         protein="test_protein",
+    #         owner=self.user,
+    #         srcPlateType=self.echo_src_plate,
+    #         destPlateType=self.mrc3_dest_plate,
+    #         library=self.library,
+    #     )[0]
+    #     self.client = Client()
+
+    # def testExperimentMethods(self):
+    #     exp = self.experiment
+    #     num = 3
+    #     exp.makePlates(num, self.mrc3_dest_plate) #make 3 mrc3 dest plates 
+    #     exp.makePlates(num, self.echo_src_plate) #make 3 echo source plates 
+
+    #     """Check various instance properties """        
+    #     # Case: check destSubwells
+    #     with self.assertNumQueries(1):
+    #         self.assertEqual(exp.destSubwells.count(), num*96*3)
             
-        # Case: check srcWells
-        with self.assertNumQueries(1):
-            self.assertEqual(exp.srcWells.count(), num*384)
+    #     # Case: check srcWells
+    #     with self.assertNumQueries(1):
+    #         self.assertEqual(exp.srcWells.count(), num*384)
 
 
-    def testPlateWellSubwell(self):
-        exp = self.experiment
-        platesMade = exp.makePlates(3, self.mrc3_dest_plate)
-        self.assertEqual(len(platesMade), 3)
-        for p in platesMade:
-            wells = p.wells.filter()
-            self.assertEqual(p.isSource, False) #check correct source or dest label
-            self.assertEqual(wells.count(), 96) #check number of wells
-            self.assertEqual(SubWell.objects.filter(parentWell__in=wells).count(), 96*3) #check number of subwells
+    # def testPlateWellSubwell(self):
+    #     exp = self.experiment
+    #     platesMade = exp.makePlates(3, self.mrc3_dest_plate)
+    #     self.assertEqual(len(platesMade), 3)
+    #     for p in platesMade:    
+    #         wells = p.wells.filter()
+    #         self.assertEqual(p.isSource, False) #check correct source or dest label
+    #         self.assertEqual(wells.count(), 96) #check number of wells
+    #         self.assertEqual(SubWell.objects.filter(parentWell__in=wells).count(), 96*3) #check number of subwells
 
-        """Test DB contraints on Plate"""
-        # Case: duplicate key value violates unique constraint "unique_src_dest_plate_idx"
-        try:
-            test_plate = Plate(plateType=self.mrc3_dest_plate, experiment_id=exp.id,
-                isSource=self.mrc3_dest_plate.isSource, plateIdxExp=1)
-            with transaction.atomic():
-                test_plate.save()
+    #     """Test DB contraints on Plate"""
+    #     # Case: duplicate key value violates unique constraint "unique_src_dest_plate_idx"
+    #     try:
+    #         test_plate = Plate(plateType=self.mrc3_dest_plate, experiment_id=exp.id,
+    #             isSource=self.mrc3_dest_plate.isSource, plateIdxExp=1)
+    #         with transaction.atomic():
+    #             test_plate.save()
+    #     except Exception as e:
+    #         self.assertEqual(IntegrityError, type(e)) # django.db.utils.IntegrityError: duplicate key value violates unique constraint "unique_src_dest_plate_idx"
+    #     # Case: 
+
+    #     """Test DB constraints on Well"""
+    #     # Case: bad name that doesn't match regex validator on field 'name'
+    #     try:
+    #         test_plate = Plate(name='test_plate',plateType=self.mrc3_dest_plate, experiment_id=exp.id,
+    #             isSource=self.mrc3_dest_plate.isSource, plateIdxExp=exp.plates.all().last().plateIdxExp + 1)
+    #         test_plate.save()
+    #         test_well_1 = Well(name='A01', wellIdx=1, wellRowIdx=1, wellColIdx=1, maxResVol=130, minResVol=10, plate_id=test_plate.id)
+    #         test_well_2 = Well(name='A01', wellIdx=2, wellRowIdx=1, wellColIdx=2, maxResVol=130, minResVol=10, plate_id=test_plate.id)
+
+    #         with transaction.atomic():
+    #             test_well_1.save()
+    #             test_well_2.save()
+    #     except IntegrityError as e:
+    #         self.assertEqual(IntegrityError, type(e))
+
+class PlateTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+    def testDBConstraints(self):
+        src_plate = SourcePlateFactory()
+        src_plate.isTemplate = True 
+        src_plate.save()
+
+        # Testing that on save, destination plates (isSource=False) cannot also be templates (isTemplate=True)
+        dest_plate = DestPlateFactory()
+        try:    
+            with transaction.atomic():      
+                dest_plate.isTemplate = True  
+                dest_plate.save()
         except Exception as e:
-            self.assertEqual(IntegrityError, type(e)) # django.db.utils.IntegrityError: duplicate key value violates unique constraint "unique_src_dest_plate_idx"
-        # Case: 
+            self.assertEquals(type(e), IntegrityError) # only source plates can have isTemplate=True
+        dest_plate.isTemplate = False
+        dest_plate.save() #now destination plate can be saved
 
-        """Test DB constraints on Well"""
-        # Case: bad name that doesn't match regex validator on field 'name'
+    def testUpdateCompounds(self):
+        compounds = make_n_compounds(384)
+        src_plate = SourcePlateFactory()
+        src_plate.updateCompounds(compounds)
+        self.assertEquals(len(compounds), len([w.compound for w in src_plate.wells.all()]))
+
+    def testCopyCompoundsFromOtherPlate(self):
+        compounds = make_n_compounds(384)
+        src_plates = [SourcePlateFactory()]
+        src_plates[0].updateCompounds(compounds)
+        for i in range(1,5):
+            src_plates.append(SourcePlateFactory())
+            src_plates[i].copyCompoundsFromOtherPlate(src_plates[0])
+            
+        self.assertQuerysetEqual(
+            src_plates[0].compounds.order_by('zinc_id'), 
+            src_plates[len(src_plates) - 1].compounds.order_by('zinc_id'), 
+            transform=lambda x: x)
+        
+        # Testing that source plates that aren't template (isTemplate=False), should raise Validation Error
+        src_plate_non_template = SourcePlateFactory()
+        src_plate_non_template.isTemplate = False
+        src_plate_non_template.save()
+        error = None
         try:
-            test_plate = Plate(name='test_plate',plateType=self.mrc3_dest_plate, experiment_id=exp.id,
-                isSource=self.mrc3_dest_plate.isSource, plateIdxExp=exp.plates.all().last().plateIdxExp + 1)
-            test_plate.save()
-            test_well_1 = Well(name='A01', wellIdx=1, wellRowIdx=1, wellColIdx=1, maxResVol=130, minResVol=10, plate_id=test_plate.id)
-            test_well_2 = Well(name='A01', wellIdx=2, wellRowIdx=1, wellColIdx=2, maxResVol=130, minResVol=10, plate_id=test_plate.id)
-
             with transaction.atomic():
-                test_well_1.save()
-                test_well_2.save()
-        except IntegrityError as e:
-            self.assertEqual(IntegrityError, type(e))
+                src_plate_non_template.updateCompounds(compounds)
+                src_plates[len(src_plates) - 1].copyCompoundsFromOtherPlate(src_plate_non_template)
+        except Exception as e:
+            error = e
+            self.assertEquals(type(error), AssertionError) #make sure error is AssertionError
+        self.assertEquals(bool(error), True) #make sure some error is thrown and caught

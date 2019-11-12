@@ -1,4 +1,33 @@
 import json 
+from django.urls import reverse, reverse_lazy
+
+def build_modal_form_data(model_class, *args, **kwargs):
+    """
+    Helper function to return data needed for modal form to edit and make new instance of model
+    """ 
+    new_id = getattr(model_class, 'new_instance_viewname', '')
+    edit_id = getattr(model_class, 'edit_instance_viewname', '') 
+    model_name = getattr(model_class, 'model_name', '') 
+
+    if all([new_id, edit_id, model_name]):
+        return {
+            'new': {
+                'url_class': '%s_url' % new_id,
+                'modal_id': '%s_modal' % new_id,
+                'form_class': '%s_form' % new_id,
+                # 'button': {'id': new_id, 'text': 'New %s' % model_name,'class': 'btn-primary ' + '%s_url' % new_id, 
+                #     'href':reverse(new_id, kwargs={'form_class':"%s_form" % new_id})},
+            },
+            'edit': {
+                'url_class': '%s_url' % edit_id,
+                'modal_id': '%s_modal' % edit_id, 
+                'form_class': '%s_form' % edit_id,
+                # 'button': {'id': edit_id, 'text': 'Edit %s' % model_name,'class': 'btn-primary ' + '%s_url' % edit_id, 
+                #     'href':reverse(edit_id, kwargs={'form_class':"%s_form" % edit_id})},
+            }
+            
+        }   
+    return {}
 
 def build_modal_form_context(*args, **kwargs):
     """

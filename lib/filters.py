@@ -16,16 +16,12 @@ class CompoundFilter(django_filters.FilterSet):
         self.form_id = kwargs.pop('form_id', '')
         super(CompoundFilter, self ).__init__(*args, **kwargs)
 
-def library_users(request):
-    if request is None:
-        return User.objects.none()
-    user = request.user
-    lib_users = User.objects.filter(groups__in=user.groups.all()).union(User.objects.filter(id=user.id))
-    return lib_users
-
 class LibraryFilter(django_filters.FilterSet):
 
-    owner = django_filters.ModelChoiceFilter(field_name='owner', queryset=library_users)
+    owner = django_filters.ModelChoiceFilter(
+        queryset=lambda request: User.objects.filter(groups__in=request.user.groups.all()) if request else None
+        )
+
     class Meta:
         model = Library
         # exclude = []
@@ -33,6 +29,7 @@ class LibraryFilter(django_filters.FilterSet):
         fields={
             'name':['icontains',],
             'supplier':['icontains',],
+            'owner':['exact',]
         }
     def __init__(self, *args, **kwargs):
         self.filter_id = kwargs.pop('filter_id', '')
