@@ -1004,9 +1004,14 @@ class Soak(models.Model):
 
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
-    # soak_export_date = models.DateTimeField(blank=True, null=True)
-    # storage_location = models.SmallPositiveIntegerField(null=True, blank=True)
-    # storage = models.ForeignKey('XtalContainer', on_delete=models.SET_NULL, null=True, blank=True, related_name='soaks')
+    
+    storage_position = models.PositiveIntegerField(null=True, blank=True)
+    storage_barcode = models.CharField(max_length=100, default='')
+    storage = models.ForeignKey('XtalContainer', on_delete=models.SET_NULL, null=True, blank=True, related_name='soaks')
+
+    isMounted = models.BooleanField(default=False)
+    mountedTimeStamp = models.DateTimeField(null=True, blank=True)
+
 
     @property
     def transferVol(self):
