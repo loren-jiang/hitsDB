@@ -5,6 +5,13 @@ from experiment.models import Soak
 # crispy form imports
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, HTML, Button
+from s3.forms import ImagesFieldForm
+
+class DropImagesFieldForm(ImagesFieldForm):
+    def clean(self):
+        cleaned_data = super().clean() #call parent clean()
+        files = cleaned_data['image_field']
+        print(files)
 
 
 class DropImageUploadForm(forms.ModelForm):

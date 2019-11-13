@@ -97,6 +97,7 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
                 exp.initData = initData
                 exp.save()  
         except Exception as e:
+            print(e)
             pass
 
         return HttpResponseRedirect(self.get_success_url(form_name))

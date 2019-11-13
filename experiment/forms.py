@@ -11,6 +11,8 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
+import json
+from json.decoder import JSONDecodeError
 
 class SoakForm(forms.ModelForm):
     class Meta:
@@ -145,9 +147,32 @@ class ExpInitDataMultiForm(MultipleForm):
             validators=[FileExtensionValidator(['json'])],
             widget=forms.FileInput)
     def __init__(self, exp, *args, **kwargs):
+        self.exp = exp
         super(ExpInitDataMultiForm, self).__init__(*args,**kwargs)
         # self.fields['initDataFile'] = forms.FileField(label="File upload",
         #     validators=[FileExtensionValidator(['json'])])
+    def clean(self):
+        cleaned_data = super().clean()
+        initDataFile = cleaned_data.get('initDataFile')
+        if initDataFile:
+            try:
+                data_json = ""
+                for c in initDataFile.chunks():
+                    data_json += str(c, encoding='utf-8').replace("'", "\"")
+                data_dict = json.loads(data_json)
+                plate_ids = data_dict.keys()
+                existing_ids = []
+                for p_id in plate_ids:
+                    if Plate.objects.filter(rockMakerId=p_id).exists():
+                        existing_ids.append(p_id)
+                if existing_ids:
+                    raise ValidationError('Plate with RockMaker ID(s) %s already exist(s).' % (str(existing_ids)))
+
+            except (ValueError, OverflowError) as e:
+                if issubclass(type(e), ValueError):
+                    raise ValidationError('File given is not in correct .json format. Review instructions above.')
+                if type(e) is OverflowError:
+                    raise ValidationError('File is too big!')
 
 class CreateSrcPlatesMultiForm(MultipleForm):
     numSrcPlates = forms.IntegerField(required=False)

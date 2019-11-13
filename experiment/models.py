@@ -23,6 +23,7 @@ import csv
 from django.db import transaction, IntegrityError
 from django.urls import reverse, reverse_lazy
 from my_utils.utility_functions import lists_diff, lists_equal
+from functools import reduce # only in Python 3
 
 # Create your models here.
 class Project(models.Model):
@@ -1129,11 +1130,12 @@ def process_experiment_post_save(sender, instance, created, **kwargs):
                 # read file and save to JSON field initDataJSON
             post_save.disconnect(process_experiment_post_save, sender=Experiment) 
             try:
-                chunks = instance.initData.local_upload.chunks()
+                # data_json = reduce(lambda s1,s2: s1 + str(s2, encoding='utf-8').replace("'", "\""), instance.initData.local_upload.chunks(), '')
                 data_json = ""
-                for c in chunks:
+                for c in instance.initData.local_upload.chunks():
                     data_json += str(c, encoding='utf-8').replace("'", "\"")
-                    # data_json = str(instance.initData.local_upload.read(), encoding='utf-8').replace("'", "\"") #needs double quotes to parse correctly
+                # print(data_json)
+
                 instance.initDataJSON = json.loads(data_json)
             except(TypeError, OverflowError, ValueError):
                 instance.initData = None

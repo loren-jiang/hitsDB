@@ -21,17 +21,17 @@ import json
 from django.core.serializers.json import DjangoJSONEncoder
 # Create your views here.
 
-def upload_drop_image(request):
-    if request.method == 'POST':
-        form = DropImageUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            return HttpResponseRedirect(request.path_info)
-    else:
-        form = DropImageUploadForm()
-    return render(request, 'basic_form.html', {
-        'form': form
-    })
+# def upload_drop_image(request):
+#     if request.method == 'POST':
+#         form = DropImageUploadForm(request.POST, request.FILES)
+#         if form.is_valid():
+#             form.save()
+#             return HttpResponseRedirect(request.path_info)
+#     else:
+#         form = DropImageUploadForm()
+#     return render(request, 'basic_form.html', {
+#         'form': form
+#     })
 
 #loads drop images with corresponding model instance and associated plate id and user id 
 class DropImagesUploadView(FormView):
@@ -50,7 +50,7 @@ class DropImagesUploadView(FormView):
         if p:
             # exp = 
             return reverse_lazy('exp', kwargs={'pk_exp':p.experiment.id})
-        return HttpResponseRedirect(request.path_info)
+        return HttpResponseRedirect(self.request.path_info)
 
     @method_decorator(is_dest_plate, login_required)
     def dispatch(self, *args, **kwargs):
