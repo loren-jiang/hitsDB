@@ -70,7 +70,7 @@ def soaks(request, pk_proj, pk_exp):
     soaks_qs = exp.soaks.select_related('src__plate','dest__parentWell__plate','transferCompound')
     soaks_filter = SoakFilter(request.GET, queryset=soaks_qs)
     table = ModalEditSoaksTable(data=soaks_filter.qs, order_by="id", 
-        data_target=modal_id, a_class="btn btn-info " + url_class)
+        data_target=modal_id, a_class="btn btn-primary " + url_class)
     # soaks_table=exp.getSoaksTable()
     RequestConfig(request, paginate={'per_page': 25}).configure(table)
     

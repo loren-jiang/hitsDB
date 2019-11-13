@@ -13,7 +13,7 @@ from django.conf import settings
 from s3.s3utils import myS3Client, myS3Resource, create_presigned_url
 from s3.models import PrivateFileJSON
 from io import TextIOWrapper
-from my_utils.orm_functions import upddate_instance
+from my_utils.orm_functions import update_instance
 from django.utils import timezone
 
 class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
@@ -30,14 +30,14 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
 
     # overload to process request to properly update multiforms with form arguments and success urls
     def dispatch(self, request, *args, **kwargs):
-        print('IN DISPATCH')
         user = request.user
-        pk = kwargs.get('pk_exp', None)
+        pk_exp = kwargs.get('pk_exp', None)
+        pk_proj = kwargs.get('pk_proj', None)
         # ensure experiment is only accessible by owner
-        if request.user != Experiment.objects.get(id=pk).owner:
+        if request.user != Experiment.objects.get(id=pk_exp).owner:
             raise PermissionDenied
 
-        exp = user.experiments.get(id=pk)
+        exp = user.experiments.get(id=pk_exp)
         
         self.form_arguments['expform'] = {
                                         'user':user,
@@ -57,14 +57,13 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
                                         'exp': exp
                                     }
         # populate success_urls dictionary with urls
-        exp_view_url = reverse_lazy('exp', kwargs={'pk_exp':pk})
+        exp_view_url = reverse_lazy('exp', kwargs=kwargs)
         
         self.success_urls['expform'] = exp_view_url
         self.success_urls['initform'] = exp_view_url  
         self.success_urls['platelibform'] = exp_view_url
         self.success_urls['platesform'] = exp_view_url
         self.success_urls['soaksform'] = exp_view_url
-        # call super
         return super(MultiFormsExpView, self).dispatch(request, *args, **kwargs)
     
     def expform_form_valid(self, form):
@@ -74,8 +73,8 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp = exp_qs.first()
         fields = [key for key in cleaned_data]
-        upddate_instance(exp, fields, cleaned_data)
-        return HttpResponseRedirect(self.get_success_url(form_name))
+        update_instance(exp, fields, cleaned_data)
+        return HttpResponseRedirect(reverse_lazy('exp', kwargs={'pk_proj': exp.project.id, 'pk_exp':exp.id}))
     
     def initform_form_valid(self, form):
         pk = self.kwargs.get('pk_exp', None)

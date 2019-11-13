@@ -27,9 +27,9 @@ class Tests(TestCase):
             name="test_proj",
             owner=cls.user
         )[0]
-        with open('./test_data/test_plate_data.json', 'r') as myfile:
+        with open('./test_data/example_init_data.json', 'r') as myfile:
             data = myfile.read()
-            uploaded_file = SimpleUploadedFile("./test_data/test_plate_data.json", bytes(data, 'utf-8'), content_type="application/json")
+            uploaded_file = SimpleUploadedFile("./test_data/example_init_data.json", bytes(data, 'utf-8'), content_type="application/json")
             cls.test_init_file = PrivateFileJSON.objects.get_or_create(owner=cls.user, local_upload=uploaded_file)[0]
 
         cls.experiment = Experiment.objects.get_or_create(

@@ -102,7 +102,7 @@ def lib_compounds(request, pk_lib):
     modal_id = "compounds_edit_modal"
 
     exc = list(ModalEditLibrariesTable.Meta.fields) 
-    libTable = ModalEditLibrariesTable(data=lib_qs, data_target=modal_id, a_class="btn btn-info " + url_class,
+    libTable = ModalEditLibrariesTable(data=lib_qs, data_target=modal_id, a_class="btn btn-primary " + url_class,
         exclude=exc, attrs={'th': {'id': 'lib_table_header'}})
     buttons = [
         {'id': 'remove_compounds', 'text': 'Remove Selected','class': 'btn-danger btn-confirm', 'msg':'Remove selected compounds from library?'},
@@ -202,7 +202,7 @@ def libs(request):
         data=libs_filter.qs.order_by('-modified_date'), 
         order_by="id", 
         data_target=modalFormData['edit']['modal_id'], 
-        a_class="btn btn-info " + modalFormData['edit']['url_class'],
+        a_class="btn btn-primary " + modalFormData['edit']['url_class'],
         table_id='lib_table',
         form_id='lib_table_form', 
         form_action=reverse('modify_libs'),

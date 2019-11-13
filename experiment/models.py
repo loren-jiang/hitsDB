@@ -970,7 +970,6 @@ class SubWell(models.Model):
     hasCrystal = models.BooleanField(default=True)
     useSoak = models.BooleanField(default=False)
 
-    
     def __str__(self):
         return repr(self.parentWell) + "_" + str(self.idx)
 
@@ -1006,8 +1005,8 @@ class Soak(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
     # soak_export_date = models.DateTimeField(blank=True, null=True)
-
-
+    # storage_location = models.SmallPositiveIntegerField(null=True, blank=True)
+    # storage = models.ForeignKey('XtalContainer', on_delete=models.SET_NULL, null=True, blank=True, related_name='soaks')
 
     @property
     def transferVol(self):
@@ -1047,6 +1046,10 @@ class Soak(models.Model):
 
     def __str__(self):
         return self.experiment.name + "_soak_" + str(self.id)
+
+class XtalContainer(models.Model):
+    pass
+
 
 
 # HELPER FUNCTIONS -----------------------------------------------------
@@ -1098,34 +1101,52 @@ def delete_plates_soaks_on_library_change(sender, instance, created, **kwargs):
     #     instance.prev_library_id = instance.library_id
 
 @receiver(post_save, sender=Experiment)
-def create_plates_and_soaks_init_data(sender, instance, created, **kwargs):
+def process_experiment_post_save(sender, instance, created, **kwargs):
     """
     If initData PrivateFile exists, try to create plates and soaks from it
     """
-    # #print('in create_plates_and_soaks_init_data: ')
-    #print(bool(instance.initData_id) and (instance.prev_initData_id != instance.initData_id or created))
-    if instance.initData_id and (instance.prev_initData_id != instance.initData_id or created):
-        # try:
-            # read file and save to JSON field initDataJSON
-        post_save.disconnect(create_plates_and_soaks_init_data, sender=Experiment)
-        data_json = str(instance.initData.local_upload.read(), encoding='utf-8').replace("'", "\"") #needs double quotes to parse correctly
-        instance.initDataJSON = json.loads(data_json)
-        instance.save()
+    def delete_plates_soaks_on_library_change(instance, created):
+        if instance.prev_library_id != instance.library_id and not(created):
+            instance.plates.all().delete()
+            instance.soaks.all().delete()
+            reset = {'srcPlateType':None, 'destPlateType':None, 'subwell_locations':[]}
+            Experiment.objects.filter(id=instance.id).update(**reset) # does not call save() so no signals emitted
 
-        # set state of current initData
-        instance.prev_initData_id = instance.initData_id
+    def experiment_update_state(instance, created):
+        if instance.prev_library_id != instance.library_id and not(created):
+            instance.prev_library_id = instance.library_id
+        if instance.prev_initData_id != instance.initData_id and not(created):
+            instance.prev_initData_id = instance.initData_id
 
-        post_save.connect(create_plates_and_soaks_init_data, sender=Experiment)
-        instance.createPlatesSoaksFromInitDataJSON()
-        # except Exception as e:
-            # #print(e)
+    def create_plates_and_soaks_init_data(instance):
+        if instance.initData_id and (instance.prev_initData_id != instance.initData_id or created):
+            # try:
+                # read file and save to JSON field initDataJSON
+            post_save.disconnect(process_experiment_post_save, sender=Experiment) 
+            try:
+                chunks = instance.initData.local_upload.chunks()
+                data_json = ""
+                for c in chunks:
+                    data_json += str(c, encoding='utf-8').replace("'", "\"")
+                    # data_json = str(instance.initData.local_upload.read(), encoding='utf-8').replace("'", "\"") #needs double quotes to parse correctly
+                instance.initDataJSON = json.loads(data_json)
+            except(TypeError, OverflowError, ValueError):
+                instance.initData = None
+                instance.initDataJSON = None
+            instance.save()
+            post_save.connect(process_experiment_post_save, sender=Experiment)
+            instance.createPlatesSoaksFromInitDataJSON()
 
-@receiver(post_init, sender=Experiment) #TODO should this be pre_save signal?
+    create_plates_and_soaks_init_data(instance)
+    experiment_update_state(instance, created)
+
+
+@receiver(post_init, sender=Experiment)
 def remember_experiment_state(sender, instance, **kwargs):
-    # if instance.library_id:
-    instance.prev_library_id = instance.library_id
-    # if instance.initData_id:
-    instance.prev_initData_id = instance.initData_id
+    if instance.library:    
+        instance.prev_library_id = instance.library.id
+    if instance.initData:
+        instance.prev_initData_id = instance.initData.id
 
 @receiver(pre_save, sender=Soak)
 def increment_save_count(sender, instance, **kwargs):
@@ -1146,8 +1167,8 @@ def sourcePlateSetToTemplatePostCreate(sender, instance, created, **kwargs):
     On post_save signal, set isTemplate to True if plate is created and is a source plate
     """
     if instance.isSource and created:
-            instance.isTemplate = True
-            post_save.disconnect(sourcePlateSetToTemplatePostCreate, sender=Plate)
-            instance.save()
-            post_save.connect(sourcePlateSetToTemplatePostCreate, sender=Plate)
+        instance.isTemplate = True
+        post_save.disconnect(sourcePlateSetToTemplatePostCreate, sender=Plate)
+        instance.save()
+        post_save.connect(sourcePlateSetToTemplatePostCreate, sender=Plate)
     return 

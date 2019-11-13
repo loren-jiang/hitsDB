@@ -4,10 +4,6 @@ from experiment.models import Experiment, Plate, PlateType, Project, Soak, SubWe
 from lib.models import Library, Compound
 from datetime import datetime
 from django.utils.timezone import make_aware
-# from my_utils.utility_functions import PIX_TO_UM, UM_TO_PIX, IMG_SCALE
-# from s3.models import PrivateFile, PrivateFileJSON
-# from django.core.files.uploadedfile import SimpleUploadedFile
-# import uuid
 from django.db import transaction
 from django.db.utils import IntegrityError
 from django.test import Client
@@ -20,19 +16,48 @@ from django.db.utils import IntegrityError
 from random import randint
 from my_utils.utility_functions import lists_equal
 from django.core.exceptions import ValidationError
+from .fixtures import make_example_init_data
+import os
 
 class ExperimentTests(TestCase):
     def setUp(self):
         self.client = Client()
 
-    def testExperimentAwareOfPreviousLibrary(self):
+    ### SIGNAL TESTING ###
+    def testAwareOfState(self):
         lib1 = LibraryFactory(compounds=make_n_compounds(randint(100,1000)))
-        lib2 = LibraryFactory(compounds=make_n_compounds(randint(100,1000)))
+        # lib2 = LibraryFactory(compounds=make_n_compounds(randint(100,1000)))
+        init_data1 = make_example_init_data()
+        # init_data2 = make_example_init_data()
+
         exp = ExperimentFactory(library=lib1)
+        exp.initData = init_data1
+        exp.save()
         self.assertEquals(exp.prev_library_id, lib1.id) #library id taken note of
-        exp.library = lib2
-        exp.save()  
-        self.assertEquals(exp.prev_library_id, lib2.id) #library id taken note of
+        self.assertEquals(exp.prev_initData_id, exp.initData.id) #library id taken note of
+        os.remove("./media/" + str(exp.initData.local_upload)) 
+        # exp.library = lib2
+        # exp.save()  
+        # self.assertEquals(exp.prev_library_id, lib2.id) #library id taken note of
+
+    def testInitDataPostSignal(self):
+        exp = ExperimentFactory()
+        init_data = make_example_init_data()
+        exp.initData = init_data
+        exp.save()
+        os.remove("./media/" + str(init_data.local_upload)) 
+        plates_qs_1 = exp.plates.all()
+        exp.save()
+        plates_qs_2 = exp.plates.all()
+        self.assertQuerysetEqual(plates_qs_1, plates_qs_2, transform=lambda x:x)
+        new_init_data = make_example_init_data()
+        
+        exp.initData = new_init_data
+        exp.save()
+        os.remove("./media/" + str(new_init_data.local_upload)) 
+        plates_qs_3 = exp.plates.all()
+        self.assertQuerysetEqual(Plate.objects.order_by('id')[Plate.objects.count()-3:Plate.objects.count()], 
+            plates_qs_3, transform=lambda x:x)
 
     # def setUp(self):
     #     self.user = User.objects.get_or_create(username='testuser')[0]

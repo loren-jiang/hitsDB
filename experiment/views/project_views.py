@@ -110,7 +110,7 @@ def projects(request):
     table = ModalEditProjectsTable(
         data=projectFilter.qs.order_by('-modified_date'),
         data_target=modalFormData['edit']['modal_id'], 
-        a_class="btn btn-info " + modalFormData['edit']['url_class'], 
+        a_class="btn btn-primary " + modalFormData['edit']['url_class'], 
         table_id='proj_table',
         form_id='proj_table_form',
         form_action=reverse('modify_projs'),

@@ -1,5 +1,5 @@
 ### ORM (object-relational mapping layer) functions to interact with DB
-def upddate_instance(instance, fields, cleaned_data):
+def update_instance(instance, fields, cleaned_data):
     for field in fields:
         new_field_data = cleaned_data[field]
         old_field_data = getattr(instance, field)

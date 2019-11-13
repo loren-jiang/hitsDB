@@ -41,7 +41,7 @@ class PrivateFileJSON(FileAbstract):
     upload = models.FileField(validators=[FileExtensionValidator(['json'])], 
                                 upload_to=user_file_upload_path,storage=PrivateMediaStorage())
     local_upload = models.FileField(validators=[FileExtensionValidator(['json'])], 
-                                upload_to=user_file_upload_path,storage=fs) #TODO this json valdiation isnt working...
+                                upload_to=upload_local_path,storage=fs) #TODO this json valdiation isnt working...
     class Meta(FileAbstract.Meta):
         constraints = [
             models.CheckConstraint(check=~models.Q(local_upload__in=['',None]) 

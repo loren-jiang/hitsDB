@@ -52,12 +52,12 @@
 
                   {% render_table experimentsTable %}
                   <!-- Button to Open the Modal -->
-                  <button type="button" class="btn btn-info" data-toggle="modal" data-target="#newExp">
+                  <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#newExp">
                       New Experiment
                   </button>
-                  {% comment %} <!--<a class="btn btn-info" role="button" href={% url 'new_proj_experiment' pk_proj %}> New Experiment </a>--> {% endcomment %}
+                  {% comment %} <!--<a class="btn btn-primary" role="button" href={% url 'new_proj_experiment' pk_proj %}> New Experiment </a>--> {% endcomment %}
                   <a  class="btn btn-danger" role="button" id="delete-exps"> Delete Selected </a>
-                  {# <a  onclick="return deleteSelExps()" class="btn btn-info" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a> #}
+                  {# <a  onclick="return deleteSelExps()" class="btn btn-primary" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a> #}
               </div>
                 
             </div>
@@ -67,7 +67,7 @@
                   <h3>Libraries <img src="{% static 'icons/book.png' %}" class="icon"></h3>
                   
                   {% render_table librariesTable %}
-                  <a class="btn btn-info" role="button" href={% url 'proj_libs' pk_proj %}>View all libraries</a>
+                  <a class="btn btn-primary" role="button" href={% url 'proj_libs' pk_proj %}>View all libraries</a>
             </div>
         </div>
 

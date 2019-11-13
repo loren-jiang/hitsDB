@@ -207,8 +207,8 @@ class PlatesSetupMultiForm(MultipleForm):
 
 class SoaksSetupMultiForm(MultipleForm):
     soakVolumeOverride = forms.IntegerField(required=False, label="Override Soak Volume")
-    soakDate = forms.DateTimeField(initial=timezone.now().strftime('%d/%m/%Y %H:%M'), 
-        input_formats=['%d/%m/%Y %H:%M'], label="Desired soak date", required=False)
+    soakDate = forms.DateTimeField(initial=timezone.now().strftime('%m/%d/%Y %H:%M'), 
+        input_formats=['%m/%d/%Y %H:%M'], label="Desired soak date", required=False)
 
     def __init__(self, exp, *args, **kwargs):
         super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)

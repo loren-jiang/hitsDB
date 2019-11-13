@@ -44,9 +44,9 @@ class Tests(TestCase):
         self.client.force_login(self.user)
 
         #test PrivateFileJSON upload file field only accepts JSON file
-        with open('./test_data/test_plate_data_copy.txt', 'r') as f:
+        with open('./test_data/example_init_data_copy.txt', 'r') as f:
             data = f.read()
-            uploaded_file = SimpleUploadedFile("./test_data/test_plate_data_copy.txt", bytes(data, 'utf-8'), content_type="application/text")
+            uploaded_file = SimpleUploadedFile("./test_data/example_init_data_copy.txt", bytes(data, 'utf-8'), content_type="application/text")
         
         test_json_file = PrivateFileJSON(owner=self.user)
         try:

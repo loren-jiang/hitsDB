@@ -13,6 +13,9 @@ faker = faker.Factory.create()
 class ExperimentFactory(DjangoModelFactory):
     name = factory.Sequence(lambda n: 'exp_%d' % n) 
     owner = factory.SubFactory('log.tests.factories.UserFactory')
+    srcPlateType = factory.SubFactory('experiment.tests.factories.EchoSourcePlateTypeFactory')
+    destPlateType = factory.SubFactory('experiment.tests.factories.MRC3DestPlateTypeFactory')
+    
     class Meta:
         model = 'experiment.Experiment'
 
