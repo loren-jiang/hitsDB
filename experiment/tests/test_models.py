@@ -16,7 +16,7 @@ from django.db.utils import IntegrityError
 from random import randint
 from my_utils.utility_functions import lists_equal
 from django.core.exceptions import ValidationError
-from .fixtures import make_example_init_data
+from .fixtures import example_init_data
 import os
 
 class ExperimentTests(TestCase):
@@ -27,8 +27,8 @@ class ExperimentTests(TestCase):
     def testAwareOfState(self):
         lib1 = LibraryFactory(compounds=make_n_compounds(randint(100,1000)))
         # lib2 = LibraryFactory(compounds=make_n_compounds(randint(100,1000)))
-        init_data1 = make_example_init_data()
-        # init_data2 = make_example_init_data()
+        init_data1 = example_init_data()
+        # init_data2 = example_init_data()
 
         exp = ExperimentFactory(library=lib1)
         exp.initData = init_data1
@@ -36,13 +36,14 @@ class ExperimentTests(TestCase):
         self.assertEquals(exp.prev_library_id, lib1.id) #library id taken note of
         self.assertEquals(exp.prev_initData_id, exp.initData.id) #library id taken note of
         os.remove("./media/" + str(exp.initData.local_upload)) 
+     
         # exp.library = lib2
         # exp.save()  
         # self.assertEquals(exp.prev_library_id, lib2.id) #library id taken note of
 
     def testInitDataPostSignal(self):
         exp = ExperimentFactory()
-        init_data = make_example_init_data()
+        init_data = example_init_data()
         exp.initData = init_data
         exp.save()
         os.remove("./media/" + str(init_data.local_upload)) 
@@ -50,7 +51,7 @@ class ExperimentTests(TestCase):
         exp.save()
         plates_qs_2 = exp.plates.all()
         self.assertQuerysetEqual(plates_qs_1, plates_qs_2, transform=lambda x:x)
-        new_init_data = make_example_init_data()
+        new_init_data = example_init_data()
         
         exp.initData = new_init_data
         exp.save()
@@ -58,6 +59,24 @@ class ExperimentTests(TestCase):
         plates_qs_3 = exp.plates.all()
         self.assertQuerysetEqual(Plate.objects.order_by('id')[Plate.objects.count()-3:Plate.objects.count()], 
             plates_qs_3, transform=lambda x:x)
+
+    def testCreateSrcPlatesFromLibFile(self):
+        exp = ExperimentFactory()
+        with open('./test_data/example_library_plate_data.csv', newline='') as f:
+            exp.createSrcPlatesFromLibFile(2, f)
+        src_plates = exp.plates.filter(isSource=True)
+        self.assertEquals(2, src_plates.count())
+        plate_1_compounds = src_plates[0].compounds
+        plate_2_compounds = src_plates[1].compounds
+        self.assertEquals(plate_1_compounds.count(), 768/2)
+        self.assertEquals(plate_2_compounds.count(), 768/2)
+
+        self.assertQuerysetEqual(
+            plate_1_compounds, 
+            Compound.objects.filter(my_wells__plate=src_plates[0].id).order_by('my_wells__name'), transform=lambda x:x)
+        self.assertQuerysetEqual(
+            plate_2_compounds, 
+            Compound.objects.filter(my_wells__plate=src_plates[1].id).order_by('my_wells__name'), transform=lambda x:x)
 
     # def setUp(self):
     #     self.user = User.objects.get_or_create(username='testuser')[0]

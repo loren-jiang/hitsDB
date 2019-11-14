@@ -26,6 +26,9 @@ def user_projects_with_exps(user):
 def user_accessible_projects(user):
     return Project.objects.filter(id__in=[p.id for p in user.projects.all().union(user.collab_projects.all())])
 
+def user_editable_projects(user):
+    return Project.objects.filter(id__in=[p.id for p in user.projects.all().union(user.editor_projects.all())])
+    
 #-------------------------------------------------User queryset ------------------------------------------------------------------
 def user_collaborators(user):
     return User.objects.filter(collab_projects__in=user.projects.all())

@@ -9,10 +9,19 @@ from lib.tests.fixtures import make_n_compounds
 from experiment.models import PlateType
 
 faker = faker.Factory.create() 
+#--------------------------------------------Project--------------------------------------------
+class ProjectFactory(DjangoModelFactory):
+    name = factory.Sequence(lambda n: 'proj_%d' % n) 
+    owner = factory.SubFactory('log.tests.factories.UserFactory')
+    
+    class Meta:
+        model = 'experiment.Project'
+
 #--------------------------------------------Experiment--------------------------------------------
 class ExperimentFactory(DjangoModelFactory):
     name = factory.Sequence(lambda n: 'exp_%d' % n) 
     owner = factory.SubFactory('log.tests.factories.UserFactory')
+    project = factory.SubFactory('experiment.tests.factories.ProjectFactory', owner=owner)
     srcPlateType = factory.SubFactory('experiment.tests.factories.EchoSourcePlateTypeFactory')
     destPlateType = factory.SubFactory('experiment.tests.factories.MRC3DestPlateTypeFactory')
     

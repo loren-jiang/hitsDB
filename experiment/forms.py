@@ -13,6 +13,7 @@ from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 import json
 from json.decoder import JSONDecodeError
+from .querysets import user_accessible_projects, user_editable_projects
 
 class SoakForm(forms.ModelForm):
     class Meta:
@@ -106,24 +107,14 @@ class ExpAsMultiForm(MultipleForm, ExperimentModelForm):
     """populate form with current values"""
     def __init__(self, user, lib_qs=None, *args, **kwargs):
         super(ExpAsMultiForm, self).__init__(*args, **kwargs)
-        # self.fields['name'] = forms.CharField(max_length=30, initial=getattr(exp,'name'))
-        # self.fields['description'] = forms.CharField(max_length=300, initial=getattr(exp,'description'), required=False)
-        # self.fields['protein'] = forms.CharField(max_length=30, initial=getattr(exp,'protein'), required=False)
-        # self.fields['srcPlateType'] = forms.ModelChoiceField(queryset=PlateType.objects
-        #     .filter(isSource=True), 
-        #     label="Source plate type",
-        #     initial=exp.srcPlateType)
-        # self.fields['destPlateType'] = forms.ModelChoiceField(queryset=PlateType.objects
-        #     .filter(isSource=False), 
-        #     label="Destination plate type",
-        #     initial=exp.destPlateType)
-        exp = getattr(kwargs, 'instance', None)
+        exp = kwargs.get('instance', None)
         if exp:
-            lib_id = getattr(exp,'library')
+            lib_id = exp.library_id
             qs = user.libraries.filter()
             if lib_qs:
                 qs = lib_qs
             self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, required=False)
+            self.fields['project'] = forms.ModelChoiceField(queryset=user_editable_projects(user), initial=exp.project.id)
 
     class Meta(ExperimentModelForm.Meta):
         fields = list(ExperimentModelForm.Meta.fields) + ['project']
@@ -143,7 +134,7 @@ class ExpAsMultiForm(MultipleForm, ExperimentModelForm):
     #     return cd
 
 class ExpInitDataMultiForm(MultipleForm):
-    initDataFile = forms.FileField(label="File upload",
+    initDataFile = forms.FileField(label="Initialization file [.json]",
             validators=[FileExtensionValidator(['json'])],
             widget=forms.FileInput)
     def __init__(self, exp, *args, **kwargs):
@@ -156,6 +147,9 @@ class ExpInitDataMultiForm(MultipleForm):
         initDataFile = cleaned_data.get('initDataFile')
         if initDataFile:
             try:
+                if initDataFile.size >= 2.5e6:
+                    raise OverflowError
+
                 data_json = ""
                 for c in initDataFile.chunks():
                     data_json += str(c, encoding='utf-8').replace("'", "\"")
@@ -166,20 +160,26 @@ class ExpInitDataMultiForm(MultipleForm):
                     if Plate.objects.filter(rockMakerId=p_id).exists():
                         existing_ids.append(p_id)
                 if existing_ids:
-                    raise ValidationError('Plate with RockMaker ID(s) %s already exist(s).' % (str(existing_ids)))
+                    self.add_error('initDataFile',
+                        ValidationError(            
+                            ('Plate with RockMaker ID %(value)s already exist(s).'),
+                            code='invalid',
+                            params={'value': existing_ids},
+                        )
+                    )
 
             except (ValueError, OverflowError) as e:
                 if issubclass(type(e), ValueError):
-                    raise ValidationError('File given is not in correct .json format. Review instructions above.')
+                    self.add_error('initDataFile','File given is not in correct .json format. Review instructions above.')
                 if type(e) is OverflowError:
-                    raise ValidationError('File is too big!')
+                    self.add_error('initDataFile','File is too big!')
 
 class CreateSrcPlatesMultiForm(MultipleForm):
-    numSrcPlates = forms.IntegerField(required=False)
-    plateLibDataFile = forms.FileField(required=False)
+    numSrcPlates = forms.IntegerField(required=False, label="Number of plates")
+    plateLibDataFile = forms.FileField(required=False, label="Source plate(s) file [.csv]")
     templateSrcPlates = forms.ModelMultipleChoiceField(
         queryset=Plate.objects.filter(isSource=True, isTemplate=True), 
-        required=False)
+        required=False, label="Template source plates")
 
     def __init__(self, exp, *args, **kwargs):
         super(CreateSrcPlatesMultiForm, self).__init__(*args, **kwargs)
@@ -187,9 +187,9 @@ class CreateSrcPlatesMultiForm(MultipleForm):
         cd = self.cleaned_data
         fromFile = cd['numSrcPlates'] and cd['plateLibDataFile']
         fromTemplates = cd['templateSrcPlates']
-        if not(fromFile or fromTemplates):
-            self.add_error(None,'Please choose one option.')
-
+        if not(fromFile or fromTemplates) or (fromFile and fromTemplates):
+            self.add_error(None,'Please choose only ONE option.')
+ 
         return cd
 
 class PlatesSetupMultiForm(MultipleForm):

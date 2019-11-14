@@ -134,8 +134,8 @@ $(function() {
         const pos = circle.position();
         const btm_corner = [pos.left + w + delta, pos.top + w + delta];
         const container_w = container.width();
-
-        if (btm_corner[0] > container_w || btm_corner[1] > container_w) {
+        const container_h = container.height();
+        if (btm_corner[0] > container_w || btm_corner[1] > container_h) {
             return true;
         } else {
             return false;

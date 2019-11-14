@@ -138,7 +138,7 @@ def defaultSubwellLocations():
 class Experiment(models.Model):
     name = models.CharField(max_length=30,)
     library = models.ForeignKey(Library, related_name='experiments', on_delete=models.CASCADE, blank=True, null=True)
-    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name='experiments')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='experiments')
     description = models.CharField(max_length=300, blank=True, null=True)
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)
@@ -164,6 +164,12 @@ class Experiment(models.Model):
             models.UniqueConstraint(fields=['name', 'project'], name='unique_experiment_name_per_project'),
         ]
 
+    def get_absolute_url(self):
+        return "/exp/%i/" % self.id
+
+    def __str__(self):
+        return self.name
+
     @property
     def soakTime(self):
         """
@@ -187,13 +193,13 @@ class Experiment(models.Model):
         """
         Gets the current step of the experiment; used for rendering main experiment view
         """
-        cond0 = self.srcPlateType_id and self.destPlateType_id # has srcPlateType and destPlateType
+        cond0 = self.srcPlateType_id and self.destPlateType_id and self.project_id # has srcPlateType and destPlateType
         # cond1 = self.libraryValid and self.initDataValid
         cond1 = self.initDataValid 
-        cond2 = self.destPlatesValid
-        cond3 = self.srcPlatesValid
+        cond2 = self.srcPlatesValid
+        cond3 = self.destPlatesValid
+        
         cond4 = self.soaksValid
-        print(cond4)
         conds = [cond0, cond1, cond2, cond3] # cond1 corresponds to step 1
         if all(conds[0:4]): #might want to more robust check (e.g. # soaks = # compounds in library)
             return 4
@@ -348,7 +354,7 @@ class Experiment(models.Model):
         for p1, p2 in zip(plates, templateSrcPlates):
             p1.copyCompoundsFromOtherPlate(p2)
 
-    def createSrcPlatesFromLibFile(self, numPlates=0, file=None):
+    def createSrcPlatesFromLibFile(self, numPlates, file):
         """
         Creates source plates from CSV file (https://docs.google.com/spreadsheets/d/1FRBm6wVNSpwg4d3zGCYKLQkEZjf4BP9JL0YkEJzSojw/edit?usp=sharing)
         Then update wells with the appropriate compounds specified from csv file
@@ -357,79 +363,81 @@ class Experiment(models.Model):
         numPlates (int): number of empty plates to make
         file (uploaded file): CSV file to update wells with appropriate compounds (see example file above)
         """
-        exp = self
-        file_reader = csv.reader(file, delimiter=',')
-        headers = next(file_reader)
-        zinc_id_idx = headers.index('zinc_id')
-        plate_idx_idx = headers.index('plate_idx')
-        well_idx = headers.index('well')
-        try:
-            with transaction.atomic():
-                platesMade = exp.makeSrcPlates(numPlates)
-                plateIdxRange = range(1, numPlates+1)
+        from .utils.experiment_utils import createSrcPlatesFromLibFile as func
+        return func(self, numPlates, file)
+        # exp = self
+        # file_reader = csv.reader(file, delimiter=',')
+        # headers = next(file_reader)
+        # zinc_id_idx = headers.index('zinc_id')
+        # plate_idx_idx = headers.index('plate_idx')
+        # well_idx = headers.index('well')
+        # try:
+        #     with transaction.atomic():
+        #         platesMade = exp.makeSrcPlates(numPlates)
+        #         plateIdxRange = range(1, numPlates+1)
 
-                compound_dict = {}
-                for row in file_reader:
+        #         compound_dict = {}
+        #         for row in file_reader:
                     
-                    if int(row[plate_idx_idx]) not in plateIdxRange:
-                        raise IntegrityError
+        #             if int(row[plate_idx_idx]) not in plateIdxRange:
+        #                 raise IntegrityError
 
-                    compound_dict[row[zinc_id_idx]] = {
-                        'plate_idx': row[plate_idx_idx],
-                        'well_name':row[well_idx],
-                    }
-                grouped_compound_dict_by_plate  = {}
-                for k, v in compound_dict.items():
-                    plate = grouped_compound_dict_by_plate.get(v['plate_idx'], None)
-                    if not(plate):
-                        grouped_compound_dict_by_plate[v['plate_idx']] = {v['well_name']:k}
-                    else:
-                        plate.update({v['well_name']:k})
+        #             compound_dict[row[zinc_id_idx]] = {
+        #                 'plate_idx': row[plate_idx_idx],
+        #                 'well_name':row[well_idx],
+        #             }
+        #         grouped_compound_dict_by_plate  = {}
+        #         for k, v in compound_dict.items():
+        #             plate = grouped_compound_dict_by_plate.get(v['plate_idx'], None)
+        #             if not(plate):
+        #                 grouped_compound_dict_by_plate[v['plate_idx']] = {v['well_name']:k}
+        #             else:
+        #                 plate.update({v['well_name']:k})
                         
-                # import pdb; pdb.set_trace();
+        #         # import pdb; pdb.set_trace();
 
-                    # grouped_compound_dict.setdefault(v['plate_idx'], []).append(key)
-                #retrieve existing compounds 
-                compounds_existed = [c for c in Compound.objects.filter(zinc_id__in=compound_dict.keys())]
-                zincs_existed = [c.zinc_id for c in compounds_existed]
+        #             # grouped_compound_dict.setdefault(v['plate_idx'], []).append(key)
+        #         #retrieve existing compounds 
+        #         compounds_existed = [c for c in Compound.objects.filter(zinc_id__in=compound_dict.keys())]
+        #         zincs_existed = [c.zinc_id for c in compounds_existed]
 
-                zincs_created = lists_diff(compound_dict.keys(), zincs_existed)
+        #         zincs_created = lists_diff(compound_dict.keys(), zincs_existed)
 
-                compounds = [Compound(zinc_id=z) for z in zincs_created]
-                compounds_created = Compound.objects.bulk_create(compounds)
+        #         compounds = [Compound(zinc_id=z) for z in zincs_created]
+        #         compounds_created = Compound.objects.bulk_create(compounds)
                 
-                compounds_all = []
-                compounds_all.extend(compounds_created)
-                compounds_all.extend(compounds_existed)
-                well_compounds_dict = {}
-                for c in compounds_all:
-                    key_ = compound_dict[c.zinc_id]['plate_idx'] + '_' + compound_dict[c.zinc_id]['well_name']
-                    well_compounds_dict[key_] = c
-                well_compounds_ids = [well_compounds_dict[k_].id for k_ in well_compounds_dict.keys()]
+        #         compounds_all = []
+        #         compounds_all.extend(compounds_created)
+        #         compounds_all.extend(compounds_existed)
+        #         well_compounds_dict = {}
+        #         for c in compounds_all:
+        #             key_ = compound_dict[c.zinc_id]['plate_idx'] + '_' + compound_dict[c.zinc_id]['well_name']
+        #             well_compounds_dict[key_] = c
+        #         well_compounds_ids = [well_compounds_dict[k_].id for k_ in well_compounds_dict.keys()]
                 
-                #retrieve and update existing wells with appropriate compound
-                wells_qs = Well.objects.filter(plate__in=platesMade
-                    ).select_related('plate'
-                    ).prefetch_related('compounds'
-                    ).annotate(plate_idx=F('plate__plateIdxExp'))
-                wells_dict = {}
+        #         #retrieve and update existing wells with appropriate compound
+        #         wells_qs = Well.objects.filter(plate__in=platesMade
+        #             ).select_related('plate'
+        #             ).prefetch_related('compounds'
+        #             ).annotate(plate_idx=F('plate__plateIdxExp'))
+        #         wells_dict = {}
                 
-                for w in wells_qs:
-                    wells_dict[str(w.plate_idx) + '_' + w.name] = w
+        #         for w in wells_qs:
+        #             wells_dict[str(w.plate_idx) + '_' + w.name] = w
 
-                for k in well_compounds_dict.keys():
-                    wells_dict[k].compound_id = well_compounds_dict[k].id
+        #         for k in well_compounds_dict.keys():
+        #             wells_dict[k].compound_id = well_compounds_dict[k].id
 
-                Well.objects.bulk_update([v for k, v in wells_dict.items()], ['compound_id'], batch_size=500)
+        #         Well.objects.bulk_update([v for k, v in wells_dict.items()], ['compound_id'], batch_size=500)
 
-                ### TODO: remove bulk_one_to_one_add since we already have well->compound relationship
-                wells_with_compounds_ids = [wells_dict[k_].id for k_ in well_compounds_dict.keys()]
-                throughRel = Well.compounds.through
-                bulk_one_to_one_add(throughRel, wells_with_compounds_ids, well_compounds_ids, 'well_id', 'compound_id')
-        except IntegrityError as e:
-            print(e)
-        except KeyError as e:
-            print(e)
+        #         ### TODO: remove bulk_one_to_one_add since we already have well->compound relationship
+        #         wells_with_compounds_ids = [wells_dict[k_].id for k_ in well_compounds_dict.keys()]
+        #         throughRel = Well.compounds.through
+        #         bulk_one_to_one_add(throughRel, wells_with_compounds_ids, well_compounds_ids, 'well_id', 'compound_id')
+        # except IntegrityError as e:
+        #     print(e)
+        # except KeyError as e:
+        #     print(e)
 
     def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
         """
@@ -442,23 +450,8 @@ class Experiment(models.Model):
         Returns:
         None
         """
-        if not(soaks):
-            soaks = [s for s in self.usedSoaks]
-        if not(src_wells):
-            src_wells = [w for w in self.srcWellsWithCompounds]
-
-        assert len(soaks) <= len(src_wells)
-        try:
-            with transaction.atomic():
-                for i in range(len(soaks)):
-                    soaks[i].src = None
-                Soak.objects.bulk_update(soaks, ['src'])
-                for i in range(len(soaks)):
-                    soaks[i].src = src_wells[i]
-                Soak.objects.bulk_update(soaks, ['src'])
-        except Exception as e: 
-            print(e)
-            pass
+        from .utils.experiment_utils import matchSrcWellsToSoaks as func
+        return func(self, src_wells, soaks)
     
     def generateSoaks(self, transferVol=25, soakOffsetX=0, soakOffsetY=0):
         self.soaks.all().delete() #start from fresh
@@ -537,134 +530,27 @@ class Experiment(models.Model):
             return False
     
     def makeSrcPlates(self, num_plates):
-        src_plate_qs = self.plates.filter(isSource=True)
-        for p in src_plate_qs:
-            if p.isTemplate:
-                self.plates.remove(p, bulk=False)
-            else:
-                p.delete()
-        # self.plates.filter(isSource=True).delete()
-        if (self.srcPlateType):
-            return self.makePlates(num_plates, self.srcPlateType)
-        else:
-            return []
+        from .utils.experiment_utils import makeSrcPlates as func
+        return func(self, num_plates)
 
     def makeDestPlates(self, num_plates):
-        self.plates.filter(isSource=False).delete()
-        if (self.destPlateType):
-            return self.makePlates(num_plates, self.destPlateType)
-        else:
-            return []
+        from .utils.experiment_utils import makeDestPlates as func
+        return func(self, num_plates)
 
     def makePlates(self, num_plates, plate_type, plates_init_data=None):
-        try:
-            assert num_plates > 0
-            plates_to_create = [None] * num_plates
-            name_prefix = 'src_' if plate_type.isSource else 'dest_'
-            if plates_init_data:
-                pass
-            else:
-                for i in range(num_plates):
-                    plates_to_create[i] = Plate(name=name_prefix+str(i+1),plateType=plate_type, 
-                        experiment_id=self.id,isSource=plate_type.isSource, plateIdxExp=i+1)
-                plates = Plate.objects.bulk_create(plates_to_create)
-                
-                for p in plates:
-                    p.createPlateWells()
-                return plates
-        except Exception as e:
-            return []
+        from .utils.experiment_utils import makePlates as func
+        return func(self, num_plates, plate_type, plates_init_data=None)
 
     def createPlatesSoaksFromInitDataJSON(self):
-        exp = self
-        dest_plates = exp.plates.filter(isSource=False)
-        if dest_plates.exists():
-            dest_plates.delete()
-        init_data_plates = exp.initDataJSON.items()
-        lst_plates = exp.makePlates(len(init_data_plates), self.destPlateType)
-        soaks = []
-        for i, (plate_id, plate_data) in enumerate(init_data_plates):
-            id = plate_data.pop("plate_id", None) 
-            date_time = plate_data.pop("date_time", None)
-            plate = lst_plates[i]
-            plate.rockMakerId = plate_id
-            plate.created_date = make_aware(datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f'))
-            plate.save()
-
-            # loop through well keys and create soaks w/ appropriate data
-            for j, (well_key, well_data) in enumerate(plate_data.items()):
-                well_name, s_w_idx = well_key.split('_')
-                well = plate.wells.filter(name=well_name)[0]
-                s_w = well.subwells.get(idx=s_w_idx) 
-                soaks.append(Soak(
-                    experiment_id = exp.id,
-                    dest_id = s_w.id, 
-                    drop_x = well_data['drop_x'] * PIX_TO_UM, 
-                    drop_y = well_data['drop_y'] * PIX_TO_UM,
-                    drop_radius = well_data['drop_radius'] * PIX_TO_UM,
-                    well_x =  well_data['well_x'] * PIX_TO_UM, 
-                    well_y =  well_data['well_y'] * PIX_TO_UM,
-                    well_radius =  well_data['well_radius'] * PIX_TO_UM,
-                    soakOffsetX =  well_data['well_x'] * PIX_TO_UM,
-                    soakOffsetY = well_data['well_y'] * PIX_TO_UM,
-                    # soakVolume = ,
-                    useSoak= True
-                ))    
-        soaks = Soak.objects.bulk_create(soaks)  
-        return soaks
-
+        from .utils.experiment_utils import createPlatesSoaksFromInitDataJSON as func
+        return func(self)
+ 
     def formattedSoaks(self, qs_soaks,
                     s_num_rows=16, s_num_cols = 24, 
                     d_num_rows=8, d_num_cols=12, d_num_subwells=3):
-        num_src_plates = self.numSrcPlates
-        num_dest_plates = self.numDestPlates
-            
-        s_num_wells = s_num_rows * s_num_cols
-        d_num_wells = d_num_rows * d_num_cols
-        # qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
-        #     ).prefetch_related('transferCompound',).order_by('id')
-
-        soaks_lst = [soak for soak in qs_soaks]
-        src_wells = [0]*num_src_plates*s_num_wells
-        dest_subwells = [0]*num_dest_plates*d_num_wells*d_num_subwells
-
-        for j in range(len(soaks_lst)):
-            s = soaks_lst[j]
-            src = s.src # source Well
-            src_well_idx = src.wellIdx
-            src_plate_idx = src.plate.plateIdxExp
-            s_w_idx = getWellIdx(src_plate_idx,src_well_idx, s_num_wells)
-            dest = s.dest
-            dest_subwell_idx = dest.idx
-            dest_parentwell_idx = dest.parentWell.wellIdx
-            dest_plate_idx = dest.parentWell.plate.plateIdxExp
-            d_sw_idx = getSubwellIdx(dest_plate_idx,dest_parentwell_idx,
-                dest_subwell_idx, d_num_wells,d_num_subwells) 
-            compound = s.transferCompound
-            src_wells[s_w_idx] = {
-                                'well_id':src.id, 
-                                'well_name':src.name, 
-                                'compound':compound.nameInternal,
-                                'dest_subwell_id':dest.id,
-                                'soak_id':s.id
-                                }
-
-            dest_subwells[d_sw_idx] = {
-                                'src_well_id': src.id,
-                                'parentWell_id': dest.parentWell.id,
-                                'parentWell_name': dest.parentWell.name,
-                                'subwell_id':dest.id,
-                                'subwell_idx':dest.idx,
-                                'compound':compound.nameInternal,
-                                }
-
-        src_wells = chunk_list(src_wells,s_num_cols)
-        dest_subwells = chunk_list(dest_subwells,d_num_subwells) #group subwells 1-3 into well
-        dest_subwells = chunk_list(dest_subwells,d_num_cols) #group columns into row
-
-        return {'src_plates':split_list(src_wells,num_src_plates), 
-                'dest_plates':split_list(dest_subwells,num_dest_plates),
-                }
+        from .utils.experiment_utils import formattedSoaks as func
+        return func(self, qs_soaks, s_num_rows, s_num_cols, d_num_rows, d_num_cols, d_num_subwells)
+      
 
     # takes in exc list of column names to exclude
     def getSoaksTable(self, exc=[]):
@@ -687,11 +573,6 @@ class Experiment(models.Model):
         # might want to implement try catch
         return PlatesTable(self.plates.filter(isSource=False), exclude=exc)
 
-    def get_absolute_url(self):
-        return "/exp/%i/" % self.id
-
-    def __str__(self):
-        return self.name
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=100,)
@@ -731,6 +612,7 @@ class Plate(models.Model):
         if self.isTemplate:
             string += 'Template: '
         return string + ' ' + self.name + ' ' + str(self.id)
+
     def get_absolute_url(self):
         return "/plate/%i/" % self.id
     
@@ -759,64 +641,22 @@ class Plate(models.Model):
     # creates appropriate wells for plate instance
     def createPlateWells(self):
         """
-        TODO: write DOCSTRING
         """
-        wells = None
-        plateType = self.plateType
-        
-        if plateType:
-            wellDict = plateType.wellDict
-            well_lst = [None]*len(wellDict)
-            for key, val in wellDict.items():
-                well_props = val
-                wellIdx = well_props['wellIdx']
-                wellRowIdx = well_props['wellRowIdx']
-                wellColIdx = well_props['wellColIdx']
-
-                well_lst[wellIdx] = Well(name=key, wellIdx=wellIdx, wellRowIdx=wellRowIdx, wellColIdx=wellColIdx,
-                    maxResVol=130, minResVol=10, plate=self)
-
-            Well.objects.bulk_create(well_lst)
-            wells = self.wells.all()
-            numSubwells = plateType.numSubwells
-            if numSubwells:
-                for w in wells:
-                    subwells_lst = [None]*numSubwells
-                    for i in range(numSubwells):
-                        subwells_lst[i] = SubWell(name=w.name+'_'+str(i+1), idx=i+1,xPos= 0,yPos=0, parentWell=w)
-                    SubWell.objects.bulk_create(subwells_lst)
-        return wells
+        from .utils.plate_utils import createPlateWells as func
+        return func(self)
 
     def updateCompounds(self, compounds, compound_dict={}):
-        if compounds:
-            my_wells = [w for w in self.wells.all().order_by('name')]
-            num_my_wells = len(my_wells)
-            num_compounds = len(compounds)
-            assert num_compounds >= num_my_wells
-            
-            if compound_dict:
-                pass
-            else: #no compound_dict provided so update one-by-one in order
-                for i in range(num_my_wells):
-                    my_wells[i].compound = compounds[i] 
-                Well.objects.bulk_update(my_wells, fields=['compound'])
-
+        """
+        """
+        from .utils.plate_utils import updateCompounds as func
+        return func(self, compounds, compound_dict)
 
     def copyCompoundsFromOtherPlate(self, plate):
         """
         Takes other plate (isTemplate must be True) and copy its compounds in the appropriate well locations
         """
-        assert plate.isTemplate #only template plates can be copied from 
-        compounds_to_copy = [c for c in plate.compounds.all()]
-        if compounds_to_copy:
-            my_wells = [w for w in self.wells.all().order_by('name')]
-            num_my_wells = len(my_wells)
-            num_compounds = len(compounds_to_copy)
-            assert num_compounds >= num_my_wells
-
-            for i in range(num_my_wells):
-                my_wells[i].compound = compounds_to_copy[i] 
-            Well.objects.bulk_update(my_wells, fields=['compound'])
+        from .utils.plate_utils import copyCompoundsFromOtherPlate as func
+        return func(self, plate)
 
 class PlateType(models.Model):
     name = models.CharField(max_length=50, unique=True) 
