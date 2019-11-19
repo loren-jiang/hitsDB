@@ -2,7 +2,6 @@ from . import factories
 from log.tests.factories import UserFactory
 from django.core.files.uploadedfile import SimpleUploadedFile
 from s3.models import PrivateFileJSON
-import csv 
 
 def example_init_data():
     """

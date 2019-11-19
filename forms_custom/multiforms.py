@@ -39,7 +39,6 @@ class MultiFormMixin(ContextMixin):
         form_arguments = self.get_form_arguments(form_name)
         if form_arguments:
             kwargs.update(form_arguments)
-        print(kwargs)
         return kwargs
     
     def forms_valid(self, forms, form_name):

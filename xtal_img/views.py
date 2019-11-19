@@ -1,7 +1,7 @@
 from django.shortcuts import render
 import boto3
 from django.conf import settings
-from s3.s3utils import myS3Client, myS3Resource, create_presigned_url
+from s3.s3utils import create_presigned_url
 from django.views.generic.edit import FormView
 from s3.forms import ImagesFieldForm, FilesFieldForm
 from .models import DropImage

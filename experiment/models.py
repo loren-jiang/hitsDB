@@ -17,7 +17,7 @@ import string
 from datetime import datetime
 from django.utils.timezone import make_aware
 from s3.s3utils import PrivateMediaStorage
-from s3.models import PrivateFile, PrivateFileJSON
+from s3.models import PrivateFile, PrivateFileJSON, PrivateFileCSV
 import json 
 import csv 
 from django.db import transaction, IntegrityError
@@ -149,6 +149,7 @@ class Experiment(models.Model):
         size=3, default=defaultSubwellLocations) 
     initDataJSON = JSONField(default=dict)
     initData = models.OneToOneField(PrivateFileJSON, null=True, blank=True, on_delete=models.CASCADE, related_name='experiment')
+    picklist = models.OneToOneField(PrivateFileCSV, null=True, blank=True, on_delete=models.CASCADE, related_name='experiment')
 
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
@@ -592,7 +593,7 @@ class Plate(models.Model):
     plateIdxExp = models.PositiveIntegerField(default=1,null=True, blank=True)
     dataSheetURL = models.URLField(max_length=200, null=True, blank=True)
     echoCompatible = models.BooleanField(default=False)
-    rockMakerId = models.PositiveIntegerField(unique=True, null=True, blank=True)
+    rockMakerId = models.CharField(max_length=10, unique=True,  null=True, blank=True)
     isTemplate = models.BooleanField(default=False) #template plates can be copied; should only apply for source plates
 
     created_date = models.DateTimeField(auto_now_add=True)
@@ -842,6 +843,7 @@ class Soak(models.Model):
 
     useSoak = models.BooleanField(default=False)
     saveCount = models.PositiveIntegerField(default=0)
+    saveTimeStamp = models.DateTimeField(null=True, blank=True)
 
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
@@ -964,7 +966,7 @@ def process_experiment_post_save(sender, instance, created, **kwargs):
         if instance.prev_initData_id != instance.initData_id and not(created):
             instance.prev_initData_id = instance.initData_id
 
-    def create_plates_and_soaks_init_data(instance):
+    def create_plates_and_soaks_init_data(instance, created):
         if instance.initData_id and (instance.prev_initData_id != instance.initData_id or created):
             # try:
                 # read file and save to JSON field initDataJSON
@@ -974,8 +976,6 @@ def process_experiment_post_save(sender, instance, created, **kwargs):
                 data_json = ""
                 for c in instance.initData.local_upload.chunks():
                     data_json += str(c, encoding='utf-8').replace("'", "\"")
-                # print(data_json)
-
                 instance.initDataJSON = json.loads(data_json)
             except(TypeError, OverflowError, ValueError):
                 instance.initData = None
@@ -984,7 +984,7 @@ def process_experiment_post_save(sender, instance, created, **kwargs):
             post_save.connect(process_experiment_post_save, sender=Experiment)
             instance.createPlatesSoaksFromInitDataJSON()
 
-    create_plates_and_soaks_init_data(instance)
+    create_plates_and_soaks_init_data(instance, created)
     experiment_update_state(instance, created)
 
 

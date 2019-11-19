@@ -126,6 +126,8 @@ def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
     Returns:
     None
     """
+    self.soak_export_date = None
+    self.save()
     if not(soaks):
         soaks = [s for s in self.usedSoaks]
     if not(src_wells):

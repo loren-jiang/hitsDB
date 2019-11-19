@@ -5,7 +5,8 @@ def update_instance(instance, fields, cleaned_data):
         old_field_data = getattr(instance, field)
         if (new_field_data != old_field_data):
             setattr(instance, field, new_field_data)
-    instance.save(update_fields=fields)
+    instance.save()
+    # instance.save(update_fields=fields)
 
 def bulk_create_get(model_class, objs):
     """

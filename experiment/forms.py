@@ -14,6 +14,12 @@ from django.utils import timezone
 import json
 from json.decoder import JSONDecodeError
 from .querysets import user_accessible_projects, user_editable_projects
+import csv
+from io import TextIOWrapper
+from itertools import compress
+from s3.forms import PrivateFileUploadForm, PrivateFileCSVForm
+from .querysets import user_editable_projects, user_editable_plates
+from my_utils.utility_functions import lists_diff 
 
 class SoakForm(forms.ModelForm):
     class Meta:
@@ -136,15 +142,14 @@ class ExpAsMultiForm(MultipleForm, ExperimentModelForm):
 class ExpInitDataMultiForm(MultipleForm):
     initDataFile = forms.FileField(label="Initialization file [.json]",
             validators=[FileExtensionValidator(['json'])],
-            widget=forms.FileInput)
+            )
     def __init__(self, exp, *args, **kwargs):
         self.exp = exp
         super(ExpInitDataMultiForm, self).__init__(*args,**kwargs)
-        # self.fields['initDataFile'] = forms.FileField(label="File upload",
-        #     validators=[FileExtensionValidator(['json'])])
+
     def clean(self):
         cleaned_data = super().clean()
-        initDataFile = cleaned_data.get('initDataFile')
+        initDataFile = cleaned_data.get('initDataFile', None)
         if initDataFile:
             try:
                 if initDataFile.size >= 2.5e6:
@@ -176,20 +181,55 @@ class ExpInitDataMultiForm(MultipleForm):
 
 class CreateSrcPlatesMultiForm(MultipleForm):
     numSrcPlates = forms.IntegerField(required=False, label="Number of plates")
-    plateLibDataFile = forms.FileField(required=False, label="Source plate(s) file [.csv]")
+    plateLibDataFile = forms.FileField(required=False, label="Source plate(s) file [.csv]",
+        validators=[FileExtensionValidator(['csv'])],)
     templateSrcPlates = forms.ModelMultipleChoiceField(
         queryset=Plate.objects.filter(isSource=True, isTemplate=True), 
         required=False, label="Template source plates")
 
     def __init__(self, exp, *args, **kwargs):
         super(CreateSrcPlatesMultiForm, self).__init__(*args, **kwargs)
+
+    def clean_plateLibDataFile(self):
+        f = self.cleaned_data.get('plateLibDataFile')
+        headers_required =['zinc_id', 'well', 'plate_idx']
+        if f:
+            try:
+                if f.size >= 2.5e6:
+                    raise OverflowError
+                i = 0
+                headers = []
+                for c in f.chunks():
+                    # print(c.decode())
+                    reader = csv.reader(str(c, encoding='utf-8').split('\n'), delimiter=',')
+                    if (i==0):
+                        headers = next(reader)
+                    i += 1
+                headers_missing = list(compress(headers_required, list(map(lambda h: not(h in headers), headers_required))))
+                if headers_missing:
+                    self.add_error('plateLibDataFile', 
+                        ValidationError(            
+                            ('Missing .csv headers %(value)s'),
+                            code='invalid',
+                            params={'value': headers_missing},
+                        ))
+            except (ValueError, OverflowError) as e:
+                if type(e) is OverflowError:
+                    self.add_error('plateLibDataFile','File is too big!')
+        return f
+
     def clean(self):
-        cd = self.cleaned_data
-        fromFile = cd['numSrcPlates'] and cd['plateLibDataFile']
-        fromTemplates = cd['templateSrcPlates']
+        cd = super().clean()
+        numSrcPlates = cd.get('numSrcPlates', None)
+        plateLibDataFile = cd.get('plateLibDataFile', None)
+        templateSrcPlates = cd.get('templateSrcPlates', None)
+
+        fromFile = numSrcPlates and plateLibDataFile
+        fromTemplates = templateSrcPlates
+
         if not(fromFile or fromTemplates) or (fromFile and fromTemplates):
             self.add_error(None,'Please choose only ONE option.')
- 
+
         return cd
 
 class PlatesSetupMultiForm(MultipleForm):
@@ -237,6 +277,80 @@ class SoaksSetupMultiForm(MultipleForm):
 
     def __init__(self, exp, *args, **kwargs):
         super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)
+
+class PicklistMultiForm(MultipleForm, PrivateFileCSVForm):
+    def __init__(self, *args, **kwargs):
+        super(PicklistMultiForm, self).__init__(*args, **kwargs)
+        exp = kwargs.get('instance', None)
+        if exp:
+            self.exp = exp
+
+    def uploaded_file_clean(self, f=None):
+        from my_utils.constants import picklist_map
+        if f:
+            try:
+                if f.size >= 2.5e6:
+                    raise OverflowError
+                plate_ids = {}
+                for c in f.chunks():
+                    reader = csv.reader(str(c, encoding='utf-8').split('\n'), delimiter=',')
+                    
+                    for row in reader:
+                        if row:
+                            while row[-1]:
+                                row.pop()
+                            if len(row) < 4:
+                                self.add_error(None,
+                                    ValidationError(            
+                                        ('Missing columns. See instructions.'),
+                                        code='invalid',
+                                    )
+                                )
+                            if len(row) > len(picklist_map.keys()):
+                                self.add_error(None,
+                                    ValidationError(            
+                                        ('Number of columns is greater than number of accepted input columns. See instructions.'),
+                                        code='invalid',
+                                    ))
+                            plate_id = row[1]
+                            print(plate_id)
+                            if not(plate_ids.get(plate_id)):
+                                plate_ids[plate_id] = plate_id
+                editable_plate_qs = user_editable_plates(self.exp.owner).filter(rockMakerId__in=plate_ids.keys())
+                rockMaker_ids = [p.rockMakerId for p in editable_plate_qs]
+                missing_ids = lists_diff(rockMaker_ids, plate_ids.keys())
+                if not(editable_plate_qs.exists()):
+                    self.add_error(None,
+                        ValidationError(            
+                                    ("Plate IDs %(value)s are not user-accessible RockMaker IDs in database."),
+                                    code='invalid',
+                                    params={'value': missing_ids},
+                            )) 
+        
+    
+            except (ValueError, OverflowError) as e:
+                if type(e) is OverflowError:
+                    self.add_error(None,'File is too large.')
+        return f
+
+    def clean_upload(self):
+        f = self.cleaned_data.get('upload')
+        if f:
+            f = self.uploaded_file_clean(f)
+        return f
+    
+    def clean_local_upload(self):
+        f = self.cleaned_data.get('local_upload')
+        if f:
+            f= self.uploaded_file_clean(f)
+        return f
+    def clean(self):
+        cd = super(PrivateFileCSVForm, self).clean()
+        print(self.__dict__)
+        print(cd)
+        return cd
+    pass
+
 # class SoaksSetupMultiForm(MultipleForm):
 #     def __init__(self, exp, *args, **kwargs):
 #         super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)

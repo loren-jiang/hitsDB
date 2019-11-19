@@ -6,30 +6,8 @@ from ..tables import SoaksTable, ModalEditSoaksTable
 from django.db.models import F
 from ..decorators import is_users_experiment
 from ..forms import SoakForm
-# from . import ModalEdit
-
-# class SoakEdit(ModalEdit):
-#     pk_url_kwarg = 'pk_soak'
-#     modal_title = 'Edit Soak'
-#     form_tag_class = "soak_edit_form"
-#     queryset = Soak.objects.filter()
-#     # fields = ('transferCompound', 'transferVol') #if form_class is used, then cant use fields
-#     form_class = SoakForm
-
-#     def get_success_url(self):
-#         return self.request.META.get('HTTP_REFERER')
-
-#     def get_context_data(self,*args, **kwargs):
-#         context = super(SoakEdit, self).get_context_data(*args, **kwargs)
-#         s = context['soak']
-#         context.update ({
-#           "arg":kwargs.get('pk_soak',None),
-#           "form":self.form_class(instance=s, exp=s.experiment), #overrides ModelForm
-#           "modal_title":self.modal_title,
-#           "action":self.request.path, #should be view w/o arg
-#           "form_class":self.form_tag_class,
-#         })
-#         return context
+from django.utils import timezone
+import csv
 
 @login_required(login_url="/login")
 def soak_edit(request, pk_soak):
@@ -100,3 +78,38 @@ def soaks(request, pk_proj, pk_exp):
         
     }
     return render(request, 'experiment/soak_templates/soaks.html', data)
+
+@is_users_experiment
+def soaks_csv_view(request,pk_exp ,pk_src_plate=None, pk_dest_plate=None):
+    pk = pk_exp
+    exp = get_object_or_404(Experiment, pk=pk)
+    exp.soak_export_date = timezone.now()
+    exp.save()
+    # dest_plate = get_object_or_404(Plate,pk_plate)
+    qs = qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(
+      ).order_by('id')
+    if pk_dest_plate and pk_src_plate:
+        qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(
+      ).filter(src__plate_id=pk_src_plate, dest__parentWell__plate_id=pk_dest_plate)
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment;filename=' + str(exp.name) + '_soaks' +  '.csv'
+    writer = csv.writer(response)
+    headers = ["Source Plate Name","Source Well","Destination Plate Name","Destination Well","Transfer Volume",
+                    "Destination Well X Offset","Destination Well Y Offset"] 
+    writer.writerow(headers) #headers for csv
+    rows = []
+    for s in qs:
+        s_dict = s.__dict__
+        src_well = s.src
+        dest_well = s.dest.parentWell
+        src_plate_name = "Source[" + str(src_well.plate.plateIdxExp) + "]"
+        src_well = src_well.name
+        dest_plate_name = "Destination["  +str(dest_well.plate.plateIdxExp) + "]"
+        dest_well = dest_well.name
+        transfer_vol = s.soakVolume
+        x_offset = round(s.offset_XY_um[0]*100)/100
+        y_offset = round(s.offset_XY_um[1]*100)/100
+        rows.append([src_plate_name,src_well,dest_plate_name,dest_well,transfer_vol,x_offset,y_offset])
+    for r in sorted(rows, key=lambda x: ( x[headers.index("Source Plate Name")],x[headers.index("Source Well")])):
+        writer.writerow(r)
+    return response

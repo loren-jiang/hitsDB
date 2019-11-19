@@ -1,6 +1,6 @@
 # common querysets that views will need 
 
-from .models import Project, Experiment, Soak
+from .models import Project, Experiment,Plate, Soak
 from lib.models import Library, Compound
 from django.contrib.auth.models import User, Group
 
@@ -16,7 +16,8 @@ def user_accessible_libs(user):
     return libs
 
 #-------------------------------------------------Experiment querysets -----------------------------------------------------------
-
+def user_editable_experiments(user):
+    return Experiment.objects.filter(project__in=user_accessible_projects(user))
 #-------------------------------------------------Project querysets --------------------------------------------------------------
 # returns queryset of projects explicitly owned by user with experiments
 def user_projects_with_exps(user):
@@ -32,3 +33,7 @@ def user_editable_projects(user):
 #-------------------------------------------------User queryset ------------------------------------------------------------------
 def user_collaborators(user):
     return User.objects.filter(collab_projects__in=user.projects.all())
+
+#-------------------------------------------------Plate queryset ------------------------------------------------------------------
+def user_editable_plates(user):
+    return Plate.objects.filter(experiment__in=user_editable_experiments(user))

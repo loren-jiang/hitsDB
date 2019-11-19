@@ -18,7 +18,12 @@
         <div class="col-2">
             <div id="exp-info" class="jumbotron">
                 <h3> {{ exp.name }}</h3>
-                <p> Created: {{ exp.dateTime }}</p>
+                <p> Created: {{ exp.created_date }}</p>
+                <p> Modified: {{ exp.modified_date }}</p>
+                {% if exp.picklist %}
+                <p> Picklist file: {{exp.picklist.upload}} </p>
+                <p> Picklist file: {{exp.picklist.local_upload}} </p>
+                {% endif %}
                 <form id="exp-form" method="post">{% csrf_token %}
                     {% include 'bs4_form.html' with form=forms.expform %}
                     {% comment %} {{ forms.expform|crispy}} {% endcomment %}
@@ -35,182 +40,258 @@
         <div class="col-8">
             <div class="row">
                 <div class="col-2">
-                    <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                        <a class="nav-link active" id="v-pills-step1-tab" data-toggle="pill" href="#v-pills-step1"
-                            role="tab" aria-controls="v-pills-step1" aria-selected="true">1) Initialization</a>
-                        <a class="nav-link" id="v-pills-step2-tab" data-toggle="pill" href="#v-pills-step2" role="tab"
-                            aria-controls="v-pills-step2" aria-selected="false">2) Source</a>
-                        <a class="nav-link" id="v-pills-step3-tab" data-toggle="pill" href="#v-pills-step3" role="tab"
-                            aria-controls="v-pills-step3" aria-selected="false">3) Destination</a>
-                        <a class="nav-link" id="v-pills-step4-tab" data-toggle="pill" href="#v-pills-step4" role="tab"
-                            aria-controls="v-pills-step4" aria-selected="false">4) Soaks </a>
-                        <a class="nav-link" id="v-pills-step5-tab" data-toggle="pill" href="#v-pills-step5" role="tab"
-                            aria-controls="v-pills-step5" aria-selected="false">5) Looping </a>
-                        <a class="nav-link" id="v-pills-step6-tab" data-toggle="pill" href="#v-pills-step6" role="tab"
-                            aria-controls="v-pills-step6" aria-selected="false">6) Data Collection </a>
+                    <div class="nav flex-column nav-pills" id="exp-tab" role="tablist" aria-orientation="vertical">
+                        <a class="nav-link active" id="exp-step1-tab" data-toggle="pill" href="#exp-step1"
+                            role="tab" aria-controls="exp-step1" aria-selected="true">1) Initialization</a>
+                        <a class="nav-link" id="exp-step2-tab" data-toggle="pill" href="#exp-step2" role="tab"
+                            aria-controls="exp-step2" aria-selected="false">2) Source</a>
+                        <a class="nav-link" id="exp-step3-tab" data-toggle="pill" href="#exp-step3" role="tab"
+                            aria-controls="exp-step3" aria-selected="false">3) Destination</a>
+                        <a class="nav-link" id="exp-step4-tab" data-toggle="pill" href="#exp-step4" role="tab"
+                            aria-controls="exp-step4" aria-selected="false">4) Soaks </a>
+                        <a class="nav-link" id="exp-step5-tab" data-toggle="pill" href="#exp-step5" role="tab"
+                            aria-controls="exp-step5" aria-selected="false">5) Looping </a>
+                        <a class="nav-link" id="exp-step6-tab" data-toggle="pill" href="#exp-step6" role="tab"
+                            aria-controls="exp-step6" aria-selected="false">6) Data Collection </a>
                     </div>
                 </div>
-
-                <div class="tab-content" id="v-pills-tabContent">
-                    <div class="tab-pane fade show active" id="v-pills-step1" role="tabpanel"
-                        aria-labelledby="v-pills-step1-tab">
-                        <div class="row">
-                            <div class="col">
-                                <div class="jumbotron">
-                                    <h3> Instructions </h3>
-                                    <ul>
-                                        <li> Upload the .json file output from running the PreGUI script ().</li>
-                                        <li> See example file: </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            {% if current_step > 0 %}
-                            <div class="col">
-                                <div class="jumbotron">
-                                    <h3>RockImager JSON</h3>
-                                    <form id="init-form" enctype="multipart/form-data" method="post">{% csrf_token %}
-                                        {{ forms.initform|crispy }}
-                                        <button type="submit" class="btn btn-primary">Upload</button>
-                                    </form>
-
-                                </div>
-                            </div>
-
-                            {% if exp.initData %}
-                            <div class="col">
-                                <div class="jumbotron">
-                                    <h3>Processed JSON</h3>
-                                    {% if initData_local_url %}
-                                    <p> Local uploaded file: <a href={{initData_local_url}}> {{initData_local}} </a>
-                                    </p>
-                                    {% endif %}
-
-                                    {% if init_data_file_url %}
-                                    <p> s3 uploaded file: <a href={{init_data_file_url}}> {{init_data_file_url}} </a>
-                                    </p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endif %}
-                            {% else %}
-                            <span> Experiment missing source or destination plate type. </span>
-                            {% endif %}
-
-                        </div>
-
-                    </div>
-                    <div class="tab-pane fade" id="v-pills-step2" role="tabpanel" aria-labelledby="v-pills-step2-tab">
-                        <div class="row">
-                            <div class="col">
-                                <div class="jumbotron">
-                                    <h3> Instructions </h3>
-                                    <ul>
-                                        <li> Define the experiment's source plates by either:
-                                            <ul>
-                                                <li> Uploading a .csv with the required data (see example above). </li>
-                                                <li> Importing existing template source plates. </li>
-                                            </ul>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col">
-                                <div class="jumbotron">
-                                    <h3>Source plates setup</h3>
-                                    {% if current_step > 1 %}
-                                    <form id="platelib-form" enctype="multipart/form-data" method="post">
-                                        {% csrf_token %}
-                                        {{ forms.platelibform|crispy}}
-                                        <span>
-                                            <button type="submit" class="btn btn-primary">Submit</button>
-
-                                        </span>
-                                    </form>
-                                    {% else %}
-                                    <p> Please complete Step 1).</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                    <div class="tab-pane fade" id="v-pills-step3" role="tabpanel" aria-labelledby="v-pills-step3-tab">
-                        <div class="row">
-                            <div class="col">
-                                <div class="jumbotron">
-                                    <h3> Instructions </h3>
-                                    <ul>
-                                        <li> yada yada.</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class='row'>
-                            <div class="col">
-                                <div class="jumbotron">
-                                    <h3>Upload drop images</h3>
-                                    {% if current_step > 2 %}
-                                    {% render_table dest_plates_table %}
-                                    
-                                    {% else %}
-                                    <p> Please complete Step 2).</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            {% comment %} <div class="col">
-                                <div class="jumbotron">
-                                    <h3>Source plates table</h3>
-                                    {% render_table src_plates_table %}
-                                </div>
-                            </div> {% endcomment %}
-                        </div>
-
-                    </div>
-                    <div class="tab-pane fade" id="v-pills-step4" role="tabpanel" aria-labelledby="v-pills-step4-tab">
-                        <div class="row">
-                            <div class="col">
-                                <div class="jumbotron">
-                                    <h3> Instructions </h3>
-                                    <ul>
-                                        <li> yada yada.</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col">
-                                <div class="jumbotron">
-                                    <h3>Soak setup</h3>
-                                    {% if current_step > 2 %}
-                                    <form id="soaks-form" method="post">{% csrf_token %}
-                                        {{ forms.soaksform|crispy}}
-                                        <span>
-                                            <button type="submit" class="btn btn-primary">Generate soaks</button>
-                                            {% comment %} {% if soaksValid %}
-                                            <a role="button" class="btn btn-primary"
-                                                href="{% url 'exp_soaks' exp.project.pk exp.pk %}">View
-                                                soaks</a>
-                                            {% endif %} {% endcomment %}
-                                        </span>
-                                    </form>
-                                    {% else %}
-                                    <p> Please complete Step 2).</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="col">
-                                    {% if soaksValid %}
+                <div class="col-10">
+                    <div class="tab-content" id="exp-tabContent">
+                        <div class="tab-pane fade show active" id="exp-step1" role="tabpanel"
+                            aria-labelledby="exp-step1-tab">
+                            <div class="row">
+                                <div class="col">
                                     <div class="jumbotron">
-                                        <h3>Soaks Download</h3>                   
-                                        <a role="button" class="btn btn-secondary" href="{{soaks_download}}"> Download </a>
+                                        <h3 class="instructions"> Instructions </h3>
+                                        <ul>
+                                            <li> Upload the .json file output from running the PreGUI script ().</li>
+                                            <li> See example file: </li>
+                                        </ul>
                                     </div>
-                                    {% endif %}
                                 </div>
+                            </div>
+                            <div class="row">
+                                {% if current_step > 0 %}
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3>RockImager JSON</h3>
+                                        <form id="init-form" enctype="multipart/form-data" method="post">{% csrf_token %}
+                                            {{ forms.initform|crispy }}
+                                            <button type="submit" class="btn btn-primary">Upload</button>
+                                        </form>
+
+                                    </div>
+                                </div>
+
+                                {% if exp.initData %}
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3>Processed JSON</h3>
+                                        {% if initData_local_url %}
+                                        <p> Local uploaded file: <a href={{initData_local_url}}> {{initData_local}} </a>
+                                        </p>
+                                        {% endif %}
+
+                                        {% if init_data_file_url %}
+                                        <p> s3 uploaded file: <a href={{init_data_file_url}}> {{init_data_file_url}} </a>
+                                        </p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <span> Experiment missing source or destination plate type. </span>
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+                        <div class="tab-pane fade" id="exp-step2" role="tabpanel" aria-labelledby="exp-step2-tab">
+                            <div class="row">
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3 class="instructions"> Instructions </h3>
+                                        <ul>
+                                            <li> Define the experiment's source plates by either:
+                                                <ul>
+                                                    <li> Uploading a .csv with the required data (see example above). </li>
+                                                    <li> Importing existing template source plates. </li>
+                                                </ul>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3>Source plates setup</h3>
+                                        {% if current_step > 1 %}
+                                        <form id="platelib-form" enctype="multipart/form-data" method="post">
+                                            {% csrf_token %}
+                                            {{ forms.platelibform|crispy}}
+                                            <span>
+                                                <button type="submit" class="btn btn-primary">Submit</button>
+
+                                            </span>
+                                        </form>
+                                        {% else %}
+                                        <p> Please complete Step 1).</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="tab-pane fade" id="exp-step3" role="tabpanel" aria-labelledby="exp-step3-tab">
+                            <div class="row">
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3 class="instructions"> Instructions </h3>
+                                        <ul>
+                                            <li> For each destination plate, upload the appropriate drop images. </li>
+                                            <li> Then, use the GUI link to set soak data. </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class='row'>
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3>Upload drop images</h3>
+                                        {% if current_step > 2 %}
+                                        {% render_table dest_plates_table %}
+                                        
+                                        {% else %}
+                                        <p> Please complete Step 2).</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                {% comment %} <div class="col">
+                                    <div class="jumbotron">
+                                        <h3>Source plates table</h3>
+                                        {% render_table src_plates_table %}
+                                    </div>
+                                </div> {% endcomment %}
+                            </div>
+
+                        </div>
+                        <div class="tab-pane fade" id="exp-step4" role="tabpanel" aria-labelledby="exp-step4-tab">
+                            <div class="row">
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3 class="instructions"> Instructions </h3>
+                                        <ul>
+                                            <li> Click "Generate soaks" button, 
+                                            which will match source wells with compounds to destination wells with used soaks.</li>
+                                            <li> Then, download Echo soaking instructions, double-check for correctness, and perform soaks.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3>Soak setup</h3>
+                                        {% if current_step > 2 %}
+                                        <form id="soaks-form" method="post">{% csrf_token %}
+                                            {{ forms.soaksform|crispy}}
+                                            <span>
+                                                <button type="submit" class="btn btn-primary">Generate soaks</button>
+                                                {% comment %} {% if soaksValid %}
+                                                <a role="button" class="btn btn-primary"
+                                                    href="{% url 'exp_soaks' exp.project.pk exp.pk %}">View
+                                                    soaks</a>
+                                                {% endif %} {% endcomment %}
+                                            </span>
+                                        </form>
+                                        {% else %}
+                                        <p> Please complete Step 2).</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col">
+                                        {% if soaksValid %}
+                                        <div class="jumbotron">
+                                            <h3>Soaks Download</h3>                   
+                                            <a role="button" class="btn btn-secondary" href="{{soaks_download}}"> Download </a>
+                                        {% if exp.soak_export_date %}
+                                            <p> Downloaded on: {{exp.soak_export_date}} </p>
+                                        {% endif %}
+                                        </div>
+                                        
+                                        {% endif %}
+                                    </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane fade" id="exp-step5" role="tabpanel" aria-labelledby="exp-step5-tab">
+                            <div class="row">
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3 class="instructions"> Instructions </h3>
+                                        <ul>
+                                            <li> RockMaker Plate IDs: {{rockMakerIds}} </li>
+                                            <li> Make shifter pick-list and upload it. </li>
+                                            <li> See shifter user manual (). </li>
+                                            <li>
+                                            <p>
+                       
+                                            <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
+                                                Button with data-target
+                                            </button>
+                                            </p>
+                                            <div class="collapse" id="collapseExample">
+                                            <div class="card card-body">
+                                               1. PlateType: plate to be used as defined in Plate Definition
+                                                2. PlateID: this is user’s custom ID for a specific plate, e.g. it could be CI-NewJersey-23 or anything
+                                                user requires.
+                                                3. Location where to bring the position. “AM” is normally used which stands for Aperture Main.
+                                                This indicates that the plate position’s target should be Aperture Main.
+                                                4. Plate Row: e.g. if the location is B5a then this would be “B”. Must match Plate Definition.
+                                                5. Plate Column: e.g. if the location is B5a then this would be “5”. Must match Plate Definition.
+                                                6. Plate Subwell: e.g. if the location is B5a then this would be “a”. Must match Plate Definition.
+                                                7. Comment*: this field is a comment generated by the software. Convention is to prefix with “OK”
+                                                or “Fail” and the result of experiment (e.g. “FAIL: melted”).
+                                                8. CrystalID*: This is field auto-generated by the software, using the Xta-no field/mask of the
+                                                “Workflow control” screen.
+                                                9. Time of Arrival*: time when the move to bring the plate position to the target destination
+                                                stopped.
+                                                10. Time of Departure*: time when one of the red or green (success/fail) buttons was pressed and
+                                                picking was completed.
+                                                11. Duration*: Time of Departure – Time of Arrival.
+                                                12. Destination Name*: this field is auto-generated by using the “Destination” section of the
+                                                “Workflow control” tab. For example, this could be a puck identifier.
+                                                13. Destination Location: this field is auto-generated by using the “Destination” section of the
+                                                “Workflow control” tab. It represents individual location within the destination (e.g. a pin
+                                                number in a puck)
+                                                14. Barcode: barcode number associated with this crystal.
+                                                15. External Comment*: any other comment user wishes to enter in the file.
+                                            </div>
+                                            </div>
+                                                
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3>Looping</h3>
+                                        <form id="picklist-form" enctype="multipart/form-data" method="post">
+                                            {% csrf_token %}
+                                            {{ forms.picklistform|crispy}}
+                                            <span>
+                                                <button type="submit" class="btn btn-primary">Submit</button>
+
+                                            </span>
+                                        </form>
+                                    </div>
+                                </div>
+                        
+                            </div>
                         </div>
                     </div>
                 </div>

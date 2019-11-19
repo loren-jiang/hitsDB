@@ -159,6 +159,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
+# STATIC_URL = S3_URL + STATIC_DIRECTORY
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
@@ -176,29 +177,22 @@ EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 EMAIL_PORT = config('EMAIL_PORT', cast=int)
 
 # AWS S3 configuraiton
-
-# DEFAULT_FILE_STORAGE = 's3.s3utils.MediaStorage' 
-# STATICFILES_STORAGE = 's3.s3utils.StaticS3BotoStorage'
-
 AWS_DEFAULT_ACL = None
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
 
 S3_URL = 'http://%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
-# STATIC_DIRECTORY = '/static/'
+
 MEDIA_DIRECTORY = '/media/'
-# STATIC_URL = S3_URL + STATIC_DIRECTORY
 MEDIA_URL = S3_URL + MEDIA_DIRECTORY
+USE_LOCAL_STORAGE = True
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 AWS_S3_OBJECT_PARAMETERS = {
     'CacheControl': 'max-age=86400',
 }
-# AWS_STATIC_LOCATION = 'static'
-# STATICFILES_STORAGE = 's3.s3utils.StaticStorage'
-# STATIC_URL = "https://%s/%s/" % (AWS_S3_CUSTOM_DOMAIN, AWS_STATIC_LOCATION)
 
 AWS_PUBLIC_MEDIA_LOCATION = 'media/public'
 DEFAULT_FILE_STORAGE = 's3.s3utils.PublicMediaStorage'

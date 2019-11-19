@@ -1,5 +1,5 @@
 from django.test import TestCase
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from experiment.models import Experiment, Plate, PlateType, Project, Soak, SubWell, Well
 from lib.models import Library, Compound
 from datetime import datetime
@@ -36,7 +36,10 @@ class ExperimentTests(TestCase):
         self.assertEquals(exp.prev_library_id, lib1.id) #library id taken note of
         self.assertEquals(exp.prev_initData_id, exp.initData.id) #library id taken note of
         os.remove("./media/" + str(exp.initData.local_upload)) 
-     
+        
+        same_exp = Experiment.objects.filter(id=exp.id)
+        print("dfss")
+        print(same_exp[0].prev_library_id)
         # exp.library = lib2
         # exp.save()  
         # self.assertEquals(exp.prev_library_id, lib2.id) #library id taken note of
