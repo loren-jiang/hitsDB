@@ -8,13 +8,14 @@ from ..forms import CreateSrcPlatesMultiForm, ExperimentModelForm, PlatesSetupMu
     ExpAsMultiForm, SoaksSetupMultiForm, ExpInitDataMultiForm, PicklistMultiForm
 from forms_custom.multiforms import MultiFormsView
 from django.db.models import Count, F, Value
-from ..decorators import is_users_experiment 
+from ..decorators import is_users_experiment, is_user_accessible_experiment
 from django.conf import settings
 from s3.s3utils import myS3Client, myS3Resource, create_presigned_url
 from s3.models import PrivateFileJSON, PrivateFileCSV
 from io import TextIOWrapper
 from my_utils.orm_functions import update_instance
 from django.utils import timezone
+import csv
 
 class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
     template_name = "experiment/exp_templates/exp_main.html"
@@ -196,17 +197,17 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
             if s3_initData_path:
                 context['init_data_file_url'] = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, 
                     'media/private/' + s3_initData_path, 4000)
-            
+        current_step =  exp.getCurrentStep
         context['exp'] = exp
         context['src_plates_table'] = src_plates_table
         context['dest_plates_table'] = dest_plates_table
         context['soaks_table'] = soaks_table
         context['platesValid'] = exp.platesValid
-        context['current_step'] = exp.getCurrentStep
+        context['current_step'] = current_step
         context['soaksValid'] = exp.soaksValid
         context['soaks_download'] = reverse('soaks_csv_view', kwargs={'pk_exp':exp.id})
         context['rockMakerIds'] = [p.rockMakerId for p in exp.plates.filter(rockMakerId__isnull=False)]
-
+        context['incompleted_steps'] = [i+1 for i in range(current_step)]
         # print(context['forms']['initform'])
         return context
 
@@ -337,6 +338,17 @@ def delete_exp_plates(request, pk_exp):
     for p in exp.plates.all():
         p.delete()
     return redirect('exp',pk)
+
+@is_user_accessible_experiment
+def picklist_template_view(request,pk_exp, pk_proj=None):
+    exp = get_object_or_404(Experiment, pk=pk_exp) 
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment;filename=' + str(exp.name) + '_picklist' +  '.csv'
+    writer = csv.writer(response)
+    for s in exp.usedSoaks:
+        writer.writerow([exp.destPlateType, s.dest.name])
+    return response
+
 
 # @is_users_experiment
 # def soaks_csv_view(request,pk_exp ,pk_src_plate=None, pk_dest_plate=None):

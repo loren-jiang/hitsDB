@@ -83,6 +83,6 @@ urlpatterns = [
     # re_path(r'^home/projs/(?P<pk_proj>\d+)/exps/delete_exp/(?P<pk_exp>\d+)/$', views.delete_experiment, name='delete_exp'),
     # re_path(r'^home/projs/(?P<pk_proj>\d+)/exps/delete_exps/(?P<pks_exp>(?:\d+/)+)/$', views.delete_experiments, name='delete_exps'),
     re_path(r'^home/projs/(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/delete_exp_plates/$', views.delete_exp_plates, name='delete_exp_plates'),
-    
+    re_path(r'^home/projs/(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/picklist_template/$', views.picklist_template_view, name='picklist_template'),
 ]       
    	

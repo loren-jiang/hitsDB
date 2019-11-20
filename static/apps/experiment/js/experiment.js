@@ -16,9 +16,10 @@ function confirmLibraryChange(lib_pk) {
 
 function initCurrentStep(step) {
 
-    let exp_step = `#v-pills-tab a:nth-child(${parseInt(step)})`;
+    let exp_step = `#exp-tab a:nth-child(${parseInt(step)})`;
     const hash = window.location.hash;
     const selector = hash ? hash + '-tab': exp_step;
+    console.log(selector);
     $(selector).tab('show');
 }
 

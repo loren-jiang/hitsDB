@@ -105,6 +105,7 @@ def DropImageViewGUI(request, *args, **kwargs):
     p_drop_images= p.drop_images.all()
 
     well_qs = p.wells.all().prefetch_related('subwells','subwells__parentWell', 'subwells__soak').order_by('name')
+    print([w.id for w in well_qs])
     numWells = well_qs.count()
     wells_ = [w for w in well_qs]
     wells = [None] * len(wells_)
@@ -120,6 +121,7 @@ def DropImageViewGUI(request, *args, **kwargs):
             
             try:
                 if s_w.soak:
+                    print(s_w.soak)
                     # print(s_w.name)
                     guiURL = reverse_lazy('imageGUI', kwargs={'plate_id':p.pk, 
                                 'user_id':request.user.pk, 

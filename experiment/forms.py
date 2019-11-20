@@ -21,6 +21,11 @@ from s3.forms import PrivateFileUploadForm, PrivateFileCSVForm
 from .querysets import user_editable_projects, user_editable_plates
 from my_utils.utility_functions import lists_diff 
 
+
+# crispy form imports
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, HTML, Button
+
 class SoakForm(forms.ModelForm):
     class Meta:
         model = Soak
@@ -124,20 +129,6 @@ class ExpAsMultiForm(MultipleForm, ExperimentModelForm):
 
     class Meta(ExperimentModelForm.Meta):
         fields = list(ExperimentModelForm.Meta.fields) + ['project']
-    
-
-    # put form validation here 
-    # def clean(self, *args, **kwargs):
-    #     cd =  super(ExpAsMultiForm, self).clean(*args, **kwargs)
-    # #     # cd = self.cleaned_data
-    # #     cd_copy = cd.copy()
-    # #     fields = [k for k in self.fields]
-    #     if len(cd['name']) < 3:
-    #         self._errors['name'] = ["Name not greater than 3 chars."]
-    # #     for key in cd_copy:
-    # #         if not key in fields:
-    # #             cd.pop(key)
-    #     return cd
 
 class ExpInitDataMultiForm(MultipleForm):
     initDataFile = forms.FileField(label="Initialization file [.json]",
@@ -161,13 +152,14 @@ class ExpInitDataMultiForm(MultipleForm):
                 data_dict = json.loads(data_json)
                 plate_ids = data_dict.keys()
                 existing_ids = []
+                exp_dest_plate_ids = [p.rockMakerId for p in self.exp.plates.filter(isSource=False)]
                 for p_id in plate_ids:
-                    if Plate.objects.filter(rockMakerId=p_id).exists():
+                    if Plate.objects.filter(rockMakerId=p_id).exists() and p_id not in exp_dest_plate_ids:
                         existing_ids.append(p_id)
                 if existing_ids:
                     self.add_error('initDataFile',
                         ValidationError(            
-                            ('Plate with RockMaker ID %(value)s already exist(s).'),
+                            ('Plate with RockMaker ID %(value)s already exist(s) and are not in current experiment.'),
                             code='invalid',
                             params={'value': existing_ids},
                         )
@@ -188,8 +180,29 @@ class CreateSrcPlatesMultiForm(MultipleForm):
         required=False, label="Template source plates")
 
     def __init__(self, exp, *args, **kwargs):
-        super(CreateSrcPlatesMultiForm, self).__init__(*args, **kwargs)
-
+        # super(CreateSrcPlatesMultiForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
+        # make from crispy
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Row(
+                Column(HTML("""<h5>Option 1</h5>"""), css_class='col')
+            ),
+            Row(
+                Column('numSrcPlates', css_class='col'),
+                Column('plateLibDataFile', css_class='col'),
+                css_class='form-row align-items-start'
+            ),
+            Row(
+                Column(HTML("""<h5>Option 2</h5>"""), css_class='col')
+            ),
+            Row(
+                Column('templateSrcPlates', css_class='col'),
+                css_class='form-row align-items-start'
+            ),
+            Column('action', css_class='hidden'),
+            Submit('submit', 'Submit')
+        )
     def clean_plateLibDataFile(self):
         f = self.cleaned_data.get('plateLibDataFile')
         headers_required =['zinc_id', 'well', 'plate_idx']

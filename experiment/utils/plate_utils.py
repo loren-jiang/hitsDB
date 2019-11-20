@@ -1,5 +1,7 @@
 from django.apps import apps
 from django.db import transaction, IntegrityError
+import string
+from my_utils.utility_functions import gen_circ_list, ceiling_div
 
 Plate = apps.get_model('experiment', 'Plate')
 Well = apps.get_model('experiment', 'Well')
@@ -66,3 +68,33 @@ def copyCompoundsFromOtherPlate(self, plate):
         for i in range(num_my_wells):
             my_wells[i].compound = compounds_to_copy[i] 
         Well.objects.bulk_update(my_wells, fields=['compound'])
+
+def getRowIdxFromWellLetter(c):
+    letters = [c for c in string.ascii_lowercase]
+    num_letters = len(letters)
+    letters = dict([(tup[1], tup[0]) for tup in enumerate(letters)])
+    c = c.lower()
+    num_chars = len(c)
+    return num_letters*(num_chars-1) + (letters.get(c[num_chars-1]) + 1) 
+
+def createWellDict(numRows, numCols):
+    numWells = numRows * numCols
+    letters = gen_circ_list(list(string.ascii_uppercase), numWells)
+    wellNames = [None] *  numWells
+    wellProps = [None] * numWells
+    wellIdx = 0
+    for rowIdx in range(numRows):
+        for colIdx in range(numCols):
+            let = letters[rowIdx]
+            num = str(colIdx + 1)
+            if (len(num)==1):
+                num = "0" + num
+            s = let + num
+            wellNames[wellIdx] = s
+            wellProps[wellIdx] = {
+                'wellIdx':wellIdx,
+                'wellRowIdx':rowIdx,
+                'wellColIdx':colIdx,
+            }
+            wellIdx += 1
+    return dict(zip(wellNames, wellProps))

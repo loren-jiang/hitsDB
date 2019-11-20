@@ -16,8 +16,11 @@ def user_accessible_libs(user):
     return libs
 
 #-------------------------------------------------Experiment querysets -----------------------------------------------------------
-def user_editable_experiments(user):
+def user_accessible_experiments(user):
     return Experiment.objects.filter(project__in=user_accessible_projects(user))
+
+def user_editable_experiments(user):
+    return Experiment.objects.filter(project__in=user_editable_projects(user))
 #-------------------------------------------------Project querysets --------------------------------------------------------------
 # returns queryset of projects explicitly owned by user with experiments
 def user_projects_with_exps(user):

@@ -2,6 +2,7 @@ from functools import wraps, partial
 from django.core.exceptions import PermissionDenied
 from .models import Project, Experiment, Plate
 from lib.models import Library
+from .querysets import user_accessible_experiments, user_editable_experiments
 
 def accessible_project_for_user(func):
     @wraps(func)
@@ -44,6 +45,18 @@ def is_users_experiment(func):
             return func(request, *args, **kwargs)
         else:
             raise PermissionDenied
+    return wrapped
+
+def is_user_accessible_experiment(func):
+    @wraps(func)
+    def wrapped(request, *args, **kwargs):
+        pk_exp = kwargs.get('pk_exp')
+        if pk_exp:
+            exp = Experiment.objects.get(pk=pk_exp)
+            if user_accessible_experiments(request.user).filter(id=exp.id).exists():
+                return func(request, *args, **kwargs)
+            else:
+                raise PermissionDenied
     return wrapped
 
 def is_source_plate(func):

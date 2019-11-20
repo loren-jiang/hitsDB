@@ -261,11 +261,59 @@ def makePlates(self, num_plates, plate_type, plates_init_data=None):
     except Exception as e:
         return []
 
+def revertToStep(self, step):
+    def revertToStepOne(exp):
+        """
+        """
+
+        # Delete plates in experiment except source plates that are templates
+        dest_plates = exp.plates.filter(isSource=False) 
+        dest_plates.delete()
+        src_plates = exp.plates.filter(isSource=True)
+        for p in src_plates:
+            if p.isTemplate:
+                exp.plates.remove(p)
+            else:
+                p.delete()    
+
+        # Remove soaks
+        exp.soaks.remove()
+        
+        # Remove picklist file if it exists
+        exp.picklist = None
+
+        # Save
+        exp.save()
+
+    def revertToStepTwo(exp):
+        pass
+
+    def revertToStepThree(exp):
+        pass
+
+    def revertToStepFour(exp):
+        pass
+
+    if step==1:
+        revertToStepOne(self)
+    if step==2:
+        revertToStepTwo(self)
+    if step==3:
+        revertToStepThree(self)
+    if step==4:
+        revertToStepFour(self)
+
 def createPlatesSoaksFromInitDataJSON(self):
     exp = self
-    dest_plates = exp.plates.filter(isSource=False)
-    if dest_plates.exists():
-        dest_plates.delete()
+    revertToStep(exp, 1)
+    # dest_plates = exp.plates.filter(isSource=False) 
+    # dest_plates.delete()
+    # src_plates = exp.plates.filter(isSource=True)
+    # for p in src_plates:
+    #     if p.isTemplate:
+    #         exp.plates.remove(p)
+    #     else:
+    #         p.delete()
     init_data_plates = exp.initDataJSON.items()
     lst_plates = exp.makePlates(len(init_data_plates), self.destPlateType)
     soaks = []
@@ -353,4 +401,3 @@ def formattedSoaks(self, qs_soaks,
     return {'src_plates':split_list(src_wells,num_src_plates), 
             'dest_plates':split_list(dest_subwells,num_dest_plates),
             }
-

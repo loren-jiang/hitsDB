@@ -19,3 +19,8 @@ picklist_map = {
     14: {'name': 'Barcode', 'desc':'', 'optional':False},
     15: {'name': 'External Comment', 'desc':'any other comment user wishes to enter in the file.', 'optional':True}
 }
+
+echoSrc_to_mrc3Dest_map = {
+
+}
+
