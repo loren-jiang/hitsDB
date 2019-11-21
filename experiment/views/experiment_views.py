@@ -16,6 +16,7 @@ from io import TextIOWrapper
 from my_utils.orm_functions import update_instance
 from django.utils import timezone
 import csv
+import re
 
 class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
     template_name = "experiment/exp_templates/exp_main.html"
@@ -341,12 +342,19 @@ def delete_exp_plates(request, pk_exp):
 
 @is_user_accessible_experiment
 def picklist_template_view(request,pk_exp, pk_proj=None):
+    from my_utils.constants import subwell_map
     exp = get_object_or_404(Experiment, pk=pk_exp) 
+    # well_map = exp.destPlateType.wellDict
+
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment;filename=' + str(exp.name) + '_picklist' +  '.csv'
     writer = csv.writer(response)
     for s in exp.usedSoaks:
-        writer.writerow([exp.destPlateType, s.dest.name])
+        well_name, subwell_idx = s.dest.name.split('_')
+        # well_props = well_map[well_name]
+        match = re.match(r"([a-z]+)([0-9]+)", well_name, re.I)
+        items = match.group()
+        writer.writerow([exp.destPlateType, items[0], items[1], subwell_map[subwell_idx]])
     return response
 
 

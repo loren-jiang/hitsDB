@@ -1,10 +1,30 @@
 from functools import reduce 
 from operator import mul
 
+def shuffleDict(d):
+    """
+    Shuffles key, value pairs of dictionary, maintaining uniqueness
+    """
+    import random
+    d_ = d.copy()
+    items = list([ [k,v] for k,v in d_.items() ])
+    random.shuffle(items)
+    i = 0
+    for k in d_.keys():
+      items[i][0] = k
+      i += 1
+    return dict(items)
+
 def lists_equal(L1, L2):
+    """
+    Checks if two lists are equal
+    """
     return len(L1) == len(L2) and sorted(L1) == sorted(L2)
 
 def lists_diff(list1, list2):
+    """
+    Returns the difference of two lists 
+    """
     return list(set(list1).symmetric_difference(set(list2)))  # or return list(set(list1) ^ set(list2))
 
 def tests_wrapper(tests):

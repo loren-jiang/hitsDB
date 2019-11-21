@@ -44,6 +44,7 @@ def createSrcPlatesFromLibFile(self, numPlates=0, file=None, file_reader=None):
     exp = self
     if not(file_reader):
         file_reader = csv.reader(file, delimiter=',')
+    
     headers = next(file_reader)
     zinc_id_idx = headers.index('zinc_id')
     plate_idx_idx = headers.index('plate_idx')

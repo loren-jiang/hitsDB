@@ -26,6 +26,11 @@ from my_utils.utility_functions import lists_diff
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, HTML, Button
 
+class PlateForm(forms.ModelForm):
+    class Meta:
+        model = Plate
+        fields = ("name","isTemplate",)
+
 class SoakForm(forms.ModelForm):
     class Meta:
         model = Soak
@@ -213,7 +218,6 @@ class CreateSrcPlatesMultiForm(MultipleForm):
                 i = 0
                 headers = []
                 for c in f.chunks():
-                    # print(c.decode())
                     reader = csv.reader(str(c, encoding='utf-8').split('\n'), delimiter=',')
                     if (i==0):
                         headers = next(reader)
@@ -229,6 +233,7 @@ class CreateSrcPlatesMultiForm(MultipleForm):
             except (ValueError, OverflowError) as e:
                 if type(e) is OverflowError:
                     self.add_error('plateLibDataFile','File is too big!')
+        f.open() #have to reopen file after validation...or just send file contents
         return f
 
     def clean(self):

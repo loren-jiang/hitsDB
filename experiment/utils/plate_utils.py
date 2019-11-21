@@ -10,7 +10,7 @@ SubWell = apps.get_model('experiment', 'SubWell')
 
 def createPlateWells(self):
     """
-    TODO: write DOCSTRING
+    Assuming self.plateType exists, this function populates the plate with the appropriate wells and/or subwells
     """
     wells = None
     plateType = self.plateType
@@ -38,20 +38,31 @@ def createPlateWells(self):
                 SubWell.objects.bulk_create(subwells_lst)
     return wells
 
-def updateCompounds(self, compounds, compound_dict={}):
+def updateCompounds(plate, compounds, compounds_dict={}):
+    """
+    Update plate with list of compounds; number of compounds should be less than or equal to number of plate's wells
+
+    Parameters:
+    plate (Plate): instance of Plate model
+    compounds (list): list of compounds
+    compounds_dict (dictionary): dictionary of compounds that maps a compound to certain well; key is zinc_id and val is well name
+    """
     if compounds:
-        my_wells = [w for w in self.wells.all().order_by('name')]
+        my_wells = [w for w in plate.wells.all().order_by('name')]
         num_my_wells = len(my_wells)
         num_compounds = len(compounds)
-        assert num_compounds >= num_my_wells
-        
-        if compound_dict:
-            pass
-        else: #no compound_dict provided so update one-by-one in order
-            for i in range(num_my_wells):
-                my_wells[i].compound = compounds[i] 
-            Well.objects.bulk_update(my_wells, fields=['compound'])
-
+        assert num_compounds <= num_my_wells
+        ordered_compounds = compounds
+        if compounds_dict:
+            my_wells_map = dict([(w.name, idx) for idx, w in enumerate(my_wells)])
+            temp = [None]*num_compounds
+            for c in compounds:
+                idx = my_wells_map[compounds_dict[c.zinc_id]]
+                temp[idx] = c
+            ordered_compounds = temp
+        for i in range(num_compounds):
+            my_wells[i].compound = ordered_compounds[i] 
+        Well.objects.bulk_update(my_wells, fields=['compound'])
 
 def copyCompoundsFromOtherPlate(self, plate):
     """

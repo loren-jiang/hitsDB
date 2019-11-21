@@ -161,20 +161,46 @@ class PlateTests(TestCase):
 
         # Testing that on save, destination plates (isSource=False) cannot also be templates (isTemplate=True)
         dest_plate = DestPlateFactory()
+        error = None
         try:    
             with transaction.atomic():      
                 dest_plate.isTemplate = True  
                 dest_plate.save()
-        except Exception as e:
-            self.assertEquals(type(e), IntegrityError) # only source plates can have isTemplate=True
+        except IntegrityError as e:
+            error = e
+        self.assertTrue(bool(error) and issubclass(type(error), IntegrityError)) # only source plates can have isTemplate=True
         dest_plate.isTemplate = False
         dest_plate.save() #now destination plate can be saved
+
+        # Testing only dest plates can have rockMakerId
+        error = None
+        try:
+            with transaction.atomic(): 
+                src_plate.rockMakerId = 1
+                src_plate.save()
+        except IntegrityError as e:
+            error = e 
+        self.assertTrue(bool(error) and issubclass(type(error), IntegrityError))
+
+        dest_plate.rockMakerId = 1
+        dest_plate.save() #should be fine
 
     def testUpdateCompounds(self):
         compounds = make_n_compounds(384)
         src_plate = SourcePlateFactory()
         src_plate.updateCompounds(compounds)
-        self.assertEquals(len(compounds), len([w.compound for w in src_plate.wells.all()]))
+        my_wells = src_plate.wells.filter(compound__isnull=False).select_related('compound')
+        well_compounds = [w.compound for w in my_wells]
+        self.assertEquals(compounds, well_compounds)
+        compounds_dict = {}
+        for w in my_wells:
+            compounds_dict[w.compound.zinc_id] = w.name
+        from my_utils.utility_functions import shuffleDict
+        
+        shuffled_compounds_dict = shuffleDict(compounds_dict)
+        src_plate.updateCompounds(compounds, shuffled_compounds_dict)
+        self.assertEquals([k for k, v in sorted(shuffled_compounds_dict.items(), key=lambda x: x[1])], 
+            [c.zinc_id for c in src_plate.compounds])
 
     def testCopyCompoundsFromOtherPlate(self):
         compounds = make_n_compounds(384)

@@ -24,3 +24,12 @@ echoSrc_to_mrc3Dest_map = {
 
 }
 
+subwell_map = {
+    1: 'a',
+    2: 'b',
+    3: 'c',
+}
+
+
+
+

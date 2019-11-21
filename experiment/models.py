@@ -22,8 +22,7 @@ import json
 import csv 
 from django.db import transaction, IntegrityError
 from django.urls import reverse, reverse_lazy
-from my_utils.utility_functions import lists_diff, lists_equal
-from functools import reduce # only in Python 3
+from functools import reduce 
 
 # Create your models here.
 class Project(models.Model):
@@ -478,7 +477,6 @@ class Experiment(models.Model):
                     d_num_rows=8, d_num_cols=12, d_num_subwells=3):
         from .utils.experiment_utils import formattedSoaks as func
         return func(self, qs_soaks, s_num_rows, s_num_cols, d_num_rows, d_num_cols, d_num_subwells)
-      
 
     # takes in exc list of column names to exclude
     def getSoaksTable(self, exc=[]):
@@ -520,7 +518,7 @@ class Plate(models.Model):
     plateIdxExp = models.PositiveIntegerField(default=1,null=True, blank=True)
     dataSheetURL = models.URLField(max_length=200, null=True, blank=True)
     echoCompatible = models.BooleanField(default=False)
-    rockMakerId = models.CharField(max_length=10, unique=True,  null=True, blank=True)
+    rockMakerId = models.CharField(max_length=10, unique=True,  null=True, blank=True) #only dest plate should have rockMakerId
     isTemplate = models.BooleanField(default=False) #template plates can be copied; should only apply for source plates
 
     created_date = models.DateTimeField(auto_now_add=True)
@@ -531,7 +529,9 @@ class Plate(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['plateIdxExp', 'isSource', 'experiment'], name='unique_src_dest_plate_idx'),
             models.CheckConstraint(check=~(models.Q(isSource=False) & models.Q(isTemplate=True)), 
-                name='source_can_only_be_template')
+                name='source_can_only_be_template'),
+            models.CheckConstraint(check=~(models.Q(isSource=True) & models.Q(rockMakerId__isnull=False)), 
+                name='dest_can_only_have_rockMakerId'),
         ]
         # unique_together = ('plateIdxExp', 'isSource', 'experiment')
 
@@ -825,32 +825,6 @@ class Soak(models.Model):
 
 class XtalContainer(models.Model):
     pass
-
-
-
-# HELPER FUNCTIONS -----------------------------------------------------
-
-# def createWellDict(numRows, numCols):
-#     numWells = numRows * numCols
-#     letters = gen_circ_list(list(string.ascii_uppercase), numWells)
-#     wellNames = [None] *  numWells
-#     wellProps = [None] * numWells
-#     wellIdx = 0
-#     for rowIdx in range(numRows):
-#         for colIdx in range(numCols):
-#             let = letters[rowIdx]
-#             num = str(colIdx + 1)
-#             if (len(num)==1):
-#                 num = "0" + num
-#             s = let + num
-#             wellNames[wellIdx] = s
-#             wellProps[wellIdx] = {
-#                 'wellIdx':wellIdx,
-#                 'wellRowIdx':rowIdx,
-#                 'wellColIdx':colIdx,
-#             }
-#             wellIdx += 1
-#     return dict(zip(wellNames, wellProps))
 
 
 # SIGNALS -----------------------------------------------------

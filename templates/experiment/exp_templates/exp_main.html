@@ -142,7 +142,8 @@
                                         <form id="platelib-form" enctype="multipart/form-data" method="post">
                                             {% csrf_token %}
                                             {% crispy forms.platelibform %}
-                                    
+                                            {% comment %} {{ forms.platelibform | crispy }} {% endcomment %}
+                                            {% comment %} <button type="submit" class="btn btn-primary">Upload</button> {% endcomment %}
                                         </form>
                                         {% else %}
                                         <span> Please complete prior step(s): {{incompleted_steps}} </span>
