@@ -4,8 +4,8 @@
 {% load static %}
 {% block content %}
 
-{% with table=table filter=filter modals=modals btn=btn%}
-{% include 'filter_table.html' %}
-{% endwith %}
+    {% with table=table filter=filter modals=modals buttons=buttons%}
+    {% include 'filter_table.html' %}
+    {% endwith %}
 
 {% endblock %}

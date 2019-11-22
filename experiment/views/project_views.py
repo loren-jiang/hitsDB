@@ -269,9 +269,11 @@ def get_user_libraries(request, exc=[]):
 @is_users_project
 def proj_exps(request, pk_proj):
     proj = Project.objects.get(id=pk_proj)
-    exps = proj.experiments.filter()
+    exps = proj.experiments.order_by('modified_date')
     data = {
         'exps':exps,
+        'table':ExperimentsTable(data=exps)
+
     }
     return render(request, 'experiment/exp_templates/experiments.html', data)
 

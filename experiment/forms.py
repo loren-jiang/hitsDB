@@ -30,6 +30,10 @@ class PlateForm(forms.ModelForm):
     class Meta:
         model = Plate
         fields = ("name","isTemplate",)
+    def __init__(self, *args, **kwargs):
+        if kwargs.get('user'):
+            self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
 
 class SoakForm(forms.ModelForm):
     class Meta:
@@ -81,7 +85,7 @@ class ProjectForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         if kwargs.get('user'):
             self.user = kwargs.pop('user', None)
-        super(ProjectForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if self.user:
             self.fields['owner'] = forms.ModelChoiceField(queryset=User.objects.filter(id=self.user.id), initial=self.user.id, widget=forms.HiddenInput())  
             collab_qs=User.objects.filter(groups__in=self.user.groups.all(), is_active=True).exclude(id=self.user.id)    
@@ -185,7 +189,6 @@ class CreateSrcPlatesMultiForm(MultipleForm):
         required=False, label="Template source plates")
 
     def __init__(self, exp, *args, **kwargs):
-        # super(CreateSrcPlatesMultiForm, self).__init__(*args, **kwargs)
         super().__init__(*args, **kwargs)
         # make from crispy
         self.helper = FormHelper()
@@ -210,18 +213,29 @@ class CreateSrcPlatesMultiForm(MultipleForm):
         )
     def clean_plateLibDataFile(self):
         f = self.cleaned_data.get('plateLibDataFile')
+        numSrcPlates = self.cleaned_data.get('numSrcPlates')
         headers_required =['zinc_id', 'well', 'plate_idx']
+        plate_idxs = [] #list of unique plate_idx's
         if f:
             try:
                 if f.size >= 2.5e6:
                     raise OverflowError
-                i = 0
                 headers = []
+                content = []
                 for c in f.chunks():
                     reader = csv.reader(str(c, encoding='utf-8').split('\n'), delimiter=',')
-                    if (i==0):
-                        headers = next(reader)
-                    i += 1
+                    headers = next(reader)
+                    headers_map = dict([(v,i) for i, v in enumerate(headers)])
+                    try:
+                        content.extend(headers)
+                        for row in reader:    
+                            plate_idx = int(row[headers_map['plate_idx']])
+                            if plate_idx not in plate_idxs:
+                                plate_idxs.append(plate_idx)
+                            content.extend(row)
+                    except KeyError:
+                        pass # will be handled with headers_missing list below
+
                 headers_missing = list(compress(headers_required, list(map(lambda h: not(h in headers), headers_required))))
                 if headers_missing:
                     self.add_error('plateLibDataFile', 
@@ -230,10 +244,13 @@ class CreateSrcPlatesMultiForm(MultipleForm):
                             code='invalid',
                             params={'value': headers_missing},
                         ))
+                if [x+1 for x in range(numSrcPlates)] != [x for x in sorted(plate_idxs)]:
+                    self.add_error('plateLibDataFile', 'Range of number of plates should match set of unique plate_idx')
+                f.open() #have to reopen file after validation...or just send file contents
             except (ValueError, OverflowError) as e:
                 if type(e) is OverflowError:
                     self.add_error('plateLibDataFile','File is too big!')
-        f.open() #have to reopen file after validation...or just send file contents
+        
         return f
 
     def clean(self):
@@ -344,11 +361,12 @@ class PicklistMultiForm(MultipleForm, PrivateFileCSVForm):
                                     code='invalid',
                                     params={'value': missing_ids},
                             )) 
-        
+                f.open()
     
             except (ValueError, OverflowError) as e:
                 if type(e) is OverflowError:
                     self.add_error(None,'File is too large.')
+        
         return f
 
     def clean_upload(self):

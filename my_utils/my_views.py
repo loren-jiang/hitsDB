@@ -4,6 +4,8 @@ from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidde
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.utils.decorators import method_decorator
+from .views_helper import build_modal_form_data
 
 class MultiFormMixin(ContextMixin):
     # taken from https://gist.github.com/badri/4a1be2423ce9353373e1b3f2cc67b80b
@@ -141,6 +143,13 @@ class AjaxableResponseMixin:
 class ModalCreateView(AjaxableResponseMixin, CreateView):
     template_name = 'modals/modal_form.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        decorators = kwargs.pop("decorators", [])
+        @method_decorator(decorators)
+        def helper(self, request, *args, **kwargs):
+            return super().dispatch(request, *args, **kwargs)
+        return helper(self, request, *args, **kwargs)
+
     def get_initial(self, *args, **kwargs):
         initial = super(ModalCreateView, self).get_initial(*args, **kwargs)
         return initial
@@ -163,7 +172,14 @@ class ModalCreateView(AjaxableResponseMixin, CreateView):
 
 class ModalEditView(AjaxableResponseMixin, UpdateView):
     template_name = 'modals/modal_form.html'
-    
+
+    def dispatch(self, request, *args, **kwargs):
+        decorators = kwargs.pop("decorators", [])
+        @method_decorator(decorators)
+        def helper(self, request, *args, **kwargs):
+            return super().dispatch(request, *args, **kwargs)
+        return helper(self, request, *args, **kwargs)
+
     def get_form_kwargs(self, *args, **kwargs):
         kwargs = super(ModalEditView, self).get_form_kwargs(*args, **kwargs) 
         user = self.request.user
@@ -173,16 +189,14 @@ class ModalEditView(AjaxableResponseMixin, UpdateView):
 
     def get_context_data(self, *args, **kwargs):
         pk = self.object.pk
-        modalFormData = self.object.getModalFormData()
+        # modalFormData = self.object.getModalFormData()
+        modalFormData = build_modal_form_data(type(self.object))
         context = super(ModalEditView, self).get_context_data(*args, **kwargs)
         context.update(
             {
             "arg":pk,
             "modal_title":"Edit " + self.form_class.Meta.model.model_name,
-            # "modal_title":"Edit | Last modified: %s" % self.object.modified_date,
             'action':self.object.editInstanceUrl,
-            # 'action': modalFormData['edit']['view'],
-            # "action":reverse('lib_edit', kwargs={'pk_lib':pk}), 
             "form_class": modalFormData['edit']['form_class'],
             "use_ajax":True,
         })

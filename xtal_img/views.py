@@ -40,11 +40,6 @@ class DropImagesUploadView(FormView):
     # pk = None
 
 
-    # def form_valid(self, form):
-    #     item = form.save()
-    #     self.pk = item.pk
-    #     return super(SomeView, self).form_valid(form)
-
     def get_success_url(self):
         p = Plate.objects.get(id=self.kwargs['pk_plate'])
         if p:
@@ -57,15 +52,17 @@ class DropImagesUploadView(FormView):
         return super(DropImagesUploadView, self).dispatch(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
-        p = get_object_or_404(Plate, id=kwargs['pk_plate'])
-        drop_images = p.drop_images.filter()
-        form = self.get_form(self.get_form_class())
-        context = {
-            'form': form,
-            'images': drop_images,
-            'dont_show_path': True,
-        }
-        return render(request, './s3/private_images_upload.html', context)
+        pk = kwargs.get('pk_plate', None)
+        if pk:
+            p = get_object_or_404(Plate, pk=pk)
+            drop_images = p.drop_images.filter()
+            form = self.get_form(self.get_form_class())
+            context = {
+                'form': form,
+                'images': drop_images,
+                'dont_show_path': True,
+            }
+            return render(request, './s3/private_images_upload.html', context)
 
     def post(self, request, *args, **kwargs):
         p = get_object_or_404(Plate, id=kwargs['pk_plate'])
@@ -121,8 +118,6 @@ def DropImageViewGUI(request, *args, **kwargs):
             
             try:
                 if s_w.soak:
-                    print(s_w.soak)
-                    # print(s_w.name)
                     guiURL = reverse_lazy('imageGUI', kwargs={'plate_id':p.pk, 
                                 'user_id':request.user.pk, 
                                 'file_name': file_name_})

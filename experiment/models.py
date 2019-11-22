@@ -58,27 +58,29 @@ class Project(models.Model):
         """
         Class method to return data needed for modal form to edit and make new instance of model
         """ 
-        new_id = cls.new_instance_viewname
-        edit_id = cls.edit_instance_viewname
-        model_name = cls.model_name
+        from my_utils.views_helper import build_modal_form_data as func
+        return func(cls)
+        # new_id = cls.new_instance_viewname
+        # edit_id = cls.edit_instance_viewname
+        # model_name = cls.model_name
 
-        return {
-            'new': {
-                'url_class': '%s_url' % new_id,
-                'modal_id': '%s_modal' % new_id,
-                'form_class': '%s_form' % new_id,
-                # 'button': {'id': new_id, 'text': 'New %s' % model_name,'class': 'btn-primary ' + '%s_url' % new_id, 
-                #     'href':reverse(new_id, kwargs={'form_class':"%s_form" % new_id})},
-            },
-            'edit': {
-                'url_class': '%s_url' % edit_id,
-                'modal_id': '%s_modal' % edit_id, 
-                'form_class': '%s_form' % edit_id,
-                # 'button': {'id': edit_id, 'text': 'Edit %s' % model_name,'class': 'btn-primary ' + '%s_url' % edit_id, 
-                #     'href':reverse(edit_id, kwargs={'form_class':"%s_form" % edit_id})},
-            }
+        # return {
+        #     'new': {
+        #         'url_class': '%s_url' % new_id,
+        #         'modal_id': '%s_modal' % new_id,
+        #         'form_class': '%s_form' % new_id,
+        #         # 'button': {'id': new_id, 'text': 'New %s' % model_name,'class': 'btn-primary ' + '%s_url' % new_id, 
+        #         #     'href':reverse(new_id, kwargs={'form_class':"%s_form" % new_id})},
+        #     },
+        #     'edit': {
+        #         'url_class': '%s_url' % edit_id,
+        #         'modal_id': '%s_modal' % edit_id, 
+        #         'form_class': '%s_form' % edit_id,
+        #         # 'button': {'id': edit_id, 'text': 'Edit %s' % model_name,'class': 'btn-primary ' + '%s_url' % edit_id, 
+        #         #     'href':reverse(edit_id, kwargs={'form_class':"%s_form" % edit_id})},
+        #     }
             
-        }   
+        # }   
 
     def getExperimentsTable(self, exc=[]):
         """
@@ -123,7 +125,7 @@ class Project(models.Model):
         get_latest_by = "modified_date"
 
     def get_absolute_url(self):
-        return "/projects/%i/" % self.id
+        return "/home/projects/%i/" % self.id
 
     def __str__(self):
         return self.name
@@ -165,7 +167,7 @@ class Experiment(models.Model):
         ]
 
     def get_absolute_url(self):
-        return "/exp/%i/" % self.id
+        return "/home/exps/%i/" % self.id
 
     def __str__(self):
         return self.name
@@ -200,8 +202,10 @@ class Experiment(models.Model):
         cond3 = self.destPlatesValid
         
         cond4 = self.soaksValid
-        conds = [cond0, cond1, cond2, cond3] # cond1 corresponds to step 1
-        if all(conds[0:4]): #might want to more robust check (e.g. # soaks = # compounds in library)
+        conds = [cond0, cond1, cond2, cond3, cond4] # cond1 corresponds to step 1
+        if all(conds[0:5]):
+            return 5
+        if all(conds[0:4]): 
             return 4
         if all(conds[0:3]):
             return 3
@@ -231,10 +235,13 @@ class Experiment(models.Model):
     @property
     def soaksValid(self):
         """
-        Returns True if experiment soaks exist and if each soak's dest subwell and source well exist and is in plate,
+        Returns True if experiment soaks exist and if each soak's dest subwell and source well exist and is in plate and
+        soaks .csv is downloaded,
         else returns False
         """
         if not(self.soaks.count()):
+            return False
+        if not(self.soak_export_date):
             return False
         for s in self.soaks.select_related('src__plate', 'dest__parentWell__plate'):
             if not(s.src_id and s.dest_id):
@@ -524,6 +531,10 @@ class Plate(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
 
+    new_instance_viewname = 'plate_new'
+    edit_instance_viewname = 'plate_edit'
+    model_name = 'Plate'
+
     class Meta:
         ordering = ('id',)
         constraints = [
@@ -542,8 +553,15 @@ class Plate(models.Model):
         return string + ' ' + self.name + ' ' + str(self.id)
 
     def get_absolute_url(self):
-        return "/plate/%i/" % self.id
+        return "/home/plates/%i/" % self.id
     
+    @property
+    def editInstanceUrl(self):
+        """
+        Returns url to edit class instance; should be @property because instance data is needed
+        """
+        return reverse(self.edit_instance_viewname, kwargs={'pk_plate':self.pk})
+
     @property
     def subwells(self):
         return SubWell.objects.filter(parentWell__in=self.wells.filter())
@@ -741,7 +759,8 @@ class SubWell(models.Model):
     useSoak = models.BooleanField(default=False)
 
     def __str__(self):
-        return repr(self.parentWell) + "_" + str(self.idx)
+        return self.name
+        # return repr(self.parentWell) + "_" + str(self.idx)
 
     class Meta:
         # ordering = ('idx',)
@@ -821,7 +840,8 @@ class Soak(models.Model):
         return mapUmToPix([self.drop_x, self.drop_y, self.drop_radius])
 
     def __str__(self):
-        return self.experiment.name + "_soak_" + str(self.id)
+        return "soak_" + str(self.id)
+        # return self.experiment.name + "_soak_" + str(self.id)
 
 class XtalContainer(models.Model):
     pass

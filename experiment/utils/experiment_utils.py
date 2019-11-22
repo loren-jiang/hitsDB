@@ -53,7 +53,7 @@ def createSrcPlatesFromLibFile(self, numPlates=0, file=None, file_reader=None):
         with transaction.atomic():
             platesMade = exp.makeSrcPlates(numPlates)
             plateIdxRange = range(1, numPlates+1)
-
+            print(plateIdxRange)
             compound_dict = {}
             for row in file_reader:
                 
@@ -105,11 +105,6 @@ def createSrcPlatesFromLibFile(self, numPlates=0, file=None, file_reader=None):
                 wells_dict[k].compound_id = well_compounds_dict[k].id
 
             Well.objects.bulk_update([v for k, v in wells_dict.items()], ['compound_id'], batch_size=500)
-
-            ### TODO: remove bulk_one_to_one_add since we already have well->compound relationship
-            # wells_with_compounds_ids = [wells_dict[k_].id for k_ in well_compounds_dict.keys()]
-            # throughRel = Well.compounds.through
-            # bulk_one_to_one_add(throughRel, wells_with_compounds_ids, well_compounds_ids, 'well_id', 'compound_id')
             
     except IntegrityError as e:
         print(e)
@@ -279,14 +274,18 @@ def revertToStep(self, step):
 
         # Remove soaks
         exp.soaks.remove()
-        
-        # Remove picklist file if it exists
-        exp.picklist = None
 
         # Save
         exp.save()
 
+        # Remove picklist file if it exists
+        exp.picklist = None
+
     def revertToStepTwo(exp):
+        """
+        """
+
+
         pass
 
     def revertToStepThree(exp):

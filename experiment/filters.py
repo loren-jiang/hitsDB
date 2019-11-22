@@ -1,14 +1,19 @@
 from django.contrib.auth.models import User, Group
-from .models import Soak, Project
+from .models import Soak, Project, Plate
 import django_filters
 from .querysets import user_collaborators
+
+# Callables may also be defined out of the class scope.
+def filter_not_empty(queryset, name, value):
+    lookup = '__'.join([name, 'isnull'])
+    return queryset.filter(**{lookup: False})
 
 class CustomFilterMixin:
     def __init__(self, *args, **kwargs):
         self.filter_id = kwargs.pop('filter_id', '')
         self.form_id = kwargs.pop('form_id', '')
         self.request = getattr(kwargs, 'request', None)
-        super(CustomFilterMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         
 
 class SoakFilter(django_filters.FilterSet):
@@ -35,3 +40,12 @@ class ProjectFilter(CustomFilterMixin, django_filters.FilterSet):
             'name':['icontains'], 
             'owner':['exact'],
             }
+
+class PlateFilter(CustomFilterMixin, django_filters.FilterSet):
+    # isTemplate = django_filters.BooleanFilter(field_name='isTemplate', method=filter_not_empty)
+    class Meta:
+        model = Plate
+        fields = {
+            'name':['icontains'],
+            'isTemplate':['exact']
+        }

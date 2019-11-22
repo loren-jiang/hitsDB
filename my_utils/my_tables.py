@@ -2,7 +2,7 @@ import django_tables2 as tables
 from django_tables2.utils import A  # alias for Accessor
 from django_tables2 import RequestConfig
 
-def modifyColumn(data_target, a_class, view_name, verbose_name='', orderable=False, accessor='pk'):
+def ModalFormColumn(data_target, a_class, view_name, verbose_name='', orderable=False, accessor='pk'):
     return tables.Column(verbose_name=verbose_name, 
                 orderable=orderable, 
                 empty_values=(),
@@ -14,7 +14,7 @@ def modifyColumn(data_target, a_class, view_name, verbose_name='', orderable=Fal
                             }
                     })
 
-class ModalEditMixin(tables.Table):
+class ModalFormMixin(tables.Table):
     """
     Table mixin to create 'modify' column which links to a modal edit form for the model instance
     """
@@ -33,7 +33,7 @@ class ModalEditMixin(tables.Table):
         self.view_name = kwargs.pop('view_name','')
 
         if all([self.data_target, self.a_class, self.form_action, self.view_name]):
-            modify = modifyColumn(**{
+            modify = ModalFormColumn(**{
                 'data_target': self.data_target, 
                 'a_class': self.a_class,
                 'view_name': self.view_name
@@ -42,4 +42,4 @@ class ModalEditMixin(tables.Table):
                 {
                     'extra_columns':[('modify',modify)],
                 })
-        super( ModalEditMixin, self ).__init__(*args, **kwargs)
+        super( ModalFormMixin, self ).__init__(*args, **kwargs)

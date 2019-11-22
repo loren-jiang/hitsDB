@@ -4,52 +4,53 @@ from .models import Project, Experiment, Soak, Plate
 from lib.models import Compound, Library
 from django.contrib.auth.models import User, Group
 from django_tables2 import RequestConfig
+from my_utils.my_tables import ModalFormMixin, ModalFormColumn
 
-def modifyColumn(data_target, a_class, view_name, verbose_name='', orderable=False, accessor='pk'):
-    return tables.Column(verbose_name=verbose_name, 
-                orderable=orderable, 
-                empty_values=(),
-                linkify=(view_name, [A(accessor)]), 
-                attrs={'a': {
-                                "data-toggle":"modal", 
-                                "data-target":"#" + data_target,
-                                "class":a_class
-                            }
-                    })
+# def ModalFormColumn(data_target, a_class, view_name, verbose_name='', orderable=False, accessor='pk'):
+#     return tables.Column(verbose_name=verbose_name, 
+#                 orderable=orderable, 
+#                 empty_values=(),
+#                 linkify=(view_name, [A(accessor)]), 
+#                 attrs={'a': {
+#                                 "data-toggle":"modal", 
+#                                 "data-target":"#" + data_target,
+#                                 "class":a_class
+#                             }
+#                     })
 
-class ModalEditMixin(tables.Table):
-    """
-    Table mixin to create 'modify' column which links to a modal edit form for the model instance
-    """
-    def render_modify(self, value):
-        return "Edit"
-    class Meta:
-        attrs = {'class': 'table modify-table'}
+# class ModalFormMixin(tables.Table):
+#     """
+#     Table mixin to create 'modify' column which links to a modal edit form for the model instance
+#     """
+#     def render_modify(self, value):
+#         return "Edit"
+#     class Meta:
+#         attrs = {'class': 'table modify-table'}
 
-    def __init__(self, *args, **kwargs):
-        self.table_id = kwargs.pop('table_id', '')
-        self.form_id =  kwargs.pop('form_id', '')
-        self.data_target =  kwargs.pop('data_target', '')
-        self.a_class =  kwargs.pop('a_class', '')
-        self.form_action = kwargs.pop('form_action', '')
-        self.view_name = kwargs.pop('view_name','')
+#     def __init__(self, *args, **kwargs):
+#         self.table_id = kwargs.pop('table_id', '')
+#         self.form_id =  kwargs.pop('form_id', '')
+#         self.data_target =  kwargs.pop('data_target', '')
+#         self.a_class =  kwargs.pop('a_class', '')
+#         self.form_action = kwargs.pop('form_action', '')
+#         self.view_name = kwargs.pop('view_name','')
 
-        if all([self.data_target, self.a_class, self.form_action, self.view_name]):
-            modify = modifyColumn(**{
-                'data_target': self.data_target, 
-                'a_class': self.a_class,
-                'view_name': self.view_name
-            })
-            kwargs.update(
-                {
-                    'extra_columns':[('modify',modify)],
-                })
-        super( ModalEditMixin, self ).__init__(*args, **kwargs)
+#         if all([self.data_target, self.a_class, self.form_action, self.view_name]):
+#             modify = ModalFormColumn(**{
+#                 'data_target': self.data_target, 
+#                 'a_class': self.a_class,
+#                 'view_name': self.view_name
+#             })
+#             kwargs.update(
+#                 {
+#                     'extra_columns':[('modify',modify)],
+#                 })
+#         super( ModalFormMixin, self ).__init__(*args, **kwargs)
 
 class ModifyTable:
     attrs = {'class': 'table modify-table'}
 
-class DestPlatesForGUITable(tables.Table):
+class DestPlatesForGUITable(ModalFormMixin):
     upload_drop_images = tables.LinkColumn(verbose_name="Upload", viewname='drop_images_upload', args=[A('pk')], orderable=False, empty_values=())
     drop_images_GUI = tables.LinkColumn(verbose_name="GUI", viewname='imageGUI', 
         kwargs={'plate_id': A('pk'), 'user_id': A('experiment.owner.pk'), 'file_name': A('drop_images.first.file_name')}, orderable=False, empty_values=())
@@ -70,14 +71,16 @@ class DestPlatesForGUITable(tables.Table):
         fields=('name','plateType','upload_drop_images','drop_images_GUI')
 
 class PlatesTable(tables.Table):
-    # upload_drop_images = tables.LinkColumn(verbose_name="Upload", viewname='drop_images_upload', args=[A('pk')], orderable=False, empty_values=())
-    
-    # def render_upload_drop_images(self):
-    #     return 'Upload'
+    name = tables.Column(orderable=True, linkify=True)
+
     class Meta:
         model = Plate
         template_name = 'django_tables2/bootstrap-responsive.html'
         fields=('name','plateType',)
+
+class ModalEditPlatesTable(ModalFormMixin, PlatesTable):
+    class Meta(ModalFormMixin.Meta, PlatesTable.Meta):
+        fields = ('name', 'plateType', 'isTemplate')
 
 class SoaksTable(tables.Table):
     transferVol = tables.Column(accessor="transferVol")
@@ -97,8 +100,8 @@ class SoaksTable(tables.Table):
         template_name = 'django_tables2/bootstrap-responsive.html'
         fields = ('id','transferVol','transferCompound','srcWell', 'destSubwell','selection')
 
-class ModalEditSoaksTable(ModalEditMixin, SoaksTable):
-    class Meta(ModalEditMixin.Meta, SoaksTable.Meta):
+class ModalEditSoaksTable(ModalFormMixin, SoaksTable):
+    class Meta(ModalFormMixin.Meta, SoaksTable.Meta):
         exclude = ()
         
 
@@ -145,8 +148,8 @@ class ProjectsTable(tables.Table):
         template_name = 'django_tables2/bootstrap-responsive.html'
         fields = ('name','owner','created_date','modified_date','experiments','collaborators','checked')
 
-class ModalEditProjectsTable(ModalEditMixin, ProjectsTable):
-    class Meta(ModalEditMixin.Meta, ProjectsTable.Meta):
+class ModalEditProjectsTable(ModalFormMixin, ProjectsTable):
+    class Meta(ModalFormMixin.Meta, ProjectsTable.Meta):
         exclude = ()
 
 class LibrariesTable(tables.Table):
@@ -161,8 +164,8 @@ class LibrariesTable(tables.Table):
         fields=('name','owner','numCompounds','supplier','checked')
         exclude=('id',)
 
-class ModalEditLibrariesTable(ModalEditMixin, LibrariesTable):
-    class Meta(ModalEditMixin.Meta, LibrariesTable.Meta):
+class ModalEditLibrariesTable(ModalFormMixin, LibrariesTable):
+    class Meta(ModalFormMixin.Meta, LibrariesTable.Meta):
         exclude = ()
 
 class CompoundsTable(tables.Table):
@@ -182,8 +185,8 @@ class CompoundsTable(tables.Table):
         super(CompoundsTable, self ).__init__(*args, **kwargs)
 
 
-class ModalEditCompoundsTable(ModalEditMixin, CompoundsTable):
-    class Meta(ModalEditMixin.Meta, CompoundsTable.Meta):
+class ModalEditCompoundsTable(ModalFormMixin, CompoundsTable):
+    class Meta(ModalFormMixin.Meta, CompoundsTable.Meta):
         pass
 
 

@@ -1,6 +1,6 @@
 from hitsDB.views_import import * #common imports for views
 from ..models import Experiment, Plate, Well, SubWell, Soak, Project, PlateType
-from ..tables import SoaksTable, ExperimentsTable
+from ..tables import SoaksTable, ExperimentsTable, ModalEditPlatesTable, DestPlatesForGUITable
 from django_tables2 import RequestConfig
 from ..exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from lib.models import Library, Compound
@@ -17,6 +17,12 @@ from my_utils.orm_functions import update_instance
 from django.utils import timezone
 import csv
 import re
+from django.views.generic.edit import UpdateView
+from my_utils.views_helper import build_filter_table_context, build_modal_form_data
+from ..querysets import user_editable_plates
+from ..filters import PlateFilter
+from my_utils.utility_functions import reshape
+
 
 class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
     template_name = "experiment/exp_templates/exp_main.html"
@@ -125,7 +131,6 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         # try:
         templateSrcPlates = cleaned_data['templateSrcPlates']
         if templateSrcPlates:
-            # pass
             exp.importTemplateSourcePlates(templateSrcPlates)
             # plates = exp.makeSrcPlates(len(templateSrcPlates))
             # for p1, p2 in zip(plates, templateSrcPlates):
@@ -177,13 +182,30 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
+        pk_proj = self.kwargs.get('pk_proj', None)
         pk = self.kwargs.get('pk_exp', None)
         request = self.request
         exp = request.user.experiments.prefetch_related('plates','soaks','library').get(id=pk)
         soaks_table = exp.getSoaksTable(exc=[])
         RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
         src_plates_table = exp.getSrcPlatesTable(exc=[])
+        plateModalFormData = build_modal_form_data(Plate)
+        src_plates_table = ModalEditPlatesTable(
+            data=exp.plates.filter(isSource=True),
+            data_target=plateModalFormData['edit']['modal_id'], 
+            a_class="btn btn-primary " + plateModalFormData['edit']['url_class'], 
+            form_action='a',
+            view_name='plate_edit',
+
+        )
+        # dest_plates_table = DestPlatesForGUITable(
+        #     data=exp.plates.filter(isSource=False), 
+        #     data_target="",
+        #     a_class="btn btn-primary ",
+        #     form_action='a',
+        #     view_name='drop_images_upload',
+        #     exclude=[],
+        #     )
         dest_plates_table = exp.getDestPlatesGUITable(exc=[])
         local_initData_path = ''
         s3_initData_path = ''
@@ -209,7 +231,7 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         context['soaks_download'] = reverse('soaks_csv_view', kwargs={'pk_exp':exp.id})
         context['rockMakerIds'] = [p.rockMakerId for p in exp.plates.filter(rockMakerId__isnull=False)]
         context['incompleted_steps'] = [i+1 for i in range(current_step)]
-        # print(context['forms']['initform'])
+        context['picklist_template_download'] = reverse('picklist_template', kwargs={'pk_exp':exp.id, 'pk_proj':pk_proj})
         return context
 
 #checks if project is the user's
@@ -270,10 +292,17 @@ def experiment(request, pk_exp):
 #     }
 #     return render(request, 'experiment/exp_templates/soaks_table.html', data)
 
+class PlateUpdate(UpdateView):
+    model = Plate
+    fields = ['isTemplate']
+    template_name = 'experiment/exp_templates/plate_update.html'
+    def get_success_url(self):
+        return reverse('plate_edit', kwargs={'pk_plate':self.object.pk})
+
 #views experiment plates as table
 @is_users_experiment
 @login_required(login_url="/login")
-def plates(request, pk_exp):
+def exp_plates(request, pk_exp):
     pk = pk_exp
     experiment = Experiment.objects.get(id=pk)
     plates_table=experiment.getDestPlatesTable(exc=["id","xPitch","yPitch","plateHeight","plateWidth","plateLength",
@@ -283,6 +312,62 @@ def plates(request, pk_exp):
         'plates_table': plates_table,
     }
     return render(request, 'experiment/exp_templates/plates_table.html', data)
+
+@login_required(login_url="/login")
+@user_passes_test(user_base_tests)
+def plate(request, pk_plate):
+    p = get_object_or_404(Plate, pk=pk_plate)
+    if p:
+        wells_qs = p.wells.select_related('compound','soak').prefetch_related('subwells').order_by('name')
+        wells = [w for w in wells_qs]
+        subwells = []
+        for w in wells:
+            subwells.extend([s for s in w.subwells.all()])
+
+        reshaped_wells = reshape(wells, (p.numRows, p.numCols))
+        soaks_qs = Soak.objects.select_related('dest','src').filter(dest__in=subwells)
+        soaks = [s for s in soaks_qs]
+        subwellToSoakMap = dict([(s.dest.name, s) for s in soaks])
+        # print(subwellToSoakMap)
+        # print([s.dest.name for s in soaks])
+        context = {
+            'wellMatrix':reshaped_wells,
+            'subwellToSoakMap': subwellToSoakMap,
+            'plate':p,
+        }
+        return render(request, 'experiment/exp_templates/plate.html', context)
+        # return HttpResponse(str(pk_plate))
+
+@login_required(login_url="/login")
+@user_passes_test(user_base_tests)
+def plates(request):
+    modalFormData = build_modal_form_data(Plate)
+    plateFilter = PlateFilter(
+        data=request.GET,
+        request=request, 
+        queryset=user_editable_plates(request.user),
+        filter_id='proj_filter',
+        form_id='proj_filter_form',
+    )
+    table = ModalEditPlatesTable(
+        data=plateFilter.qs.order_by('-modified_date'),
+        data_target=modalFormData['edit']['modal_id'], 
+        a_class="btn btn-primary " + modalFormData['edit']['url_class'], 
+        table_id='plate_table',
+        form_id='plate_table_form',
+        form_action=reverse('modify_plates'),
+        view_name='plate_edit',
+
+        )
+    RequestConfig(request, paginate={'per_page': 20}).configure(table)
+    
+    buttons = []
+    modals = [
+        modalFormData['edit'],
+        ]
+    context = build_filter_table_context(plateFilter, table, modals, buttons)
+
+    return render(request, 'experiment/proj_templates/projects.html', context)
 
 @login_required(login_url="/login")
 def experiments(request):
@@ -351,10 +436,12 @@ def picklist_template_view(request,pk_exp, pk_proj=None):
     writer = csv.writer(response)
     for s in exp.usedSoaks:
         well_name, subwell_idx = s.dest.name.split('_')
+        subwell_idx = int(subwell_idx)
         # well_props = well_map[well_name]
-        match = re.match(r"([a-z]+)([0-9]+)", well_name, re.I)
+        # print(well_name)
+        match = re.match(r"^[A-Z]\d{2}$", well_name, re.I)
         items = match.group()
-        writer.writerow([exp.destPlateType, items[0], items[1], subwell_map[subwell_idx]])
+        writer.writerow([exp.destPlateType, items[0], int(items[1:]), subwell_map[subwell_idx]])
     return response
 
 
@@ -392,6 +479,7 @@ def picklist_template_view(request,pk_exp, pk_proj=None):
 #     for r in sorted(rows, key=lambda x: ( x[headers.index("Source Plate Name")],x[headers.index("Source Well")])):
 #         writer.writerow(r)
 #     return response
+
 
 
 # ----------------- HELPER functions --------------------------

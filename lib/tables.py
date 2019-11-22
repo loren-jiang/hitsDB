@@ -1,7 +1,7 @@
 import django_tables2 as tables
 from django_tables2.utils import A  # alias for Accessor
 from django_tables2 import RequestConfig
-from my_utils.my_tables import ModalEditMixin, modifyColumn
+from my_utils.my_tables import ModalFormMixin, ModalFormColumn
 from .models import Library, Compound
 
 class LibrariesTable(tables.Table):
@@ -16,8 +16,8 @@ class LibrariesTable(tables.Table):
         fields=('name','owner','numCompounds','supplier','checked')
         exclude=('id',)
 
-class ModalEditLibrariesTable(ModalEditMixin, LibrariesTable):
-    class Meta(ModalEditMixin.Meta, LibrariesTable.Meta):
+class ModalEditLibrariesTable(ModalFormMixin, LibrariesTable):
+    class Meta(ModalFormMixin.Meta, LibrariesTable.Meta):
         exclude = ()
 
 class CompoundsTable(tables.Table):
@@ -29,8 +29,8 @@ class CompoundsTable(tables.Table):
         template_name = 'django_tables2/bootstrap-responsive.html'
 
 
-class ModalEditCompoundsTable(ModalEditMixin, CompoundsTable):
-    class Meta(ModalEditMixin.Meta, CompoundsTable.Meta):
+class ModalEditCompoundsTable(ModalFormMixin, CompoundsTable):
+    class Meta(ModalFormMixin.Meta, CompoundsTable.Meta):
         exclude=()
 
 

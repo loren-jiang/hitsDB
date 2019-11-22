@@ -6,6 +6,7 @@
 {% load static %}
 
 {% block content %}
+<script src="{% static 'hitsDB/js/modalForm.js' %}"></script>
 <script src="{% static 'apps/experiment/js/experiment.js' %}"></script>
 <script src="{% static 'hitsDB/js/multiform.js' %}"></script>
 <link rel="stylesheet" href="{% static 'apps/experiment/css/exp_main.css' %}">
@@ -42,8 +43,8 @@
             <div class="row">
                 <div class="col-2">
                     <div class="nav flex-column nav-pills" id="exp-tab" role="tablist" aria-orientation="vertical">
-                        <a class="nav-link active" id="exp-step1-tab" data-toggle="pill" href="#exp-step1"
-                            role="tab" aria-controls="exp-step1" aria-selected="true">1) Initialization</a>
+                        <a class="nav-link active" id="exp-step1-tab" data-toggle="pill" href="#exp-step1" role="tab"
+                            aria-controls="exp-step1" aria-selected="true">1) Initialization</a>
                         <a class="nav-link" id="exp-step2-tab" data-toggle="pill" href="#exp-step2" role="tab"
                             aria-controls="exp-step2" aria-selected="false">2) Source</a>
                         <a class="nav-link" id="exp-step3-tab" data-toggle="pill" href="#exp-step3" role="tab"
@@ -52,8 +53,9 @@
                             aria-controls="exp-step4" aria-selected="false">4) Soaks </a>
                         <a class="nav-link" id="exp-step5-tab" data-toggle="pill" href="#exp-step5" role="tab"
                             aria-controls="exp-step5" aria-selected="false">5) Looping </a>
-                        <a class="nav-link" id="exp-step6-tab" data-toggle="pill" href="#exp-step6" role="tab"
-                            aria-controls="exp-step6" aria-selected="false">6) Data Collection </a>
+                        {% comment %} <a class="nav-link" id="exp-step6-tab" data-toggle="pill" href="#exp-step6"
+                            role="tab" aria-controls="exp-step6" aria-selected="false">6) Data Collection </a>
+                        {% endcomment %}
                     </div>
                 </div>
                 <div class="col-10">
@@ -63,45 +65,60 @@
                             <div class="row">
                                 <div class="col">
                                     <div class="jumbotron">
-                                        <h3 class="instructions"> Instructions </h3>
-                                        <ul>
-                                            <li> a) Upload the .json file output from running the PreGUI script ().
+                                        <h3 class="step-overview"> Initialization </h3>
+                                        <p> Extract plate data from RockMaker database to initialize experiment </p>
+                                        <p>
+                                            <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                                data-target="#step1-collapse" aria-expanded="false"
+                                                aria-controls="step1-collapse">
+                                                See Instructions
+                                            </button>
+                                        </p>
+                                        <div class="collapse" id="step1-collapse">
+                                            <div class="card card-body">
                                                 <ul>
-                                                    <li> See example file: </li>
+                                                    <li> a) Upload the .json file output from running the PreGUI script
+                                                        ().
+                                                        <ul>
+                                                            <li> See example file: </li>
+                                                        </ul>
+                                                    </li>
+
                                                 </ul>
-                                            </li>
-                                            
-                                        </ul>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="row">
                                 {% if current_step > 0 %}
                                 <div class="col">
                                     <div class="jumbotron">
                                         <h3>a) Upload .json</h3>
-                                        <form id="init-form" enctype="multipart/form-data" method="post">{% csrf_token %}
+                                        <form id="init-form" enctype="multipart/form-data" method="post">
+                                            {% csrf_token %}
                                             {{ forms.initform|crispy }}
                                             <button type="submit" class="btn btn-primary">Upload</button>
                                         </form>
 
                                     </div>
                                 </div>
-                                
+
                                 <div class="col">
                                     <div class="jumbotron">
                                         <h3>Processed .json</h3>
                                         {% if exp.initData %}
-                                            {% if initData_local_url %}
-                                            <p> Local uploaded file: <a href={{initData_local_url}}> {{initData_local}} </a>
-                                            </p>
-                                            {% endif %}
+                                        {% if initData_local_url %}
+                                        <p> Local uploaded file: <a href={{initData_local_url}}> {{initData_local}} </a>
+                                        </p>
+                                        {% endif %}
 
-                                            {% if initData_s3_url %}
-                                            <p> s3 uploaded file: <a href={{init_data_file_url}}> {{initData_s3_url}} </a>
-                                            </p>
-                                            {% endif %}
+                                        {% if initData_s3_url %}
+                                        <p> s3 uploaded file: <a href={{init_data_file_url}}> {{initData_s3_url}} </a>
+                                        </p>
+                                        {% endif %}
                                         {% else %}
                                         <span> No .json file uploaded. </span>
                                         {% endif %}
@@ -115,21 +132,35 @@
                                 </div>
                                 {% endif %}
                             </div>
-                            
+
                         </div>
                         <div class="tab-pane fade" id="exp-step2" role="tabpanel" aria-labelledby="exp-step2-tab">
                             <div class="row">
                                 <div class="col">
                                     <div class="jumbotron">
-                                        <h3 class="instructions"> Instructions </h3>
-                                        <ul>
-                                            <li> a) Define the experiment's source plates by either:
+                                        <h3 class="step-overview"> Source </h3>
+                                        <p> Set up experiment's source plates </p>
+                                        <p>
+                                            <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                                data-target="#step2-collapse" aria-expanded="false"
+                                                aria-controls="step2-collapse">
+                                                See Instructions
+                                            </button>
+                                        </p>
+                                        <div class="collapse" id="step2-collapse">
+                                            <div class="card card-body">
                                                 <ul>
-                                                    <li> Uploading a .csv with the required data (see example above). </li>
-                                                    <li> Importing existing template source plates. </li>
+                                                    <li> a) Define the experiment's source plates by either:
+                                                        <ul>
+                                                            <li> Uploading a .csv with the required data (see example
+                                                                above). </li>
+                                                            <li> Importing existing template source plates. </li>
+                                                        </ul>
+                                                    </li>
                                                 </ul>
-                                            </li>
-                                        </ul>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -143,15 +174,16 @@
                                             {% csrf_token %}
                                             {% crispy forms.platelibform %}
                                             {% comment %} {{ forms.platelibform | crispy }} {% endcomment %}
-                                            {% comment %} <button type="submit" class="btn btn-primary">Upload</button> {% endcomment %}
+                                            {% comment %} <button type="submit" class="btn btn-primary">Upload</button>
+                                            {% endcomment %}
                                         </form>
                                         {% else %}
                                         <span> Please complete prior step(s): {{incompleted_steps}} </span>
                                         {% endif %}
                                     </div>
-                                    
+
                                 </div>
-                                
+
                                 <div class='col'>
                                     <div class="jumbotron">
                                         <h3>Source plates table</h3>
@@ -165,11 +197,25 @@
                             <div class="row">
                                 <div class="col">
                                     <div class="jumbotron">
-                                        <h3 class="instructions"> Instructions </h3>
-                                        <ul>
-                                            <li> For each destination plate, upload the appropriate drop images. </li>
-                                            <li> Then, use the GUI link to set soak data. </li>
-                                        </ul>
+                                        <h3 class="step-overview"> Destination </h3>
+                                        <p> Set up experiment's destination plates</p>
+                                        <p>
+                                            <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                                data-target="#step3-collapse" aria-expanded="false"
+                                                aria-controls="step3-collapse">
+                                                See Instructions
+                                            </button>
+                                        </p>
+                                        <div class="collapse" id="step3-collapse">
+                                            <div class="card card-body">
+                                                <ul>
+                                                    <li> For each destination plate, upload the appropriate drop images.
+                                                    </li>
+                                                    <li> Then, use the GUI link to set soak data. </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -179,14 +225,14 @@
                                         <h3>Upload drop images</h3>
                                         {% if current_step > 2 %}
                                         {% render_table dest_plates_table %}
-                                        
+
                                         {% else %}
                                         <span> Please complete prior step(s): {{incompleted_steps}} </span>
                                         {% endif %}
                                     </div>
                                 </div>
 
-                              
+
                             </div>
 
                         </div>
@@ -194,30 +240,34 @@
                             <div class="row">
                                 <div class="col">
                                     <div class="jumbotron">
-                                        <h3 class="instructions"> Instructions </h3>
-                                        <ul>
-                                            <li> a) Download picklist template .csv, which will be uploaded to shifter software </li>
-                                            <li> b) Click "Generate soaks" button, 
-                                            which will match source wells with compounds to destination wells with used soaks.</li>
-                                            <li> c) Then, download Echo soaking instructions, double-check for correctness, and perform soaks.</li>
-                                        </ul>
+                                        <h3 class="step-overview"> Soaks </h3>
+                                        <p> Perform soaks using Echo </p>
+                                        <p>
+                                            <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                                data-target="#step4-collapse" aria-expanded="false"
+                                                aria-controls="step4-collapse">
+                                                See Instructions
+                                            </button>
+                                        </p>
+                                        <div class="collapse" id="step4-collapse">
+                                            <div class="card card-body">
+                                                <ul>
+                                                    <li> a) Click "Generate soaks" button,
+                                                        which will match source wells with compounds to destination
+                                                        wells with used soaks.</li>
+                                                    <li> b) Then, download Echo soaking instructions, double-check for
+                                                        correctness, and perform soaks.</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col">
                                     <div class="jumbotron">
-                                        <h3>a) Download picklist template </h3>
-                                        {% if current_step > 3 %}
-                                        
-                                        {% else %}
-                                        <span> Please complete prior step(s): {{incompleted_steps}} </span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="col">
-                                    <div class="jumbotron">
-                                        <h3>b) Soak setup</h3>
+                                        <h3>a) Soak setup</h3>
                                         {% if current_step > 3 %}
                                         <form id="soaks-form" method="post">{% csrf_token %}
                                             {{ forms.soaksform|crispy}}
@@ -236,74 +286,110 @@
                                     </div>
                                 </div>
                                 <div class="col">
-                                        {% if soaksValid %}
-                                        <div class="jumbotron">
-                                            <h3>c) Soaks Download</h3>                   
-                                            <a role="button" class="btn btn-secondary" href="{{soaks_download}}"> Download </a>
+                                    {% if soaksValid %}
+                                    <div class="jumbotron">
+                                        <h3>b) Soaks Download</h3>
+                                        <a role="button" class="btn btn-secondary" href="{{soaks_download}}"> Download
+                                        </a>
                                         {% if exp.soak_export_date %}
-                                            <p> Downloaded on: {{exp.soak_export_date}} </p>
-                                        {% endif %}
-                                        </div>
-                                        
+                                        <p> Downloaded on: {{exp.soak_export_date}} </p>
                                         {% endif %}
                                     </div>
+
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
-                        
+
                         <div class="tab-pane fade" id="exp-step5" role="tabpanel" aria-labelledby="exp-step5-tab">
                             <div class="row">
                                 <div class="col">
                                     <div class="jumbotron">
-                                        <h3 class="instructions"> Instructions </h3>
-                                        <ul>
-                                            <li> RockMaker Plate IDs: {{rockMakerIds}} </li>
-                                            <li> Make shifter pick-list and upload it. </li>
-                                            <li> See shifter user manual (). </li>
-                                            <li>
-                                            <p>
-                       
-                                            <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#collapseExample" aria-expanded="false" aria-controls="collapseExample">
-                                                Button with data-target
-                                            </button>
-                                            </p>
-                                            <div class="collapse" id="collapseExample">
+                                        <h3 class="step-overview"> Looping </h3>
+                                        <p> Use shifter to harvest crystals </p>
+                                        <button class="btn btn-primary" type="button" data-toggle="collapse"
+                                            data-target="#step5-collapse" aria-expanded="false"
+                                            aria-controls="collapseExample">
+                                            See Instructions
+                                        </button>
+                                        <div class="collapse" id="step5-collapse">
+
                                             <div class="card card-body">
-                                               1. PlateType: plate to be used as defined in Plate Definition
-                                                2. PlateID: this is user’s custom ID for a specific plate, e.g. it could be CI-NewJersey-23 or anything
-                                                user requires.
-                                                3. Location where to bring the position. “AM” is normally used which stands for Aperture Main.
-                                                This indicates that the plate position’s target should be Aperture Main.
-                                                4. Plate Row: e.g. if the location is B5a then this would be “B”. Must match Plate Definition.
-                                                5. Plate Column: e.g. if the location is B5a then this would be “5”. Must match Plate Definition.
-                                                6. Plate Subwell: e.g. if the location is B5a then this would be “a”. Must match Plate Definition.
-                                                7. Comment*: this field is a comment generated by the software. Convention is to prefix with “OK”
-                                                or “Fail” and the result of experiment (e.g. “FAIL: melted”).
-                                                8. CrystalID*: This is field auto-generated by the software, using the Xta-no field/mask of the
-                                                “Workflow control” screen.
-                                                9. Time of Arrival*: time when the move to bring the plate position to the target destination
-                                                stopped.
-                                                10. Time of Departure*: time when one of the red or green (success/fail) buttons was pressed and
-                                                picking was completed.
-                                                11. Duration*: Time of Departure – Time of Arrival.
-                                                12. Destination Name*: this field is auto-generated by using the “Destination” section of the
-                                                “Workflow control” tab. For example, this could be a puck identifier.
-                                                13. Destination Location: this field is auto-generated by using the “Destination” section of the
-                                                “Workflow control” tab. It represents individual location within the destination (e.g. a pin
-                                                number in a puck)
-                                                14. Barcode: barcode number associated with this crystal.
-                                                15. External Comment*: any other comment user wishes to enter in the file.
+                                                <ul>
+                                                    <li> a) Download picklist template .csv, which will be uploaded to
+                                                        shifter software </li>
+                                                    <li> RockMaker Plate IDs: {{rockMakerIds}} </li>
+                                                    <li> Make shifter pick-list and upload it. </li>
+                                                    <li> See shifter user manual (). </li>
+                                                    <!-- <div class="card"> 
+                                                            1. PlateType: plate to be used as defined in Plate Definition
+                                                            2. PlateID: this is user’s custom ID for a specific plate, e.g. it
+                                                            could be CI-NewJersey-23 or anything
+                                                            user requires.
+                                                            3. Location where to bring the position. “AM” is normally used which
+                                                            stands for Aperture Main.
+                                                            This indicates that the plate position’s target should be Aperture
+                                                            Main.
+                                                            4. Plate Row: e.g. if the location is B5a then this would be “B”.
+                                                            Must match Plate Definition.
+                                                            5. Plate Column: e.g. if the location is B5a then this would be “5”.
+                                                            Must match Plate Definition.
+                                                            6. Plate Subwell: e.g. if the location is B5a then this would be
+                                                            “a”. Must match Plate Definition.
+                                                            7. Comment*: this field is a comment generated by the software.
+                                                            Convention is to prefix with “OK”
+                                                            or “Fail” and the result of experiment (e.g. “FAIL: melted”).
+                                                            8. CrystalID*: This is field auto-generated by the software, using
+                                                            the Xta-no field/mask of the
+                                                            “Workflow control” screen.
+                                                            9. Time of Arrival*: time when the move to bring the plate position
+                                                            to the target destination
+                                                            stopped.
+                                                            10. Time of Departure*: time when one of the red or green
+                                                            (success/fail) buttons was pressed and
+                                                            picking was completed.
+                                                            11. Duration*: Time of Departure – Time of Arrival.
+                                                            12. Destination Name*: this field is auto-generated by using the
+                                                            “Destination” section of the
+                                                            “Workflow control” tab. For example, this could be a puck
+                                                            identifier.
+                                                            13. Destination Location: this field is auto-generated by using the
+                                                            “Destination” section of the
+                                                            “Workflow control” tab. It represents individual location within the
+                                                            destination (e.g. a pin
+                                                            number in a puck)
+                                                            14. Barcode: barcode number associated with this crystal.
+                                                            15. External Comment*: any other comment user wishes to enter in the
+                                                            file.
+                                                    </div> -->
+
+                                                </ul>
                                             </div>
-                                            </div>
-                                                
-                                            </li>
-                                        </ul>
+
+
+
+                                        </div>
+
+
                                     </div>
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col">
                                     <div class="jumbotron">
-                                        <h3>Looping</h3>
+                                        <h3>a) Download picklist template </h3>
+                                        {% if current_step > 4 %}
+                                        <a role="button" class="btn btn-secondary" href="{{picklist_template_download}}"> Download </a>
+                                        
+                                        {% else %}
+                                        <span> Please complete prior step(s): {{incompleted_steps}} </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="jumbotron">
+                                        <h3>Upload processed picklist</h3>
+                                        {% if current_step > 4 %}
                                         <form id="picklist-form" enctype="multipart/form-data" method="post">
                                             {% csrf_token %}
                                             {{ forms.picklistform|crispy}}
@@ -312,9 +398,13 @@
 
                                             </span>
                                         </form>
+                                        {% else %}
+                                        <span> Please complete prior step(s): {{incompleted_steps}} </span>
+                                        {% endif %}
+
                                     </div>
                                 </div>
-                        
+
                             </div>
                         </div>
                     </div>
@@ -326,6 +416,11 @@
     </div>
 </div>
 
+
+
+<div class="modal" id="plate_edit_modal"></div>
+<div class="modal" id="dropimages_upload_modal"></div>
+
 <script>
     $(document).ready(function () {
         lib_pk = "{{exp.library.pk|safe}}";
@@ -335,10 +430,15 @@
 </script>
 
 <script>
-  $(function () {
-    $("#id_soakDate").datetimepicker({
-      format: 'm/d/Y H:i',
+    $(function () {
+        $("#id_soakDate").datetimepicker({
+            format: 'm/d/Y H:i',
+        });
+
+        setUpModalForm('dropimages_upload_url', 'dropimages_upload_modal', '');
+        setUpModalForm('plate_edit_url', 'plate_edit_modal', '');
+
     });
-  });
+
 </script>
 {% endblock content %}

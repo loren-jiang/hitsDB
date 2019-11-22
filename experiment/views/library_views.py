@@ -101,31 +101,6 @@ def lib_compounds(request, pk_lib):
         'lib': lib,
         'libTable': libTable,
     })
-    # context = {
-    #     'expsTable': expsTable,
-    #     'lib': lib,
-    #     'libTable': libTable,
-    #     'filter': {
-    #         'filter': compounds_filter, 
-    #         'form':compounds_filter.form,
-    #         'filter_id': compounds_filter.filter_id, 
-    #         'filter_form_id': compounds_filter.form_id,
-    #         },
-    #     'table': {
-    #         'table': table,
-    #         'table_id': table.table_id,
-    #         'table_form_id': table.form_id,
-    #         'form_action_url': table.form_action,
-    #         },
-    #     'modals': {
-    #         'modals': modals,
-    #         'json': json.dumps(modals),
-    #         },
-    #     'btn': {
-    #         'buttons': buttons,
-    #         'json': json.dumps(buttons)
-    #         },
-    # }
     return render(request, 'experiment/lib_templates/library_compounds.html', context)
 
 @is_users_library
