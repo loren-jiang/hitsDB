@@ -98,11 +98,9 @@ def DropImageViewGUI(request, *args, **kwargs):
         ).select_related('plate'
         ).order_by('plate__plateIdxExp', 'name')
     src_qs = src_wells_with_compounds_and_no_soaks
-    # print([w.soak for w in src_wells_with_soaks])
     p_drop_images= p.drop_images.all()
 
     well_qs = p.wells.all().prefetch_related('subwells','subwells__parentWell', 'subwells__soak').order_by('name')
-    print([w.id for w in well_qs])
     numWells = well_qs.count()
     wells_ = [w for w in well_qs]
     wells = [None] * len(wells_)
@@ -175,7 +173,6 @@ def DropImageViewGUI(request, *args, **kwargs):
         if request.user.id == int(user_id): #users can only see their own images
             soakOffset_xyr = soak.soak_XYR_um
             targetWell_xyr = well_XYR_um
-            print(wells_reshaped)
             context = {
                 "prev_well":prev_well,
                 "image_url":image_url,
@@ -186,7 +183,7 @@ def DropImageViewGUI(request, *args, **kwargs):
                 "plate_id":plate_id,
                 "file_names":file_names,
                 "dont_show_path": True,
-                "back_to_exp_url": reverse_lazy('exp', kwargs={'pk_exp':p.experiment.id}),
+                "back_to_exp_url": reverse_lazy('exp', kwargs={'pk_exp':exp.id, 'pk_proj':exp.project.id,}),
                 "perc_complete": (perc_complete*100//1), 
 
                 'wellMatrix' : wells_reshaped,

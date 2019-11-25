@@ -158,8 +158,11 @@ class Experiment(models.Model):
     prev_initData_id = None #prev library to check if initData file has changed
     prev_library_id = None #prev library to check if library has changed
 
+    desired_soak_date = models.DateTimeField(blank=True, null=True) 
     soak_export_date = models.DateTimeField(blank=True, null=True)
 
+    picklist_download_date = models.DateTimeField(blank=True, null=True)
+    
     class Meta:
         get_latest_by="modified_date"
         constraints = [
@@ -201,7 +204,7 @@ class Experiment(models.Model):
         cond2 = self.srcPlatesValid
         cond3 = self.destPlatesValid
         
-        cond4 = self.soaksValid
+        cond4 = self.soaksValid and self.soak_export_date
         conds = [cond0, cond1, cond2, cond3, cond4] # cond1 corresponds to step 1
         if all(conds[0:5]):
             return 5
@@ -215,21 +218,21 @@ class Experiment(models.Model):
             return 1
         return 0
 
-    @property
-    def getTransferPlatePairs(self):
+    def getSoakPlatePairs(self):
         """
         Pairs experiment's soaks source plate and dest plate
         Returns (list) of pairs
         """
         pairs = []
-        qs = self.soaks.select_related('src__plate','dest__parentWell__plate')
+        qs = self.usedSoaks.select_related('src__plate','dest__parentWell__plate')
             # ).annotate(src_plate_id=F('src__plate_id')
             # ).annotate(dest_plate_id=F('dest__parentWell__plate_id'))
         for s in qs:
-            s.__dict__
-            pair = (s.src.plate.id, s.dest.parentWell.plate.id)
-            if pair not in pairs:
-                pairs.append(pair)
+            # s.__dict__
+            if s.src.plate and s.dest.parentWell.plate:
+                pair = (s.src.plate.id, s.dest.parentWell.plate.id)
+                if pair not in pairs:
+                    pairs.append(pair)
         return pairs
 
     @property
@@ -241,8 +244,7 @@ class Experiment(models.Model):
         """
         if not(self.soaks.count()):
             return False
-        if not(self.soak_export_date):
-            return False
+     
         for s in self.soaks.select_related('src__plate', 'dest__parentWell__plate'):
             if not(s.src_id and s.dest_id):
                 return False
@@ -319,13 +321,15 @@ class Experiment(models.Model):
         num_dest_wells = dest_plate_type.numCols * dest_plate_type.numRows
         return ceiling_div(self.libCompounds.count(),num_dest_wells * num_subwells)
 
-
     @property
     def usedSoaks(self):
         """
-        Returns the experiment's ordered used soaks
+        Returns the experiment's used soaks ordered by destination well 
         """
-        return self.soaks.filter(useSoak=True).order_by('dest__parentWell__plate__plateIdxExp','dest__idx')
+        return self.soaks.filter(useSoak=True).order_by(
+            'dest__parentWell__plate__plateIdxExp',
+            'dest__parentWell__name',
+            'dest__idx')
 
     @property
     def destSubwells(self):
@@ -372,6 +376,20 @@ class Experiment(models.Model):
         """
         from .utils.experiment_utils import createSrcPlatesFromLibFile as func
         return func(self, numPlates, file)
+
+    def interleaveSrcWellsToSoaks(self, src_wells=[], soaks=[]):
+        """
+        Match soaks to source wells interleaved by plate id
+
+        Parameters:
+        src_wells (list): List of an experiment's source wells with compounds
+        soaks (list): List of an experiment's used soaks 
+
+        Returns:
+        None
+        """
+        from .utils.experiment_utils import interleaveSrcWellsToSoaks as func
+        return func(self, src_wells, soaks)
 
     def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
         """
@@ -479,11 +497,11 @@ class Experiment(models.Model):
         from .utils.experiment_utils import createPlatesSoaksFromInitDataJSON as func
         return func(self)
  
-    def formattedSoaks(self, qs_soaks,
-                    s_num_rows=16, s_num_cols = 24, 
-                    d_num_rows=8, d_num_cols=12, d_num_subwells=3):
-        from .utils.experiment_utils import formattedSoaks as func
-        return func(self, qs_soaks, s_num_rows, s_num_cols, d_num_rows, d_num_cols, d_num_subwells)
+    # def formattedSoaks(self, qs_soaks,
+    #                 s_num_rows=16, s_num_cols = 24, 
+    #                 d_num_rows=8, d_num_cols=12, d_num_subwells=3):
+    #     from .utils.experiment_utils import formattedSoaks as func
+    #     return func(self, qs_soaks, s_num_rows, s_num_cols, d_num_rows, d_num_cols, d_num_subwells)
 
     # takes in exc list of column names to exclude
     def getSoaksTable(self, exc=[]):

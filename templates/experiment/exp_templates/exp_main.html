@@ -272,7 +272,8 @@
                                         <form id="soaks-form" method="post">{% csrf_token %}
                                             {{ forms.soaksform|crispy}}
                                             <span>
-                                                <button type="submit" class="btn btn-primary">Generate soaks</button>
+                                                <input type="submit" class="btn btn-primary" name="match" value="Match" />
+                                                <input type="submit" class="btn btn-primary" name="interleave" value="Interleave" />
                                                 {% comment %} {% if soaksValid %}
                                                 <a role="button" class="btn btn-primary"
                                                     href="{% url 'exp_soaks' exp.project.pk exp.pk %}">View
@@ -289,7 +290,13 @@
                                     {% if soaksValid %}
                                     <div class="jumbotron">
                                         <h3>b) Soaks Download</h3>
-                                        <a role="button" class="btn btn-secondary" href="{{soaks_download}}"> Download
+                                        {% for url in src_dest_plate_urls %}
+                                        Soak transfer {{ forloop.counter }} | <a role="button" class="btn btn-secondary" href="{{url}}"> Download
+                                        </a>
+                                        <br>
+                                        {% endfor %}
+
+                                        All transfers | <a role="button" class="btn btn-secondary" href="{{soaks_download}}"> Download
                                         </a>
                                         {% if exp.soak_export_date %}
                                         <p> Downloaded on: {{exp.soak_export_date}} </p>

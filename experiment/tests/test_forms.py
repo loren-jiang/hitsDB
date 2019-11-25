@@ -50,7 +50,7 @@ class ExperimentMultiFormsTests(TestCase):
         print(form.errors)
         f.close()
         
-        # ### Case: To big file ###
+        # ### Case: Too big file ###
         # f = open('./test_data/too_big_file.csv', 'r')
         # big_file = SimpleUploadedFile('too_big_file.csv', 
         #     f.read().encode('utf-8'), content_type="text/csv")

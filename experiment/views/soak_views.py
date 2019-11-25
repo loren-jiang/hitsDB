@@ -80,7 +80,7 @@ def soaks(request, pk_proj, pk_exp):
     return render(request, 'experiment/soak_templates/soaks.html', data)
 
 @is_users_experiment
-def soaks_csv_view(request,pk_exp ,pk_src_plate=None, pk_dest_plate=None):
+def soaks_csv_view(request, pk_proj, pk_exp, pk_src_plate='', pk_dest_plate=''):
     pk = pk_exp
     exp = get_object_or_404(Experiment, pk=pk)
     exp.soak_export_date = timezone.now()
@@ -92,14 +92,16 @@ def soaks_csv_view(request,pk_exp ,pk_src_plate=None, pk_dest_plate=None):
         qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(
       ).filter(src__plate_id=pk_src_plate, dest__parentWell__plate_id=pk_dest_plate)
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment;filename=' + str(exp.name) + '_soaks' +  '.csv'
+    prefix = ''
+    if pk_src_plate and pk_dest_plate:
+        prefix = 'pair_' + pk_src_plate + '_' + pk_dest_plate + '_'
+    response['Content-Disposition'] = 'attachment;filename=' + prefix + str(exp.name) + '_soaks' +  '.csv'
     writer = csv.writer(response)
     headers = ["Source Plate Name","Source Well","Destination Plate Name","Destination Well","Transfer Volume",
                     "Destination Well X Offset","Destination Well Y Offset"] 
     writer.writerow(headers) #headers for csv
     rows = []
     for s in qs:
-        s_dict = s.__dict__
         src_well = s.src
         dest_well = s.dest.parentWell
         src_plate_name = "Source[" + str(src_well.plate.plateIdxExp) + "]"

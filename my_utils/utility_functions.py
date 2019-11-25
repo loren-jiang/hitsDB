@@ -1,5 +1,43 @@
 from functools import reduce 
 from operator import mul
+from collections import defaultdict
+
+def group_list_by(lst, attr):
+    groups = defaultdict(list)
+
+    for obj in lst:
+        groups[getattr(obj, attr)].append(obj)
+    return groups.values()
+
+def interleave(lsts):
+    """
+    Takes n lists and interleaves them. If one list is longer, then the remainder of that list is appended
+    """
+    lens = list(map(lambda lst: len(lst), lsts))
+    max_len = max(lens)
+
+    lsts = list(map(lambda x: none_pad(x, max_len), lsts))
+    ret = []
+    for k in range(max_len):
+        temp = list(map(lambda x: x[k], lsts))
+        ret.extend(temp)
+    return remove_falsey_values(ret)
+
+def remove_falsey_values(lst):
+    """
+    Remove values that evaluate to false from lst
+    """
+    return list(filter(lambda x: x, lst))
+
+def none_pad(lst, k):
+    """
+    'None' pad list to desired length k
+    """
+    diff = k - len(lst)
+    assert diff >= 0
+    lst += [None] * (diff)
+    return lst
+
 
 def shuffleDict(d):
     """

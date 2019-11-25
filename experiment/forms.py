@@ -382,8 +382,6 @@ class PicklistMultiForm(MultipleForm, PrivateFileCSVForm):
         return f
     def clean(self):
         cd = super(PrivateFileCSVForm, self).clean()
-        print(self.__dict__)
-        print(cd)
         return cd
     pass
 

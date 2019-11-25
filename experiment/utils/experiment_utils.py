@@ -5,7 +5,7 @@ from my_utils.utility_functions import lists_diff, lists_equal
 from django.db.models import F
 from my_utils.utility_functions import chunk_list, items_at, ceiling_div, gen_circ_list, \
     PIX_TO_UM, UM_TO_PIX, IMG_SCALE, VolumeToRadius, RadiusToVolume, \
-        mapUmToPix, mapPixToUm
+        mapUmToPix, mapPixToUm, group_list_by, interleave
 from django.utils.timezone import make_aware
 from datetime import datetime
 
@@ -111,6 +111,23 @@ def createSrcPlatesFromLibFile(self, numPlates=0, file=None, file_reader=None):
     except KeyError as e:
         print(e)
 
+def interleaveSrcWellsToSoaks(self, src_wells=[], soaks=[]):
+    """
+    Match soaks to source wells interleaved by plate id
+
+    Parameters:
+    src_wells (list): List of an experiment's source wells with compounds
+    soaks (list): List of an experiment's used soaks 
+
+    Returns:
+    None
+    """
+    src_wells = self.srcWellsWithCompounds
+    wells_grouped_by_plate_id = group_list_by([w for w in src_wells], 'plate_id')
+    wells_interleaved = interleave(wells_grouped_by_plate_id)
+    print(wells_interleaved)
+    return matchSrcWellsToSoaks(self, wells_interleaved, soaks)
+
 def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
     """
     Match soaks to source wells by looping through one-by-one
@@ -129,17 +146,20 @@ def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
     if not(src_wells):
         src_wells = [w for w in self.srcWellsWithCompounds]
 
-    assert len(soaks) <= len(src_wells)
+    # assert len(soaks) <= len(src_wells)
+    min_len = min(len(soaks), len(src_wells))
     try:
         with transaction.atomic():
+            # clear existing source wells of soaks
             for i in range(len(soaks)):
                 soaks[i].src = None
             Soak.objects.bulk_update(soaks, ['src'])
-            for i in range(len(soaks)):
+
+            # update soaks with source wells
+            for i in range(min_len):
                 soaks[i].src = src_wells[i]
             Soak.objects.bulk_update(soaks, ['src'])
     except Exception as e: 
-        print(e)
         pass
 
 def generateSoaks(self, transferVol=25, soakOffsetX=0, soakOffsetY=0):
@@ -284,8 +304,6 @@ def revertToStep(self, step):
     def revertToStepTwo(exp):
         """
         """
-
-
         pass
 
     def revertToStepThree(exp):
@@ -306,14 +324,6 @@ def revertToStep(self, step):
 def createPlatesSoaksFromInitDataJSON(self):
     exp = self
     revertToStep(exp, 1)
-    # dest_plates = exp.plates.filter(isSource=False) 
-    # dest_plates.delete()
-    # src_plates = exp.plates.filter(isSource=True)
-    # for p in src_plates:
-    #     if p.isTemplate:
-    #         exp.plates.remove(p)
-    #     else:
-    #         p.delete()
     init_data_plates = exp.initDataJSON.items()
     lst_plates = exp.makePlates(len(init_data_plates), self.destPlateType)
     soaks = []
@@ -349,55 +359,55 @@ def createPlatesSoaksFromInitDataJSON(self):
 
 
 
-def formattedSoaks(self, qs_soaks,
-                s_num_rows=16, s_num_cols = 24, 
-                d_num_rows=8, d_num_cols=12, d_num_subwells=3):
-    num_src_plates = self.numSrcPlates
-    num_dest_plates = self.numDestPlates
+# def formattedSoaks(self, qs_soaks,
+#                 s_num_rows=16, s_num_cols = 24, 
+#                 d_num_rows=8, d_num_cols=12, d_num_subwells=3):
+#     num_src_plates = self.numSrcPlates
+#     num_dest_plates = self.numDestPlates
         
-    s_num_wells = s_num_rows * s_num_cols
-    d_num_wells = d_num_rows * d_num_cols
-    # qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
-    #     ).prefetch_related('transferCompound',).order_by('id')
+#     s_num_wells = s_num_rows * s_num_cols
+#     d_num_wells = d_num_rows * d_num_cols
+#     # qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
+#     #     ).prefetch_related('transferCompound',).order_by('id')
 
-    soaks_lst = [soak for soak in qs_soaks]
-    src_wells = [0]*num_src_plates*s_num_wells
-    dest_subwells = [0]*num_dest_plates*d_num_wells*d_num_subwells
+#     soaks_lst = [soak for soak in qs_soaks]
+#     src_wells = [0]*num_src_plates*s_num_wells
+#     dest_subwells = [0]*num_dest_plates*d_num_wells*d_num_subwells
 
-    for j in range(len(soaks_lst)):
-        s = soaks_lst[j]
-        src = s.src # source Well
-        src_well_idx = src.wellIdx
-        src_plate_idx = src.plate.plateIdxExp
-        s_w_idx = getWellIdx(src_plate_idx,src_well_idx, s_num_wells)
-        dest = s.dest
-        dest_subwell_idx = dest.idx
-        dest_parentwell_idx = dest.parentWell.wellIdx
-        dest_plate_idx = dest.parentWell.plate.plateIdxExp
-        d_sw_idx = getSubwellIdx(dest_plate_idx,dest_parentwell_idx,
-            dest_subwell_idx, d_num_wells,d_num_subwells) 
-        compound = s.transferCompound
-        src_wells[s_w_idx] = {
-                            'well_id':src.id, 
-                            'well_name':src.name, 
-                            'compound':compound.nameInternal,
-                            'dest_subwell_id':dest.id,
-                            'soak_id':s.id
-                            }
+#     for j in range(len(soaks_lst)):
+#         s = soaks_lst[j]
+#         src = s.src # source Well
+#         src_well_idx = src.wellIdx
+#         src_plate_idx = src.plate.plateIdxExp
+#         s_w_idx = getWellIdx(src_plate_idx,src_well_idx, s_num_wells)
+#         dest = s.dest
+#         dest_subwell_idx = dest.idx
+#         dest_parentwell_idx = dest.parentWell.wellIdx
+#         dest_plate_idx = dest.parentWell.plate.plateIdxExp
+#         d_sw_idx = getSubwellIdx(dest_plate_idx,dest_parentwell_idx,
+#             dest_subwell_idx, d_num_wells,d_num_subwells) 
+#         compound = s.transferCompound
+#         src_wells[s_w_idx] = {
+#                             'well_id':src.id, 
+#                             'well_name':src.name, 
+#                             'compound':compound.nameInternal,
+#                             'dest_subwell_id':dest.id,
+#                             'soak_id':s.id
+#                             }
 
-        dest_subwells[d_sw_idx] = {
-                            'src_well_id': src.id,
-                            'parentWell_id': dest.parentWell.id,
-                            'parentWell_name': dest.parentWell.name,
-                            'subwell_id':dest.id,
-                            'subwell_idx':dest.idx,
-                            'compound':compound.nameInternal,
-                            }
+#         dest_subwells[d_sw_idx] = {
+#                             'src_well_id': src.id,
+#                             'parentWell_id': dest.parentWell.id,
+#                             'parentWell_name': dest.parentWell.name,
+#                             'subwell_id':dest.id,
+#                             'subwell_idx':dest.idx,
+#                             'compound':compound.nameInternal,
+#                             }
 
-    src_wells = chunk_list(src_wells,s_num_cols)
-    dest_subwells = chunk_list(dest_subwells,d_num_subwells) #group subwells 1-3 into well
-    dest_subwells = chunk_list(dest_subwells,d_num_cols) #group columns into row
+#     src_wells = chunk_list(src_wells,s_num_cols)
+#     dest_subwells = chunk_list(dest_subwells,d_num_subwells) #group subwells 1-3 into well
+#     dest_subwells = chunk_list(dest_subwells,d_num_cols) #group columns into row
 
-    return {'src_plates':split_list(src_wells,num_src_plates), 
-            'dest_plates':split_list(dest_subwells,num_dest_plates),
-            }
+#     return {'src_plates':split_list(src_wells,num_src_plates), 
+#             'dest_plates':split_list(dest_subwells,num_dest_plates),
+#             }

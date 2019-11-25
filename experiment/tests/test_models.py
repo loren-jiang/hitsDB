@@ -16,7 +16,7 @@ from django.db.utils import IntegrityError
 from random import randint
 from my_utils.utility_functions import lists_equal
 from django.core.exceptions import ValidationError
-from .fixtures import example_init_data
+from .fixtures import example_init_data, experiment_with_init_data, experiment_with_source_plates, experiment_with_matched_soaks
 import os
 
 class ExperimentTests(TestCase):
@@ -38,18 +38,17 @@ class ExperimentTests(TestCase):
         os.remove("./media/" + str(exp.initData.local_upload)) 
         
         same_exp = Experiment.objects.filter(id=exp.id)
-        print("dfss")
-        print(same_exp[0].prev_library_id)
         # exp.library = lib2
         # exp.save()  
         # self.assertEquals(exp.prev_library_id, lib2.id) #library id taken note of
 
     def testInitDataPostSignal(self):
-        exp = ExperimentFactory()
-        init_data = example_init_data()
-        exp.initData = init_data
-        exp.save()
-        os.remove("./media/" + str(init_data.local_upload)) 
+        # exp = ExperimentFactory()
+        # init_data = example_init_data()
+        # exp.initData = init_data
+        # exp.save()
+        # os.remove("./media/" + str(init_data.local_upload)) 
+        exp = experiment_with_init_data()
         plates_qs_1 = exp.plates.all()
         exp.save()
         plates_qs_2 = exp.plates.all()
@@ -80,6 +79,37 @@ class ExperimentTests(TestCase):
         self.assertQuerysetEqual(
             plate_2_compounds, 
             Compound.objects.filter(my_wells__plate=src_plates[1].id).order_by('my_wells__name'), transform=lambda x:x)
+
+    def testMatchSrcWellsToSoaks(self):
+        exp = experiment_with_source_plates()
+
+        exp.matchSrcWellsToSoaks()
+        self.assertEquals(exp.usedSoaks.count() , exp.srcWells.filter(soak__isnull=False).count())
+        self.assertTrue(exp.soaksValid)
+
+    def testInterleaveSrcWellsToSoaks(self):
+        exp = experiment_with_source_plates()
+
+        exp.interleaveSrcWellsToSoaks()
+        # used_soak_src_wells = [s.src for s in exp.usedSoaks.select_related('src')]
+        self.assertEquals(exp.usedSoaks.count() , exp.srcWells.filter(soak__isnull=False).count())
+        self.assertTrue(exp.soaksValid)
+
+        # delete first destination plate; should still work
+        exp.plates.filter(isSource=False).first().delete()
+        exp.interleaveSrcWellsToSoaks()
+        used_soak_src_wells = [s.src for s in exp.usedSoaks.select_related('src')]
+        self.assertEquals(exp.usedSoaks.count() , exp.srcWells.filter(soak__isnull=False).count())
+        self.assertTrue(exp.soaksValid)
+
+    def testGetSoakPlatePairs(self):
+        exp = experiment_with_matched_soaks()
+        pairs = exp.getSoakPlatePairs()
+        print(pairs)
+
+        exp.interleaveSrcWellsToSoaks()
+        pairs = exp.getSoakPlatePairs()
+        print(pairs)
 
     # def setUp(self):
     #     self.user = User.objects.get_or_create(username='testuser')[0]

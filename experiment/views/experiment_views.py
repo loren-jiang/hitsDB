@@ -159,11 +159,17 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         exp = exp_qs.first()
         src_wells = [w for w in exp.srcWellsWithCompounds]
         soaks = [s for s in exp.usedSoaks]
-        exp.matchSrcWellsToSoaks(src_wells, soaks)
+        if form.data.get('match'):
+            exp.matchSrcWellsToSoaks(src_wells, soaks)
+        if form.data.get('interleave'):
+            exp.interleaveSrcWellsToSoaks(src_wells, soaks)
         if cleaned_data['soakVolumeOverride']:
             for s in soaks:
                 s.soakVolume = cleaned_data['soakVolumeOverride']
             Soak.objects.bulk_update(soaks, fields=('soakVolume',))
+        if cleaned_data['soakDate']:
+            exp.desired_soak_date = cleaned_data['soakDate']
+            exp.save()
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def picklistform_form_valid(self, form):
@@ -186,12 +192,13 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         pk = self.kwargs.get('pk_exp', None)
         request = self.request
         exp = request.user.experiments.prefetch_related('plates','soaks','library').get(id=pk)
+        plates = exp.plates.all()
         soaks_table = exp.getSoaksTable(exc=[])
         RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
         src_plates_table = exp.getSrcPlatesTable(exc=[])
         plateModalFormData = build_modal_form_data(Plate)
         src_plates_table = ModalEditPlatesTable(
-            data=exp.plates.filter(isSource=True),
+            data=plates.filter(isSource=True),
             data_target=plateModalFormData['edit']['modal_id'], 
             a_class="btn btn-primary " + plateModalFormData['edit']['url_class'], 
             form_action='a',
@@ -220,6 +227,17 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
             if s3_initData_path:
                 context['init_data_file_url'] = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, 
                     'media/private/' + s3_initData_path, 4000)
+        plateDict = dict(list(enumerate([p for p in plates])))
+        platePairs = exp.getSoakPlatePairs()
+        src_dest_plate_urls = []
+        for pair in platePairs:
+            src_dest_plate_urls.append(reverse_lazy('soaks_csv_view', 
+            kwargs={
+                'pk_proj':pk_proj,
+                'pk_exp':pk,
+                'pk_src_plate':pair[0],
+                'pk_dest_plate':pair[1],
+            }))
         current_step =  exp.getCurrentStep
         context['exp'] = exp
         context['src_plates_table'] = src_plates_table
@@ -228,10 +246,12 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         context['platesValid'] = exp.platesValid
         context['current_step'] = current_step
         context['soaksValid'] = exp.soaksValid
-        context['soaks_download'] = reverse('soaks_csv_view', kwargs={'pk_exp':exp.id})
+        context['soaks_download'] = reverse('soaks_csv_view', kwargs={'pk_proj': pk_proj, 'pk_exp':exp.id})
         context['rockMakerIds'] = [p.rockMakerId for p in exp.plates.filter(rockMakerId__isnull=False)]
         context['incompleted_steps'] = [i+1 for i in range(current_step)]
         context['picklist_template_download'] = reverse('picklist_template', kwargs={'pk_exp':exp.id, 'pk_proj':pk_proj})
+        context['src_dest_plate_urls'] = src_dest_plate_urls
+        context['plateDict']= plateDict
         return context
 
 #checks if project is the user's
@@ -315,7 +335,7 @@ def exp_plates(request, pk_exp):
 
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
-def plate(request, pk_plate):
+def plate(request, pk_proj, pk_plate):
     p = get_object_or_404(Plate, pk=pk_plate)
     if p:
         wells_qs = p.wells.select_related('compound','soak').prefetch_related('subwells').order_by('name')
