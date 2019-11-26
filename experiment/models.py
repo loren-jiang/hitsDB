@@ -162,7 +162,7 @@ class Experiment(models.Model):
     soak_export_date = models.DateTimeField(blank=True, null=True)
 
     picklist_download_date = models.DateTimeField(blank=True, null=True)
-    
+
     class Meta:
         get_latest_by="modified_date"
         constraints = [
@@ -230,7 +230,7 @@ class Experiment(models.Model):
         for s in qs:
             # s.__dict__
             if s.src.plate and s.dest.parentWell.plate:
-                pair = (s.src.plate.id, s.dest.parentWell.plate.id)
+                pair = (s.src.plate, s.dest.parentWell.plate)
                 if pair not in pairs:
                     pairs.append(pair)
         return pairs

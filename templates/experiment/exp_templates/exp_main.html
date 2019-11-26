@@ -4,6 +4,7 @@
 {% load render_table from django_tables2 %}
 {% load crispy_forms_tags %}
 {% load static %}
+{% load experiment_tags %}
 
 {% block content %}
 <script src="{% static 'hitsDB/js/modalForm.js' %}"></script>
@@ -290,9 +291,10 @@
                                     {% if soaksValid %}
                                     <div class="jumbotron">
                                         <h3>b) Soaks Download</h3>
-                                        {% for url in src_dest_plate_urls %}
-                                        Soak transfer {{ forloop.counter }} | <a role="button" class="btn btn-secondary" href="{{url}}"> Download
-                                        </a>
+                                        
+                                        {% for key, val in src_dest_plate_pairs.items %}
+                                        Transfer {{ forloop.counter }} | Source Plate {{val.src.plateIdxExp}} |  Dest Plate {{val.dest.plateIdxExp}}
+                                        <a role="button" class="btn btn-secondary" href={{val.href}}> Download </a>
                                         <br>
                                         {% endfor %}
 
@@ -432,7 +434,14 @@
     $(document).ready(function () {
         lib_pk = "{{exp.library.pk|safe}}";
         confirmLibraryChange(lib_pk);
-        initCurrentStep('{{current_step}}');
+        if ('{{error_step}}'){
+            initCurrentStep('{{error_step}}');
+        }
+        else{
+            initCurrentStep('{{current_step}}');
+        }
+        
+        
     });
 </script>
 

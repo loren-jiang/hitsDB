@@ -20,6 +20,7 @@ from itertools import compress
 from s3.forms import PrivateFileUploadForm, PrivateFileCSVForm
 from .querysets import user_editable_projects, user_editable_plates
 from my_utils.utility_functions import lists_diff 
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 # crispy form imports
@@ -306,7 +307,8 @@ class PlatesSetupMultiForm(MultipleForm):
         return cd
 
 class SoaksSetupMultiForm(MultipleForm):
-    soakVolumeOverride = forms.IntegerField(required=False, label="Override Soak Volume")
+    soakVolumeOverride = forms.IntegerField(required=False, label="Override Soak Volume (uL)", 
+        validators=[MaxValueValidator(250), MinValueValidator(0)])
     soakDate = forms.DateTimeField(initial=timezone.now().strftime('%m/%d/%Y %H:%M'), 
         input_formats=['%m/%d/%Y %H:%M'], label="Desired soak date", required=False)
 

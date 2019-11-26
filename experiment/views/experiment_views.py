@@ -22,18 +22,28 @@ from my_utils.views_helper import build_filter_table_context, build_modal_form_d
 from ..querysets import user_editable_plates
 from ..filters import PlateFilter
 from my_utils.utility_functions import reshape
-
+from collections import OrderedDict
 
 class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
     template_name = "experiment/exp_templates/exp_main.html"
-    form_classes = { 
-                    'expform': ExpAsMultiForm,
-                    'platelibform': CreateSrcPlatesMultiForm,
-                    'initform': ExpInitDataMultiForm,
-                    'platesform': PlatesSetupMultiForm,
-                    'soaksform' : SoaksSetupMultiForm,
-                    'picklistform': PicklistMultiForm,
-                    }
+    form_classes = OrderedDict([
+        ('expform', ExpAsMultiForm),
+        ('initform', ExpInitDataMultiForm),
+        ('platelibform', CreateSrcPlatesMultiForm),
+        # ('platesform', PlatesSetupMultiForm),
+        ('soaksform', SoaksSetupMultiForm),
+        ('picklistform', PicklistMultiForm)
+
+    ])
+    form_to_step_map = dict([(k,i + 1) for i,k in enumerate(form_classes.keys())])
+    # form_classes = { 
+    #                 'expform': ExpAsMultiForm,
+    #                 'platelibform': CreateSrcPlatesMultiForm,
+    #                 'initform': ExpInitDataMultiForm,
+    #                 'platesform': PlatesSetupMultiForm,
+    #                 'soaksform' : SoaksSetupMultiForm,
+    #                 'picklistform': PicklistMultiForm,
+    #                 }
     form_arguments = {}
     success_urls = {}
 
@@ -61,10 +71,10 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
                                             'exp': exp,
                                             # 'instance':exp,
                                     }
-        self.form_arguments['platesform'] = {
-                                        'exp': exp,
-                                        # 'instance':exp,
-                                    }
+        # self.form_arguments['platesform'] = {
+        #                                 'exp': exp,
+        #                                 # 'instance':exp,
+        #                             }
         self.form_arguments['soaksform'] = {
                                         'exp': exp,
                                         # 'instance':exp,
@@ -79,7 +89,7 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         self.success_urls['expform'] = exp_view_url
         self.success_urls['initform'] = exp_view_url  
         self.success_urls['platelibform'] = exp_view_url
-        self.success_urls['platesform'] = exp_view_url
+        # self.success_urls['platesform'] = exp_view_url
         self.success_urls['soaksform'] = exp_view_url
         self.success_urls['picklistform'] = exp_view_url
 
@@ -142,14 +152,14 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
   
         return HttpResponseRedirect(self.get_success_url(form_name))
 
-    def platesform_form_valid(self, form):
-        pk = self.kwargs.get('pk_exp', None)
-        cleaned_data = form.cleaned_data
-        form_name = cleaned_data.pop('action')
-        exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-        exp_qs.update(**cleaned_data)
-        exp_qs.first().generateSrcDestPlates()
-        return HttpResponseRedirect(self.get_success_url(form_name))
+    # def platesform_form_valid(self, form):
+    #     pk = self.kwargs.get('pk_exp', None)
+    #     cleaned_data = form.cleaned_data
+    #     form_name = cleaned_data.pop('action')
+    #     exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
+    #     exp_qs.update(**cleaned_data)
+    #     exp_qs.first().generateSrcDestPlates()
+    #     return HttpResponseRedirect(self.get_success_url(form_name))
     
     def soaksform_form_valid(self, form):
         pk = self.kwargs.get('pk_exp', None)
@@ -188,6 +198,11 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        invalid_form_name = context.get('invalid_form_name')
+        step = 0
+        if invalid_form_name:
+            step = self.form_to_step_map[invalid_form_name]
+            print(step)
         pk_proj = self.kwargs.get('pk_proj', None)
         pk = self.kwargs.get('pk_exp', None)
         request = self.request
@@ -227,18 +242,25 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
             if s3_initData_path:
                 context['init_data_file_url'] = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, 
                     'media/private/' + s3_initData_path, 4000)
-        plateDict = dict(list(enumerate([p for p in plates])))
+        plateDict = dict(zip([p.id for p in plates],[p for p in plates]))
         platePairs = exp.getSoakPlatePairs()
-        src_dest_plate_urls = []
+        src_dest_plate_pairs = {}
         for pair in platePairs:
-            src_dest_plate_urls.append(reverse_lazy('soaks_csv_view', 
-            kwargs={
-                'pk_proj':pk_proj,
-                'pk_exp':pk,
-                'pk_src_plate':pair[0],
-                'pk_dest_plate':pair[1],
-            }))
+            src_dest_plate_pairs[pair] = {
+                'href':reverse_lazy('soaks_csv_view', 
+                    kwargs={
+                        'pk_proj':pk_proj,
+                        'pk_exp':pk,
+                        'pk_src_plate':pair[0].id,
+                        'pk_dest_plate':pair[1].id,
+                    }),
+                'src': pair[0],
+                'dest': pair[1],
+
+            }
+
         current_step =  exp.getCurrentStep
+        context['error_step'] = step
         context['exp'] = exp
         context['src_plates_table'] = src_plates_table
         context['dest_plates_table'] = dest_plates_table
@@ -250,7 +272,7 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         context['rockMakerIds'] = [p.rockMakerId for p in exp.plates.filter(rockMakerId__isnull=False)]
         context['incompleted_steps'] = [i+1 for i in range(current_step)]
         context['picklist_template_download'] = reverse('picklist_template', kwargs={'pk_exp':exp.id, 'pk_proj':pk_proj})
-        context['src_dest_plate_urls'] = src_dest_plate_urls
+        context['src_dest_plate_pairs'] = src_dest_plate_pairs
         context['plateDict']= plateDict
         return context
 
