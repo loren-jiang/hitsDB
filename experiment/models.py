@@ -229,7 +229,7 @@ class Experiment(models.Model):
             # ).annotate(dest_plate_id=F('dest__parentWell__plate_id'))
         for s in qs:
             # s.__dict__
-            if s.src.plate and s.dest.parentWell.plate:
+            if s.src and s.dest:
                 pair = (s.src.plate, s.dest.parentWell.plate)
                 if pair not in pairs:
                     pairs.append(pair)
@@ -740,7 +740,7 @@ class Well(models.Model):
     compounds = models.ManyToManyField(Compound, related_name='wells', blank=True) #can a well have more than one compound???
     maxResVol = models.DecimalField(max_digits=10, decimal_places=0)
     minResVol = models.DecimalField(max_digits=10, decimal_places=0)
-    plate = models.ForeignKey(Plate, on_delete=models.CASCADE, related_name='wells',null=True, blank=True)
+    plate = models.ForeignKey(Plate, on_delete=models.CASCADE, related_name='wells')
     screen_ingredients = models.ManyToManyField(Ingredient, related_name='wells', blank=True)
     wellIdx = models.PositiveIntegerField(default=0)
     wellRowIdx = models.PositiveIntegerField(default=0)
@@ -770,7 +770,7 @@ class SubWell(models.Model):
     yPos = models.DecimalField(max_digits=10, decimal_places=2,default=0)
     maxDropVol = models.DecimalField(max_digits=10, decimal_places=0,default=5.0) #in uL
     minDropVol = models.DecimalField(max_digits=10, decimal_places=0, default=0.5) #in uL
-    parentWell = models.ForeignKey(Well,on_delete=models.CASCADE, related_name='subwells',null=True, blank=True)
+    parentWell = models.ForeignKey(Well,on_delete=models.CASCADE, related_name='subwells')
     compounds = models.ManyToManyField(Compound, related_name='subwells', blank=True)
     protein = models.CharField(max_length=100, default="")
     hasCrystal = models.BooleanField(default=True)

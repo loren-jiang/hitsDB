@@ -11,8 +11,6 @@ class DropImagesFieldForm(ImagesFieldForm):
     def clean(self):
         cleaned_data = super().clean() #call parent clean()
         files = cleaned_data['image_field']
-        print(files)
-
 
 class DropImageUploadForm(forms.ModelForm):
     class Meta:

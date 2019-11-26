@@ -137,9 +137,10 @@ class ExpAsMultiForm(MultiFormMixin, ExperimentModelForm):
     class Meta(ExperimentModelForm.Meta):
         fields = list(ExperimentModelForm.Meta.fields) + ['project']
 
-class ExpInitDataMultiForm(MultiFormMixin):
+class ExpInitDataMultiForm(FormFieldPopoverMixin, MultiFormMixin):
     initDataFile = forms.FileField(label="Initialization file [.json]",
             validators=[FileExtensionValidator(['json'])],
+            help_text=".json file to initialize experiment",
             )
     def __init__(self, exp, *args, **kwargs):
         self.exp = exp
@@ -308,11 +309,13 @@ class PlatesSetupMultiForm(MultiFormMixin):
         
         return cd
 
-class SoaksSetupMultiForm(MultiFormMixin):
+class SoaksSetupMultiForm(FormFieldPopoverMixin, MultiFormMixin):
     soakVolumeOverride = forms.IntegerField(required=False, label="Override Soak Volume (uL)", 
-        validators=[MaxValueValidator(250), MinValueValidator(0)])
+        validators=[MaxValueValidator(250), MinValueValidator(0)],
+        help_text="soak volume to set for all soaks")
     soakDate = forms.DateTimeField(initial=timezone.now().strftime('%m/%d/%Y %H:%M'), 
-        input_formats=['%m/%d/%Y %H:%M'], label="Desired soak date", required=False)
+        input_formats=['%m/%d/%Y %H:%M'], label="Desired soak date", required=False,
+        help_text="")
 
     def __init__(self, exp, *args, **kwargs):
         super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)

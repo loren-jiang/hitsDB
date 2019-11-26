@@ -48,7 +48,7 @@ class PrivateFileJSONForm(PrivateFileUploadForm):
 
 class ImagesFieldForm(forms.Form):
     image_field = forms.ImageField(widget=forms.ClearableFileInput(attrs={'multiple': True}))
-    use_local = forms.BooleanField(required=False)
+    use_local = forms.BooleanField(required=False, initial=True, widget=forms.HiddenInput()) #TODO: remove hidden widget eventually
 
 class FilesFieldForm(forms.Form):
     file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': True}))

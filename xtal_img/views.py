@@ -43,8 +43,7 @@ class DropImagesUploadView(FormView):
     def get_success_url(self):
         p = Plate.objects.get(id=self.kwargs['pk_plate'])
         if p:
-            # exp = 
-            return reverse_lazy('exp', kwargs={'pk_exp':p.experiment.id})
+            return reverse_lazy('exp', kwargs={'pk_exp':p.experiment.id, 'pk_proj':p.experiment.project.id})
         return HttpResponseRedirect(self.request.path_info)
 
     @method_decorator(is_dest_plate, login_required)
