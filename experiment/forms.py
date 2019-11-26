@@ -21,7 +21,7 @@ from s3.forms import PrivateFileUploadForm, PrivateFileCSVForm
 from .querysets import user_editable_projects, user_editable_plates
 from my_utils.utility_functions import lists_diff 
 from django.core.validators import MaxValueValidator, MinValueValidator
-
+from my_utils.my_forms import FormFieldPopoverMixin, MultiFormMixin
 
 # crispy form imports
 from crispy_forms.helper import FormHelper
@@ -57,9 +57,6 @@ class LibraryForm(forms.ModelForm):
     # def __init__(self, *args, **kwargs):
         # self.form_class = kwargs.pop("form_class", None)
         # super(LibraryForm, self).__init__(*args, **kwargs)
-
-class MultipleForm(forms.Form):
-    action = forms.CharField(max_length=60, widget=forms.HiddenInput())
 
 # simple form to edit Project fields (name, description)
 class SimpleProjectForm(forms.ModelForm):
@@ -123,7 +120,7 @@ class ExperimentModelForm(forms.ModelForm):
 
 # MultiForms -------------------------------------------------------------------------
 
-class ExpAsMultiForm(MultipleForm, ExperimentModelForm):
+class ExpAsMultiForm(MultiFormMixin, ExperimentModelForm):
 
     """populate form with current values"""
     def __init__(self, user, lib_qs=None, *args, **kwargs):
@@ -140,7 +137,7 @@ class ExpAsMultiForm(MultipleForm, ExperimentModelForm):
     class Meta(ExperimentModelForm.Meta):
         fields = list(ExperimentModelForm.Meta.fields) + ['project']
 
-class ExpInitDataMultiForm(MultipleForm):
+class ExpInitDataMultiForm(MultiFormMixin):
     initDataFile = forms.FileField(label="Initialization file [.json]",
             validators=[FileExtensionValidator(['json'])],
             )
@@ -181,16 +178,21 @@ class ExpInitDataMultiForm(MultipleForm):
                 if type(e) is OverflowError:
                     self.add_error('initDataFile','File is too big!')
 
-class CreateSrcPlatesMultiForm(MultipleForm):
-    numSrcPlates = forms.IntegerField(required=False, label="Number of plates")
-    plateLibDataFile = forms.FileField(required=False, label="Source plate(s) file [.csv]",
+class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
+    numSrcPlates = forms.IntegerField(required=False, label="Number of plates", help_text="Number of plates you wish to create")
+    plateLibDataFile = forms.FileField(required=False, label="Source plate(s) file [.csv]", help_text=".csv file defining where compounds are in plate",
         validators=[FileExtensionValidator(['csv'])],)
     templateSrcPlates = forms.ModelMultipleChoiceField(
-        queryset=Plate.objects.filter(isSource=True, isTemplate=True), 
-        required=False, label="Template source plates")
+        queryset=Plate.objects.none(), 
+        required=False, label="Template source plates",
+        help_text="Source plates marked as 'template' from which to import")
 
     def __init__(self, exp, *args, **kwargs):
+        template_qs = kwargs.pop('template_src_plates_qs')
+        
         super().__init__(*args, **kwargs)
+        if template_qs:
+            self.fields['templateSrcPlates'].queryset = template_qs
         # make from crispy
         self.helper = FormHelper()
         self.helper.layout = Layout(
@@ -268,7 +270,7 @@ class CreateSrcPlatesMultiForm(MultipleForm):
 
         return cd
 
-class PlatesSetupMultiForm(MultipleForm):
+class PlatesSetupMultiForm(MultiFormMixin):
     subwells = (
         (1,'1'),
         (2,'2'),
@@ -306,7 +308,7 @@ class PlatesSetupMultiForm(MultipleForm):
         
         return cd
 
-class SoaksSetupMultiForm(MultipleForm):
+class SoaksSetupMultiForm(MultiFormMixin):
     soakVolumeOverride = forms.IntegerField(required=False, label="Override Soak Volume (uL)", 
         validators=[MaxValueValidator(250), MinValueValidator(0)])
     soakDate = forms.DateTimeField(initial=timezone.now().strftime('%m/%d/%Y %H:%M'), 
@@ -315,7 +317,7 @@ class SoaksSetupMultiForm(MultipleForm):
     def __init__(self, exp, *args, **kwargs):
         super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)
 
-class PicklistMultiForm(MultipleForm, PrivateFileCSVForm):
+class PicklistMultiForm(MultiFormMixin, PrivateFileCSVForm):
     def __init__(self, *args, **kwargs):
         super(PicklistMultiForm, self).__init__(*args, **kwargs)
         exp = kwargs.get('instance', None)
@@ -387,7 +389,7 @@ class PicklistMultiForm(MultipleForm, PrivateFileCSVForm):
         return cd
     pass
 
-# class SoaksSetupMultiForm(MultipleForm):
+# class SoaksSetupMultiForm(MultiFormMixin):
 #     def __init__(self, exp, *args, **kwargs):
 #         super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)
 #         soakVolume = 25

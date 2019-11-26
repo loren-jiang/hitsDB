@@ -27,15 +27,17 @@ from collections import OrderedDict
 class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
     template_name = "experiment/exp_templates/exp_main.html"
     form_classes = OrderedDict([
-        ('expform', ExpAsMultiForm),
-        ('initform', ExpInitDataMultiForm),
-        ('platelibform', CreateSrcPlatesMultiForm),
+        ('expform', ExpAsMultiForm), #step 0
+        ('initform', ExpInitDataMultiForm), #step 1
+        ('platelibform', CreateSrcPlatesMultiForm), #step 2
         # ('platesform', PlatesSetupMultiForm),
-        ('soaksform', SoaksSetupMultiForm),
-        ('picklistform', PicklistMultiForm)
+        ('soaksform', SoaksSetupMultiForm), #step 4
+        ('picklistform', PicklistMultiForm) #step 5
 
     ])
-    form_to_step_map = dict([(k,i + 1) for i,k in enumerate(form_classes.keys())])
+    form_to_step_map = dict([(k,i) for i,k in enumerate(form_classes.keys())])
+    form_to_step_map['soaksform'] = 4
+    form_to_step_map['picklistform'] = 5
     # form_classes = { 
     #                 'expform': ExpAsMultiForm,
     #                 'platelibform': CreateSrcPlatesMultiForm,
@@ -69,6 +71,7 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         }
         self.form_arguments['platelibform'] = {
                                             'exp': exp,
+                                            'template_src_plates_qs': user_editable_plates(user).filter(isSource=True, isTemplate=True),
                                             # 'instance':exp,
                                     }
         # self.form_arguments['platesform'] = {
@@ -202,7 +205,6 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         step = 0
         if invalid_form_name:
             step = self.form_to_step_map[invalid_form_name]
-            print(step)
         pk_proj = self.kwargs.get('pk_proj', None)
         pk = self.kwargs.get('pk_exp', None)
         request = self.request
@@ -212,8 +214,10 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
         src_plates_table = exp.getSrcPlatesTable(exc=[])
         plateModalFormData = build_modal_form_data(Plate)
+        src_plates_qs = plates.filter(isSource=True)
+        dest_plates_qs = plates.filter(isSource=False)
         src_plates_table = ModalEditPlatesTable(
-            data=plates.filter(isSource=True),
+            data=src_plates_qs,
             data_target=plateModalFormData['edit']['modal_id'], 
             a_class="btn btn-primary " + plateModalFormData['edit']['url_class'], 
             form_action='a',
@@ -260,6 +264,7 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
             }
 
         current_step =  exp.getCurrentStep
+        context['dest_plates_qs'] = dest_plates_qs
         context['error_step'] = step
         context['exp'] = exp
         context['src_plates_table'] = src_plates_table
@@ -357,7 +362,8 @@ def exp_plates(request, pk_exp):
 
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
-def plate(request, pk_proj, pk_plate):
+def plate(request, pk_plate, pk_proj=None):
+
     p = get_object_or_404(Plate, pk=pk_plate)
     if p:
         wells_qs = p.wells.select_related('compound','soak').prefetch_related('subwells').order_by('name')

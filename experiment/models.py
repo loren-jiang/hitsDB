@@ -566,9 +566,9 @@ class Plate(models.Model):
 
     def __str__(self):
         string = ''
-        if self.isTemplate:
-            string += 'Template: '
-        return string + ' ' + self.name + ' ' + str(self.id)
+        # if self.isTemplate:
+        #     string += 'Template: '
+        return string + ' ' + self.name + ' (plate id: ' + str(self.id) + ')'
 
     def get_absolute_url(self):
         return "/home/plates/%i/" % self.id
