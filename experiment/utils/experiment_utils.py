@@ -122,10 +122,10 @@ def interleaveSrcWellsToSoaks(self, src_wells=[], soaks=[]):
     Returns:
     None
     """
-    src_wells = self.srcWellsWithCompounds
+    src_wells = self.srcWellsWithCompounds.select_related('plate')
     wells_grouped_by_plate_id = group_list_by([w for w in src_wells], 'plate_id')
     wells_interleaved = interleave(wells_grouped_by_plate_id)
-    print(wells_interleaved)
+    # wells_interleaved.sort(key=lambda x: x.plate.plateIdxExp)
     return matchSrcWellsToSoaks(self, wells_interleaved, soaks)
 
 def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
@@ -148,6 +148,11 @@ def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
 
     # assert len(soaks) <= len(src_wells)
     min_len = min(len(soaks), len(src_wells))
+    #TODO: slice lists to min_len, then sort by plate idx
+    soaks_sliced = soaks[:min_len]
+    src_wells_sliced = src_wells[:min_len]
+
+    src_wells_sliced.sort(key=lambda x: x.plate.plateIdxExp)
     try:
         with transaction.atomic():
             # clear existing source wells of soaks
@@ -157,8 +162,8 @@ def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
 
             # update soaks with source wells
             for i in range(min_len):
-                soaks[i].src = src_wells[i]
-            Soak.objects.bulk_update(soaks, ['src'])
+                soaks_sliced[i].src = src_wells_sliced[i]
+            Soak.objects.bulk_update(soaks_sliced, ['src'])
     except Exception as e: 
         pass
 

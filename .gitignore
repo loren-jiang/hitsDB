@@ -9,3 +9,7 @@ media/
 .vscode/
 requirements.txt
 .env
+
+# Python cache
+*.pyc
+*.pyo

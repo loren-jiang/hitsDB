@@ -344,8 +344,7 @@ class Experiment(models.Model):
         """
         Returns ordered wells in the experiment's source plates
         """
-        return Well.objects.filter(plate__in=
-            self.plates.filter(isSource=True)).order_by('plate__plateIdxExp', 'name')
+        return Well.objects.filter(plate__in=self.plates.filter(isSource=True)).order_by('plate__plateIdxExp', 'name')
     
     @property
     def srcWellsWithCompounds(self):
