@@ -1,0 +1,34 @@
+{% load experiment_tags %}
+
+<div class='well-matrix'>
+    <div class='row plate-row justify-content-center'> 
+        <div class='col y-axis'> </div>
+        {% for h in plate.0 %}
+            <div class='col x-axis'> {{forloop.counter}} </div>
+        {% endfor %}
+    </div>
+    {% for row in plate %}
+        <div class='row plate-row justify-content-center'>
+            {% if idx_to_letters_map %}
+            <div class='col y-axis'> {{idx_to_letters_map|hash:forloop.counter0}} </div>
+            {% else %}
+            <div class='col y-axis'> {{forloop.counter0}} </div>
+            {% endif %}
+            {% for col in row %}
+                <div class='col well'>
+                    {% for s_w in col %}
+                        <div class='subwell'>
+                        {% if dest_src_map %}
+                        {% with pair_id=dest_src_map|hash:s_w.id %}
+                        <div class="soak {% if pair_id %} used {% endif %}" id="dest_{{s_w.id}}" pair_id="src_{{pair_id}}">&nbsp;&nbsp;</div>
+                        {% endwith %}
+                        {% else %}
+                        <div class="soak" id="dest_{{s_w.id}}">&nbsp;&nbsp;</div>  
+                        {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+</div>

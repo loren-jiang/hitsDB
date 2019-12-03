@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User, Group
-from .models import Soak, Project, Plate
+from .models import Soak, Project, Plate, Experiment
 import django_filters
 from .querysets import user_collaborators
 
@@ -15,6 +15,13 @@ class CustomFilterMixin:
         self.request = getattr(kwargs, 'request', None)
         super().__init__(*args, **kwargs)
         
+class ExperimentFilter(CustomFilterMixin, django_filters.FilterSet):
+    class Meta:
+        model = Experiment
+        fields = {
+            'name':['icontains'],
+            'owner':['exact'],
+        }
 
 class SoakFilter(django_filters.FilterSet):
     srcWell = django_filters.CharFilter(field_name='src__id')#, lookup_expr='contains')
@@ -33,7 +40,6 @@ def collaborators(request):
 class ProjectFilter(CustomFilterMixin, django_filters.FilterSet):
 
     collaborators = django_filters.ModelMultipleChoiceFilter(queryset=collaborators)
-
     class Meta:
         model = Project
         fields = {

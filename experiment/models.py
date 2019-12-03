@@ -24,7 +24,6 @@ from django.db import transaction, IntegrityError
 from django.urls import reverse, reverse_lazy
 from functools import reduce 
 
-# Create your models here.
 class Project(models.Model):
     name = models.CharField(max_length=30)
     owner = models.ForeignKey(User, related_name='projects',on_delete=models.CASCADE)
@@ -163,6 +162,10 @@ class Experiment(models.Model):
 
     picklist_download_date = models.DateTimeField(blank=True, null=True)
 
+    new_instance_viewname = 'exp_new'
+    edit_instance_viewname = 'exp_edit'
+    model_name = 'Experiment'
+
     class Meta:
         get_latest_by="modified_date"
         constraints = [
@@ -174,6 +177,13 @@ class Experiment(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def editInstanceUrl(self):
+        """
+        Returns url to edit class instance; should be @property because instance data is needed
+        """
+        return reverse(self.edit_instance_viewname, kwargs={'pk_exp':self.pk})
 
     @property
     def soakTime(self):
@@ -200,7 +210,7 @@ class Experiment(models.Model):
         """
         cond0 = self.srcPlateType_id and self.destPlateType_id and self.project_id # has srcPlateType and destPlateType
         # cond1 = self.libraryValid and self.initDataValid
-        cond1 = self.initDataValid 
+        cond1 = self.initDataValid and self.soaks.count()
         cond2 = self.srcPlatesValid
         cond3 = self.destPlatesValid
         
@@ -238,19 +248,19 @@ class Experiment(models.Model):
     @property
     def soaksValid(self):
         """
-        Returns True if experiment soaks exist and if each soak's dest subwell and source well exist and is in plate and
-        soaks .csv is downloaded,
+        Returns True if experiment soaks exist and if each soak's dest subwell and source well exist,
         else returns False
         """
         if not(self.soaks.count()):
             return False
-     
-        for s in self.soaks.select_related('src__plate', 'dest__parentWell__plate'):
-            if not(s.src_id and s.dest_id):
-                return False
-            if not(s.src.plate.experiment_id==self.id and s.dest.parentWell.plate.experiment_id==self.id):
-                return False
-        return True
+
+        usedSoaks = self.usedSoaks
+
+        return not(usedSoaks.filter(src__isnull=True).exists()) and not(usedSoaks.filter(dest__isnull=True).exists())
+        # for s in usedSoaks.select_related('src__plate', 'dest__parentWell__plate'):
+        #     if not(s.src_id and s.dest_id):
+        #         return False
+        # return True
 
     @property
     def libraryValid(self):
@@ -337,7 +347,7 @@ class Experiment(models.Model):
         Returns ordered subwells in the experiment's destination plates
         """
         return SubWell.objects.filter(parentWell__plate__in=
-            self.plates.filter(isSource=False)).order_by('parentWell__plate__plateIdxExp', 'idx')
+            self.plates.filter(isSource=False)).order_by('parentWell__plate__plateIdxExp', 'parentWell__name', 'idx')
 
     @property
     def srcWells(self):
@@ -753,7 +763,8 @@ class Well(models.Model):
         return str(self.plate.plateIdxExp) + '_' + self.name
 
     class Meta:
-        ordering = ('wellRowIdx','wellColIdx')
+        ordering = ('name', )
+        # ordering = ('wellRowIdx','wellColIdx')
         constraints = [
             models.UniqueConstraint(fields=['plate_id', 'name'], name='unique_well_name_in_plate')
         ]
@@ -780,7 +791,7 @@ class SubWell(models.Model):
         # return repr(self.parentWell) + "_" + str(self.idx)
 
     class Meta:
-        # ordering = ('idx',)
+        ordering = ('idx',)
         constraints = [
             models.UniqueConstraint(fields=['parentWell_id', 'idx'], name='unique_subwell_in_well')
         ]
@@ -790,7 +801,7 @@ class Soak(models.Model):
     experiment = models.ForeignKey(Experiment,on_delete=models.CASCADE,null=True, blank=True, related_name='soaks',)
     
     dest = models.OneToOneField(SubWell, on_delete=models.CASCADE,null=True, blank=True, related_name='soak',)
-    src = models.OneToOneField(Well, on_delete=models.CASCADE,null=True, blank=True, related_name='soak',)
+    src = models.OneToOneField(Well, on_delete=models.SET_NULL,null=True, blank=True, related_name='soak',)
     transferCompound = models.ForeignKey(Compound, on_delete=models.CASCADE,null=True, blank=True, related_name='soaks',)
     
     soakOffsetX = models.DecimalField(max_digits=10, decimal_places=2,default=0, validators=[MinValueValidator(0.0)])
@@ -873,19 +884,13 @@ def ensure_editor_is_collaborator(sender, instance, action, reverse, model, pk_s
     if action == 'post_add':
         instance.collaborators.add(*[u for u in User.objects.filter(pk__in=list(pk_set))])
 
-@receiver(post_save, sender=Experiment)
-def delete_plates_soaks_on_library_change(sender, instance, created, **kwargs):
-    """
-    Delete experiment plates and soaks on library change
-    """
-    pass
-    # if instance.prev_library_id != instance.library_id and not(created):
-    #     instance.plates.all().delete()
-    #     instance.soaks.all().delete()
-    #     reset = {'srcPlateType':None, 'destPlateType':None, 'subwell_locations':[]}
-    #     Experiment.objects.filter(id=instance.id).update(**reset) # does not call save() so no signals emitted
-    #     # set state of current library
-    #     instance.prev_library_id = instance.library_id
+# @receiver(post_save, sender=Project)
+# def process_project_post_save(sender, instance, created, **kwargs):
+#     """
+#     """
+#     if created:
+#         users_in_groups = User.objects.filter(groups__in=instance.owner.groups.all())
+#         instance.collaborators.add([u for u in users_in_groups])
 
 @receiver(post_save, sender=Experiment)
 def process_experiment_post_save(sender, instance, created, **kwargs):

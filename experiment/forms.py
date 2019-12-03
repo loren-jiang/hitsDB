@@ -19,10 +19,10 @@ from io import TextIOWrapper
 from itertools import compress
 from s3.forms import PrivateFileUploadForm, PrivateFileCSVForm
 from .querysets import user_editable_projects, user_editable_plates
-from my_utils.utility_functions import lists_diff 
+from my_utils.utility_functions import lists_diff, missing_list_elems
 from django.core.validators import MaxValueValidator, MinValueValidator
 from my_utils.my_forms import FormFieldPopoverMixin, MultiFormMixin
-
+from my_utils.fields import GroupedMutlipleModelChoiceField, GroupedModelChoiceField
 # crispy form imports
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, HTML, Button
@@ -76,27 +76,48 @@ class ProjectForm(forms.ModelForm):
         }
         js = ('/static/admin/js/jsi18n.js',)
 
+    collaborators = GroupedMutlipleModelChoiceField(
+                queryset=User.objects.order_by('profile__primary_group__name'),
+                choices_groupby='profile.primary_group.__str__',
+                required=False,
+            )
+    editors = GroupedMutlipleModelChoiceField(
+                queryset=User.objects.order_by('profile__primary_group__name'),
+                choices_groupby='profile.primary_group.__str__',
+                required=False,
+            )
     class Meta:
         model = Project
-        fields=('name','description','collaborators', 'owner')
+        fields=('name','description','collaborators', 'editors', 'owner')
 
     def __init__(self, *args, **kwargs):
-        if kwargs.get('user'):
-            self.user = kwargs.pop('user', None)
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         if self.user:
             self.fields['owner'] = forms.ModelChoiceField(queryset=User.objects.filter(id=self.user.id), initial=self.user.id, widget=forms.HiddenInput())  
-            collab_qs=User.objects.filter(groups__in=self.user.groups.all(), is_active=True).exclude(id=self.user.id)    
-            self.fields['collaborators'] = forms.ModelMultipleChoiceField(
-                queryset=collab_qs,
+            user_qs = User.objects.filter(groups__in=self.user.groups.all(), is_active=True).exclude(id=self.user.id)    
+            self.fields['collaborators'] = GroupedMutlipleModelChoiceField(
+                queryset=user_qs.order_by('profile__primary_group__name'),
+                initial=[u for u in user_qs],
+                choices_groupby='profile.primary_group.__str__',
+                required=False,
+            )
                 # widget=forms.CheckboxSelectMultiple,
-                widget=FilteredSelectMultiple("User", 
-                    is_stacked=False, attrs={'rows':'5'}),
-                    required=False
-                    )
+                # widget=FilteredSelectMultiple("User", 
+                #     is_stacked=False, attrs={'rows':'5'}),
+                #     )
+            self.fields['editors'] = GroupedMutlipleModelChoiceField(
+                queryset=user_qs,
+                choices_groupby='profile.primary_group',
+                required=False,
+            )
+                # widget=forms.CheckboxSelectMultiple,
+                # widget=FilteredSelectMultiple("User", 
+                #     is_stacked=False, attrs={'rows':'5'}),
+                #     required=False
+                #     )
 
-
-class ExperimentModelForm(forms.ModelForm):
+class ExperimentForm(forms.ModelForm):
     description = forms.CharField(required=False, widget=forms.Textarea(), max_length=300)
     protein = forms.CharField(max_length=100, required=False)
     
@@ -105,7 +126,9 @@ class ExperimentModelForm(forms.ModelForm):
         fields = ("name","description", "protein", "srcPlateType", "destPlateType","library",)
         
     def __init__(self, *args, **kwargs):
-        super(ExperimentModelForm, self).__init__(*args, **kwargs)
+        if kwargs.get('user'):
+            self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
         srcPlateType_qs = PlateType.objects.filter(isSource=True)
         destPlateType_qs = PlateType.objects.filter(isSource=False)
         self.fields['srcPlateType'] = forms.ModelChoiceField(queryset=srcPlateType_qs, 
@@ -120,7 +143,7 @@ class ExperimentModelForm(forms.ModelForm):
 
 # MultiForms -------------------------------------------------------------------------
 
-class ExpAsMultiForm(MultiFormMixin, ExperimentModelForm):
+class ExpAsMultiForm(MultiFormMixin, ExperimentForm):
 
     """populate form with current values"""
     def __init__(self, user, lib_qs=None, *args, **kwargs):
@@ -134,8 +157,8 @@ class ExpAsMultiForm(MultiFormMixin, ExperimentModelForm):
             self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, required=False)
             self.fields['project'] = forms.ModelChoiceField(queryset=user_editable_projects(user), initial=exp.project.id)
 
-    class Meta(ExperimentModelForm.Meta):
-        fields = list(ExperimentModelForm.Meta.fields) + ['project']
+    class Meta(ExperimentForm.Meta):
+        fields = list(ExperimentForm.Meta.fields) + ['project']
 
 class ExpInitDataMultiForm(FormFieldPopoverMixin, MultiFormMixin):
     initDataFile = forms.FileField(label="Initialization file [.json]",
@@ -146,9 +169,10 @@ class ExpInitDataMultiForm(FormFieldPopoverMixin, MultiFormMixin):
         self.exp = exp
         super(ExpInitDataMultiForm, self).__init__(*args,**kwargs)
 
-    def clean(self):
-        cleaned_data = super().clean()
-        initDataFile = cleaned_data.get('initDataFile', None)
+    def clean_initDataFile(self):
+        # cleaned_data = super().clean()
+        initDataFile = self.cleaned_data.get('initDataFile', None)
+        required_plate_keys = ['plate_id', 'date_time', 'temperature', 'subwells']
         if initDataFile:
             try:
                 if initDataFile.size >= 2.5e6:
@@ -173,11 +197,25 @@ class ExpInitDataMultiForm(FormFieldPopoverMixin, MultiFormMixin):
                         )
                     )
 
+                for p_id in plate_ids:
+                    p = data_dict[p_id]
+                    keys = p.keys()
+                    missing_keys = missing_list_elems(required_plate_keys, keys)
+                    if missing_keys:
+                        self.add_error('initDataFile',
+                            ValidationError(            
+                                ('Plate in .json has missing keys %(value)s.'),
+                                code='invalid',
+                                params={'value': missing_keys},
+                            )
+                        )
+
             except (ValueError, OverflowError) as e:
                 if issubclass(type(e), ValueError):
                     self.add_error('initDataFile','File given is not in correct .json format. Review instructions above.')
                 if type(e) is OverflowError:
                     self.add_error('initDataFile','File is too big!')
+            return initDataFile
 
 class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
     numSrcPlates = forms.IntegerField(required=False, label="Number of plates", help_text="Number of plates you wish to create")

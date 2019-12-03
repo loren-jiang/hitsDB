@@ -38,9 +38,17 @@
 
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-3">
             <div class="jumbotron">
                 <h3>Edit <img src="{% static 'icons/atomic.png' %}" class="icon"> </h3>
+                {% csrf_token %}
+                {{ projForm|crispy }}
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="jumbotron">
+                <h3>Source Plates </h3>
 
             </div>
         </div>
@@ -62,7 +70,7 @@
                 
             </div>
         </div>
-        <div class="col-md-6">
+        {% comment %} <div class="col-md-6">
             <div class="jumbotron">
                   <h3>Libraries <img src="{% static 'icons/book.png' %}" class="icon"></h3>
                   
@@ -78,7 +86,7 @@
                   {% render_table collaboratorsTable %}
           
             </div>
-        </div>
+        </div> {% endcomment %}
  
     </div>  
 </div>

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% load experiment_tags %}
+{% load render_table from django_tables2 %}
+{% block content %}
+
+<script src="{% static 'hitsDB/js/modalForm.js' %}"></script>
+<script src="{% static '/apps/experiment/js/soaks.js' %}"></script>
+<link href="{% static '/apps/experiment/css/soak_transfers.css' %}" rel="stylesheet">
+
+<div class="container"> 
+<div class="row justify-content-center">
+
+<div class="col-md-5 src_plates">
+<h5>SOURCE PLATES</h5>
+{% for plate in src_wells %}
+    <p> Plate: {{forloop.counter}} </p>
+    {% include 'src_plate.html' with wellMatrix=plate %}
+    <br>
+{% endfor %}
+</div>
+
+<div class="col-md-5 dest_plates">
+<h5>DEST PLATES</h5>
+{% for plate in dest_subwells %}
+    <p> Plate: {{forloop.counter}} </p>
+    {% include 'dest_plate.html' with wellMatrix=plate %}
+    <br>
+{% endfor %}
+</div>
+
+</div>
+</div>
+{% endblock %}

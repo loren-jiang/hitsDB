@@ -5,7 +5,8 @@ from ..tables import LibrariesTable, CompoundsTable, ModalEditLibrariesTable, Ex
 from lib.filters import CompoundFilter, LibraryFilter
 from django_tables2.views import SingleTableMixin
 from django_filters.views import FilterView
-from ..decorators import is_users_library
+from ..decorators import is_users_project, is_user_accessible_project, is_user_editable_project, \
+    is_users_library # is_user_accessible_library, is_user_editable_library
 from ..forms import LibraryForm
 from ..models import Experiment
 from ..querysets import user_accessible_libs
@@ -143,14 +144,17 @@ def lib_edit(request, pk_lib):
 
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
-def libs(request):
-    user_libs_qs = user_accessible_libs(request.user)
-    # modalFormData = Library.getModalFormData()
+def libs(request, qs=Library.objects.none()):
+    libs_qs = None
+    if qs:
+        libs_qs = user_accessible_libs(request.user)
+    else:
+        libs_qs = qs
     modalFormData = build_modal_form_data(Library)
     libs_filter = LibraryFilter(
         data=request.GET, 
         request=request, 
-        queryset=user_libs_qs,
+        queryset=libs_qs,
         filter_id='lib_filter',
         form_id='lib_filter_form'
         )
@@ -191,3 +195,17 @@ def modify_libs(request):
             if btn_id=="delete_libs":
                 libs_qs.delete()
     return redirect(prev)
+
+# PROJECT Library VIEWS ------------------------------------------------------------------
+@is_users_project
+@login_required(login_url="/login")
+def proj_libs(request, pk_proj):
+    exps = Experiment.objects.filter(project_id=pk_proj)
+    libs_qs = Library.objects.filter(experiments__in=exps)
+    return libs(request, qs=libs_qs)
+
+def get_user_libraries(request, exc=[]):
+    user_lib_qs = Library.objects.filter(owner_id=request.user.id)
+    libsTable = LibrariesTable(data=user_lib_qs,exclude=exc)
+    RequestConfig(request, paginate={'per_page': 5}).configure(libsTable)
+    return libsTable

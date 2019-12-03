@@ -1,14 +1,15 @@
 from hitsDB.views_import import * #common imports for views
 from ..models import Experiment, Plate, Well, SubWell, Soak, Project, PlateType
-from ..tables import SoaksTable, ExperimentsTable, ModalEditPlatesTable, DestPlatesForGUITable
+from ..tables import SoaksTable, ExperimentsTable, ModalEditPlatesTable, DestPlatesForGUITable, ModalEditExperimentsTable
 from django_tables2 import RequestConfig
 from ..exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from lib.models import Library, Compound
-from ..forms import CreateSrcPlatesMultiForm, ExperimentModelForm, PlatesSetupMultiForm, \
+from ..forms import CreateSrcPlatesMultiForm, ExperimentForm, PlatesSetupMultiForm, \
     ExpAsMultiForm, SoaksSetupMultiForm, ExpInitDataMultiForm, PicklistMultiForm
 from forms_custom.multiforms import MultiFormsView
 from django.db.models import Count, F, Value
-from ..decorators import is_users_experiment, is_user_accessible_experiment
+from ..decorators import is_users_experiment, is_user_accessible_experiment, is_user_editable_experiment, \
+    is_users_project, is_user_accessible_project, is_user_editable_project
 from django.conf import settings
 from s3.s3utils import myS3Client, myS3Resource, create_presigned_url
 from s3.models import PrivateFileJSON, PrivateFileCSV
@@ -19,12 +20,13 @@ import csv
 import re
 from django.views.generic.edit import UpdateView
 from my_utils.views_helper import build_filter_table_context, build_modal_form_data
-from ..querysets import user_editable_plates
-from ..filters import PlateFilter
+from ..querysets import user_editable_plates, user_editable_experiments
+from ..filters import PlateFilter, ExperimentFilter
 from my_utils.utility_functions import reshape
 from collections import OrderedDict
 
-class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
+@method_decorator([login_required(login_url="/login"), is_user_accessible_experiment], name='dispatch')
+class MultiFormsExpView(MultiFormsView):
     template_name = "experiment/exp_templates/exp_main.html"
     form_classes = OrderedDict([
         ('expform', ExpAsMultiForm), #step 0
@@ -281,18 +283,13 @@ class MultiFormsExpView(MultiFormsView, LoginRequiredMixin):
         context['plateDict']= plateDict
         return context
 
-#checks if project is the user's
-def experiment_is_users(user, e):
-    projects_with_exp = user.projects.filter(experiments__in=[e.id]) 
-    return projects_with_exp.count() > 0 
-
-@is_users_experiment
+@is_user_editable_experiment
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def experiment(request, pk_exp):
     pk = pk_exp
     experiment = Experiment.objects.select_related(
         'owner').get(id=pk)
-    # if experiment_is_users(request.user, experiment):
     soaks_table = experiment.getSoaksTable(exc=[])
     RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
     src_plates_table = experiment.getSrcPlatesTable(exc=[])
@@ -347,8 +344,9 @@ class PlateUpdate(UpdateView):
         return reverse('plate_edit', kwargs={'pk_plate':self.object.pk})
 
 #views experiment plates as table
-@is_users_experiment
+@is_user_editable_experiment
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def exp_plates(request, pk_exp):
     pk = pk_exp
     experiment = Experiment.objects.get(id=pk)
@@ -388,7 +386,7 @@ def plate(request, pk_plate, pk_proj=None):
 
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
-def plates(request):
+def plates(request, pk_exp=None):
     modalFormData = build_modal_form_data(Plate)
     plateFilter = PlateFilter(
         data=request.GET,
@@ -405,7 +403,6 @@ def plates(request):
         form_id='plate_table_form',
         form_action=reverse('modify_plates'),
         view_name='plate_edit',
-
         )
     RequestConfig(request, paginate={'per_page': 20}).configure(table)
     
@@ -417,16 +414,47 @@ def plates(request):
 
     return render(request, 'experiment/proj_templates/projects.html', context)
 
+@is_user_accessible_project
 @login_required(login_url="/login")
-def experiments(request):
-    experimentsTable = ExperimentsTable(request.user.experiments.all())
-    RequestConfig(request, paginate={'per_page': 5}).configure(experimentsTable)
-    data = {
-        'experimentsTable': experimentsTable,
-    }
-    return render(request,'experiment/exp_templates/experiments.html',data)#,{'experiments':})
+@user_passes_test(user_base_tests)
+def proj_exps(request, pk_proj):
+    proj = Project.objects.get(id=pk_proj)
+    exps = proj.experiments.order_by('modified_date')
+    return experiments(request, qs=exps)
 
-@is_users_experiment
+@login_required(login_url="/login")
+def experiments(request, qs=None):
+    exp_qs = user_editable_experiments(request.user)
+    if qs:
+        exp_qs = qs
+    modalFormData = build_modal_form_data(Experiment)
+    expFilter = ExperimentFilter(
+        data=request.GET,
+        request=request, 
+        queryset=exp_qs,
+        filter_id='exp_filter',
+        form_id='exp_filter_form',
+    )
+    table = ModalEditExperimentsTable(
+        data=expFilter.qs.order_by('-modified_date'),
+        data_target=modalFormData['edit']['modal_id'], 
+        a_class="btn btn-primary " + modalFormData['edit']['url_class'], 
+        table_id='exp_table',
+        form_id='exp_table_form',
+        form_action=reverse('modify_exps'),
+        view_name='exp_edit',
+        )   
+    RequestConfig(request, paginate={'per_page': 5}).configure(table)
+    buttons = []
+    modals = [
+        modalFormData['edit'],
+        ]
+    context = build_filter_table_context(expFilter, table, modals, buttons)
+
+    return render(request,'experiment/exp_templates/experiments.html', context)#,{'experiments':})
+
+@is_user_editable_experiment
+@user_passes_test(user_base_tests)
 @login_required(login_url="/login")
 def delete_experiment(request, pk_exp):
     pk = pk_exp
@@ -439,6 +467,7 @@ def delete_experiment(request, pk_exp):
         return redirect('experiments')
     
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def delete_experiments(request, pks_exp, pk_proj=None):
     pks = pks_exp
     if pk_proj:
@@ -464,8 +493,9 @@ def delete_experiments(request, pks_exp, pk_proj=None):
                     break
         return redirect('experiments')
 
-@is_users_experiment
+@is_user_editable_experiment
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def delete_exp_plates(request, pk_exp):
     pk = pk_exp
     exp = get_object_or_404(Experiment, pk=pk)
@@ -474,61 +504,21 @@ def delete_exp_plates(request, pk_exp):
     return redirect('exp',pk)
 
 @is_user_accessible_experiment
+@user_passes_test(user_base_tests)
+@login_required(login_url="/login")
 def picklist_template_view(request,pk_exp, pk_proj=None):
     from my_utils.constants import subwell_map
     exp = get_object_or_404(Experiment, pk=pk_exp) 
-    # well_map = exp.destPlateType.wellDict
-
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = 'attachment;filename=' + str(exp.name) + '_picklist' +  '.csv'
     writer = csv.writer(response)
     for s in exp.usedSoaks:
         well_name, subwell_idx = s.dest.name.split('_')
         subwell_idx = int(subwell_idx)
-        # well_props = well_map[well_name]
-        # print(well_name)
         match = re.match(r"^[A-Z]\d{2}$", well_name, re.I)
         items = match.group()
         writer.writerow([exp.destPlateType, items[0], int(items[1:]), subwell_map[subwell_idx]])
     return response
-
-
-# @is_users_experiment
-# def soaks_csv_view(request,pk_exp ,pk_src_plate=None, pk_dest_plate=None):
-#     pk = pk_exp
-#     exp = get_object_or_404(Experiment, pk=pk)
-#     exp.exported_time = timezone.now()
-#     exp.save()
-#     # dest_plate = get_object_or_404(Plate,pk_plate)
-#     qs = qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(
-#       ).order_by('id')
-#     if pk_dest_plate and pk_src_plate:
-#         qs = exp.soaks.select_related("dest__parentWell__plate","src__plate").prefetch_related(
-#       ).filter(src__plate_id=pk_src_plate, dest__parentWell__plate_id=pk_dest_plate)
-#     response = HttpResponse(content_type='text/csv')
-#     response['Content-Disposition'] = 'attachment;filename=' + str(exp.name) + '_soaks' +  '.csv'
-#     writer = csv.writer(response)
-#     headers = ["Source Plate Name","Source Well","Destination Plate Name","Destination Well","Transfer Volume",
-#                     "Destination Well X Offset","Destination Well Y Offset"] 
-#     writer.writerow(headers) #headers for csv
-#     rows = []
-#     for s in qs:
-#         s_dict = s.__dict__
-#         src_well = s.src
-#         dest_well = s.dest.parentWell
-#         src_plate_name = "Source[" + str(src_well.plate.plateIdxExp) + "]"
-#         src_well = src_well.name
-#         dest_plate_name = "Destination["  +str(dest_well.plate.plateIdxExp) + "]"
-#         dest_well = dest_well.name
-#         transfer_vol = s.soakVolume
-#         x_offset = round(s.offset_XY_um[0]*100)/100
-#         y_offset = round(s.offset_XY_um[1]*100)/100
-#         rows.append([src_plate_name,src_well,dest_plate_name,dest_well,transfer_vol,x_offset,y_offset])
-#     for r in sorted(rows, key=lambda x: ( x[headers.index("Source Plate Name")],x[headers.index("Source Well")])):
-#         writer.writerow(r)
-#     return response
-
-
 
 # ----------------- HELPER functions --------------------------
 def make_instance_from_dict(instance_model_a_as_dict,model_a):

@@ -10,6 +10,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from my_utils.my_views import ModalCreateView, ModalEditView, ModifyFromTableView
 from django.utils.decorators import method_decorator
 from django.contrib import messages
+from ..querysets import user_editable_experiments 
 
 # Create your views here.
 @login_required(login_url="/login")
@@ -43,6 +44,26 @@ class SecureProjectModifyFromTable(ModifyFromTableView):
             if diff_qs.exists():
                 for p in diff_qs:
                     messages.error(request, "Could not delete project '" + p.name + "' because you are not the owner.")
+        return redirect(prev)
+
+@method_decorator([login_required(login_url="/login"), ], name='dispatch')
+class SecureExperimentModifyFromTable(ModifyFromTableView):
+    def post(self, request, *args, **kwargs):
+        prev = request.META.get('HTTP_REFERER')
+        form = request.POST
+        
+        btn_id = form.get('btn', None)
+        if btn_id and self.model_class:
+            pks = form.getlist('checked') #list of model instance pks
+            qs = self.model_class.objects.filter(id__in=pks)
+            user_editable_qs = user_editable_experiments(request.user)
+            # user_editable_qs = qs.filter(owner=request.user)
+            if btn_id=="delete_selected":
+                qs.intersect(user_editable_qs).delete()
+            diff_qs = qs.difference(user_editable_qs)
+            if diff_qs.exists():
+                for p in diff_qs:
+                    messages.error(request, "Could not delete '" + p.name + "' because you are not the owner.")
         return redirect(prev)
 
 @method_decorator([login_required(login_url="/login"), ], name='dispatch')

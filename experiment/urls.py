@@ -3,9 +3,9 @@ from django.conf.urls import url, include
 from django.urls import path, re_path
 from . import views#, library_views, project_views, experiment_views, soak_views
 from django.contrib.auth.models import User
-from .forms import ProjectForm, PlateForm
+from .forms import ProjectForm, PlateForm, ExperimentForm
 from lib.forms import LibraryForm
-from .views import SecureProjectModifyFromTable, SecurePlateModifyFromTable
+from .views import SecureProjectModifyFromTable, SecurePlateModifyFromTable, SecureExperimentModifyFromTable
 from my_utils.my_views import ModifyFromTableView
 from django.contrib.auth.decorators import user_passes_test, login_required
 from .decorators import *
@@ -20,7 +20,6 @@ urlpatterns = [
         # --------------- urls to Project views ------------------------------
         url(r'^projs/', include([
             re_path(r'^(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/soaks/$', views.soaks, name='exp_soaks_'),
-            re_path(r'^(?P<pk_proj>\d+)/libs/(?P<pk_lib>\d+)/$', views.proj_lib, name='proj_lib'),
             re_path(r'^(?P<pk_proj>\d+)/libs/$', views.proj_libs, name='proj_libs'),
             re_path(r'^(?P<pk_proj>\d+)/edit/$', ModalEditView.as_view(
                 model=ProjectForm.Meta.model, form_class=ProjectForm, pk_url_kwarg='pk_proj'),
@@ -50,6 +49,7 @@ urlpatterns = [
             re_path(r'^(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/soaks_csv_view/all$', views.soaks_csv_view, name='soaks_csv_view'),
             re_path(r'^(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/soaks_csv_view/(?P<pk_src_plate>\d+)/(?P<pk_dest_plate>\d+)/$', views.soaks_csv_view, name='soaks_csv_view'),
             re_path(r'^(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/soaks/$', views.soaks, name='exp_soaks'),
+            re_path(r'^(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/soak_transfers/$', views.soak_transfers, name='soak_transfers'),
             re_path(r'^(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/grouped_soaks/$', views.soaks, name='exp_grouped_soaks'),
             re_path(r'^(?P<pk_proj>\d+)/exps/(?P<pk_exp>\d+)/plates/$', views.plates, name='exp_plates'),
             re_path(r'^(?P<pk_proj>\d+)/exps/$', views.experiments, name='experiments'),
@@ -61,7 +61,7 @@ urlpatterns = [
         ])),
 
         # --------------- urls to Experiment views ------------------------------
-        url(r'^exps', include([
+        url(r'^exps/', include([
             # re_path(r'^multiform/$', views.MultiFormsExpView.as_view(), name='multiform'),
             # re_path(r'^(?P<pk>\d+)/$', views.experiment, name='exp'),
             # re_path(r'^(?P<pk_exp>\d+)/$', views.MultiFormsExpView.as_view(), name='exp'),
@@ -78,6 +78,11 @@ urlpatterns = [
             re_path(r'^delete_exp/(?P<pk_exp>\d+)/$', views.delete_experiment, name='delete_exp'),
             re_path(r'^delete_exps/(?P<pk_exp>(?:\d+/)+)/$', views.delete_experiments, name='delete_exps'),
             re_path(r'^(?P<pk_exp>\d+)/delete_exp_plates/$', views.delete_exp_plates, name='delete_exp_plates'),
+            re_path(r'^(?P<pk_exp>\d+)/edit/$', ModalEditView.as_view(
+                model=ExperimentForm.Meta.model, form_class=ExperimentForm, pk_url_kwarg='pk_exp'
+                ), name='exp_edit'
+                ),
+            re_path(r'^modify_exps/$', SecureExperimentModifyFromTable.as_view(model_class=ExperimentForm.Meta.model), name='modify_exps'),
         ])),
 
         # --------------- urls to Plate views ------------------------------    

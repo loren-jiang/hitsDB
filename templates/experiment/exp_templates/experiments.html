@@ -1,9 +1,15 @@
 {% extends 'base.html' %}
 {% block content %}
 {% load render_table from django_tables2 %}
-<div class='container-fluid'>
+
+
+    {% with table=table filter=filter modals=modals buttons=buttons%}
+    {% include 'filter_table.html' %}
+    {% endwith %}
+
+{% comment %} <div class='container-fluid'>
   <div class='row justify-content-center'>
-    {% render_table table %}
+    {% render_table table.table %}
   </div>
 </div>
 
@@ -39,6 +45,6 @@
             
   });
 
-</script>
+</script> {% endcomment %}
 
 {% endblock %}

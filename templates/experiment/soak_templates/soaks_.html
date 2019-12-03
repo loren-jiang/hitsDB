@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+{% load render_table from django_tables2 %}
+{% block content %}
+
+<script src="{% static 'hitsDB/js/modalForm.js' %}"></script>
+<script src="{% static 'hitsDB/js/selectDeleteDj2Table.js' %}"></script>
+<script src="{% static '/apps/experiment/js/soaks.js' %}"></script>
+<link href="{% static 'css/soaks.css' %}" rel="stylesheet">
+
+<div class="modal" id="{{modal_id}}"></div>
+
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-12">
+      <ul class="nav nav-tabs" id="myTab" role="tablist">
+        <li class="nav-item">
+          <a class="nav-link active" id="soaks-tab" data-toggle="tab" href="#soaks" role="tab" aria-controls="soaks" aria-selected="true">Soaks</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="plates-tab" data-toggle="tab" href="#plates" role="tab" aria-controls="plates" aria-selected="false">Plates</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="csv-tab" data-toggle="tab" href="#csv" role="tab" aria-controls="csv" aria-selected="false">CSV</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="tab-content" id="myTabContent">
+      <div class="tab-pane fade show active" id="soaks" role="tabpanel" aria-labelledby="soaks-tab">
+        <div class="row justify-content-around">
+            <div class="col">
+              <form id="{{ filter_form_id }}" action="" method="get" class="form">
+                {% csrf_token %}
+                {{ filter.form | crispy }}
+                <button type="submit" class="btn btn-primary">Filter</button>
+              </form>
+            </div>
+    
+            <div class="col">
+              <form id="{{ table_form_id }}" action="{{form_action_url}}" method="post" >
+                  {% csrf_token %}
+                  {% render_table table %}
+              </form>
+                <!-- <div class="modify-table" id="{{table_id}}">
+                    
+                </div> -->
+            </div>
+        </div>
+
+
+      </div>
+      <div class="tab-pane fade" id="plates" role="tabpanel" aria-labelledby="plates-tab">
+        <div class="row justify-content-around">
+            <div class='col'>
+      
+                {% regroup src_soaks_qs by plate_id as soaks_list %}
+                  {% for p in soaks_list %}
+                  <br>
+                    Plate: {{ p.grouper }}
+                    <div class="soaks-table">
+                      <table class="table table-condensed table-borderless">
+                        {% regroup p.list by well_row as by_row %}
+          
+                        <tr class="row">
+                          <th class="col"></th>
+                          {% for i in by_row.0.list %}
+                            <th class="col">{{forloop.counter}}</th>
+                          {% endfor %}
+                        </tr>
+          
+                        {% for r in by_row %}
+                        <tr class="row">
+                          <th class="col">{{forloop.counter}}</th>
+                          {% for w in r.list %}
+                            <td class="col">
+                              <a class="soak" id="src_{{w.src.id}}" pair_id="dest_{{w.dest.id}}">{{w.src.name}}</a>
+                              
+                            </td>
+                          {% endfor %}
+                        </tr>
+                        {% endfor %}
+                        
+                      </table>
+                    </div>
+                    
+          
+                     
+                  {% endfor %}
+              </div>
+              
+              <div class='col'>
+                 
+                
+                {% regroup dest_soaks_qs  by plate_id as soaks_list %}
+                  {% for p in soaks_list %}
+                  <br>
+                    Plate: {{ p.grouper }}
+                    <div class="soaks-table">
+                      <table class="table table-condensed table-borderless">
+                        {% regroup p.list by well_row as by_row %}
+          
+          
+                        {% regroup by_row.0.list by parent_well as cols %}
+                        
+          
+                        <tr class="row">
+                          <th class="col"></th>
+                          {% for i in cols %}
+                            <th class="col">{{forloop.counter}}</th>
+                          {% endfor %}
+                        </tr>
+          
+                        {% for r in by_row %}
+                        {% regroup r.list by parent_well as by_well %}
+                        <tr class="row">
+                          <th class="col">{{forloop.counter}}</th>
+                          {% for w in by_well %}
+                                <td class="col">
+                                {% for s in w.list %}
+                                  <a class="soak" id="dest_{{s.dest.id}}" pair_id="src_{{s.src.id}}">{{s.dest.id}}</a>
+            
+                                
+                                {% endfor %}
+                                </td>
+          
+                          {% endfor %}
+                          </tr>
+                          
+          
+                        {% endfor %}
+                      </table>
+                    </div>
+                    
+          
+                      
+                  {% endfor %}
+              </div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="csv" role="tabpanel" aria-labelledby="csv-tab">...</div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+<div class='container-fluid'>
+  <div class='row justify-content-center'>
+    <div class='col-md-2'>
+        <!-- <form id="{{ filter_form_id }}" action="" method="get" class="form">
+            {% csrf_token %}
+            {{ filter.form | crispy }}
+            <button type="submit" class="btn btn-primary">Filter</button>
+            
+        </form>
+        <div class="modify-table" id="{{table_form_id}}">
+            <form id="{{ table_form_id }}" action="{{form_action_url}}" method="post" >
+                {% csrf_token %}
+                {% render_table table %}
+            </form>
+        </div> -->
+    </div>
+    <!-- <div class='col-md-4'>
+      
+      {% regroup src_soaks_qs by plate_id as soaks_list %}
+        {% for p in soaks_list %}
+        <br>
+          Plate: {{ p.grouper }}
+          <div class="soaks-table">
+            <table class="table table-condensed table-borderless">
+              {% regroup p.list by well_row as by_row %}
+
+              <tr class="row">
+                <th class="col"></th>
+                {% for i in by_row.0.list %}
+                  <th class="col">{{forloop.counter}}</th>
+                {% endfor %}
+              </tr>
+
+              {% for r in by_row %}
+              <tr class="row">
+                <th class="col">{{forloop.counter}}</th>
+                {% for w in r.list %}
+                  <td class="col">
+                    <a class="soak" id="src_{{w.src.id}}" pair_id="dest_{{w.dest.id}}">{{w.src.name}}</a>
+                    
+                  </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+              
+            </table>
+          </div>
+          
+
+           
+        {% endfor %}
+    </div>
+    
+    <div class='col-md-4'>
+       
+      
+      {% regroup dest_soaks_qs  by plate_id as soaks_list %}
+        {% for p in soaks_list %}
+        <br>
+          Plate: {{ p.grouper }}
+          <div class="soaks-table">
+            <table class="table table-condensed table-borderless">
+              {% regroup p.list by well_row as by_row %}
+
+
+              {% regroup by_row.0.list by parent_well as cols %}
+              
+
+              <tr class="row">
+                <th class="col"></th>
+                {% for i in cols %}
+                  <th class="col">{{forloop.counter}}</th>
+                {% endfor %}
+              </tr>
+
+              {% for r in by_row %}
+              {% regroup r.list by parent_well as by_well %}
+              <tr class="row">
+                <th class="col">{{forloop.counter}}</th>
+                {% for w in by_well %}
+                      <td class="col">
+                      {% for s in w.list %}
+                        <a class="soak" id="dest_{{s.dest.id}}" pair_id="src_{{s.src.id}}">{{s.dest.id}}</a>
+  
+                      
+                      {% endfor %}
+                      </td>
+
+                {% endfor %}
+                </tr>
+                
+
+              {% endfor %}
+            </table>
+          </div>
+          
+
+            
+        {% endfor %}
+    </div> -->
+  </div>	
+</div>
+<style>
+    .soak.active {
+      background: pink;
+    }
+  
+  </style>
+
+<script>
+  $(document).ready(function() {
+    url_class = '{{url_class}}'
+    modal_id = "{{modal_id}}"
+    form_class = "{{form_class}}"
+    setUpModalForm(url_class, modal_id, form_class);
+  
+    // $('#remove_libs').click(function(e) {
+    //   e.preventDefault();
+    //   let $form = $("#libs_form");
+    //       const $this_id = this.id;
+    //       const msg = "Are you sure?"
+           
+    //       if (confirm(msg)) {
+    //         // $("<input />").attr("type","hidden")
+    //         //   .attr("name","btn")
+    //         //   .attr("value",$this_id)
+    //         //   .appendTo($form);
+    //         $form.submit();
+    //       }
+    // });
+  });
+  </script>
+{% endblock %}

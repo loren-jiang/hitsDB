@@ -2,20 +2,29 @@ from functools import wraps, partial
 from django.core.exceptions import PermissionDenied
 from .models import Project, Experiment, Plate
 from lib.models import Library
-from .querysets import user_accessible_experiments, user_editable_experiments
+from .querysets import user_accessible_experiments, user_editable_experiments, user_accessible_projects, user_editable_projects
 
-def accessible_project_for_user(func):
+def is_user_accessible_project(func):
     @wraps(func)
     def wrapped(request, *args, **kwargs):
         proj = Project.objects.get(pk=kwargs['pk_proj'])
-        pks = [user.pk for user in proj.collaborators.all()]
-        pks.append(proj.owner.pk)
-        if request.user.pk in pks:
+        qs = user_accessible_projects(request.user)
+        if qs.filter(pk=proj.pk).exists():
             return func(request, *args, **kwargs)
         else:
             raise PermissionDenied
     return wrapped
-    
+
+def is_user_editable_project(func):
+    @wraps(func)
+    def wrapped(request, *args, **kwargs):
+        proj = Project.objects.get(pk=kwargs['pk_proj'])
+        qs = user_editable_projects(request.user)
+        if qs.filter(pk=proj.pk).exists():
+            return func(request, *args, **kwargs)
+        else:
+            raise PermissionDenied
+    return wrapped
 
 def is_users_project(func):
     @wraps(func)
@@ -45,6 +54,18 @@ def is_users_experiment(func):
             return func(request, *args, **kwargs)
         else:
             raise PermissionDenied
+    return wrapped
+
+def is_user_editable_experiment(func):
+    @wraps(func)
+    def wrapped(request, *args, **kwargs):
+        pk_exp = kwargs.get('pk_exp')
+        if pk_exp:
+            exp = Experiment.objects.get(pk=pk_exp)
+            if user_editable_experiments(request.user).filter(id=exp.id).exists():
+                return func(request, *args, **kwargs)
+            else:
+                raise PermissionDenied
     return wrapped
 
 def is_user_accessible_experiment(func):

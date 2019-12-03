@@ -116,11 +116,11 @@
                                         {% if exp.initData %}
                                         <p> <b> Dest plate RockMaker ids: </b>
                                             {% for p in dest_plates_qs %}
-                                                <a href={{p.get_absolute_url}}> {{p.rockMakerId}} </a>
+                                            <a href={{p.get_absolute_url}}> {{p.rockMakerId}} </a>
                                             {% endfor %}
                                         </p>
                                         {% if initData_local_url %}
-                                        <p> <b> Local uploaded file: </b> 
+                                        <p> <b> Local uploaded file: </b>
                                             <a href={{initData_local_url}}> {{initData_local}} </a>
                                         </p>
                                         {% endif %}
@@ -164,7 +164,9 @@
                                                     <li> a) Define the experiment's source plates by either:
                                                         <ul>
                                                             <li> Uploading a .csv with the required data; see example
-                                                                file: <a href="https://hitsdb-bucket-public.s3-us-west-1.amazonaws.com/examples/example_library_plate_data.csv"> example_library_plate_data.csv</a> </li>
+                                                                file: <a
+                                                                    href="https://hitsdb-bucket-public.s3-us-west-1.amazonaws.com/examples/example_library_plate_data.csv">
+                                                                    example_library_plate_data.csv</a> </li>
                                                             <li> Importing existing template source plates. </li>
                                                         </ul>
                                                     </li>
@@ -276,7 +278,7 @@
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col">
+                                <div class="col-md-4">
                                     <div class="jumbotron">
                                         <h3>a) Soak setup</h3>
                                         {% if current_step > 3 %}
@@ -299,20 +301,29 @@
                                         {% endif %}
                                     </div>
                                 </div>
-                                <div class="col">
+                                <div class="col-md-8">
                                     {% if soaksValid %}
                                     <div class="jumbotron">
                                         <h3>b) Soaks Download</h3>
+                                        <table class="table">
+                                            <tr>
+                                                <th> Transfer # </th>
+                                                <th> Source Plate </th>
+                                                <th> Dest Plate </th>
+                                                <th> </th>
 
-                                        {% for key, val in src_dest_plate_pairs.items %}
-                                        Transfer {{ forloop.counter }} | Source Plate {{val.src.plateIdxExp}} | Dest
-                                        Plate {{val.dest.plateIdxExp}}
-                                        <a role="button" class="btn btn-secondary" href={{val.href}}> Download </a>
-                                        <br>
-                                        {% endfor %}
-
-                                        All transfers | <a role="button" class="btn btn-secondary"
-                                            href="{{soaks_download}}"> Download
+                                            </tr>
+                                            {% for key, val in src_dest_plate_pairs.items %}
+                                            <tr>
+                                                <td> {{ forloop.counter }} </td>
+                                                <td> {{val.src.plateIdxExp}} </td>
+                                                <td> {{val.dest.plateIdxExp}} </td>
+                                                <td> <a role="button" class="btn btn-secondary" href={{val.href}}>
+                                                        Download </a> </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </table>
+                                        <a role="button" class="btn btn-primary" href="{{soaks_download}}"> Download all
                                         </a>
                                         {% if exp.soak_export_date %}
                                         <p> Downloaded on: {{exp.soak_export_date}} </p>

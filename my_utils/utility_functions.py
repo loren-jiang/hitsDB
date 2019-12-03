@@ -2,6 +2,22 @@ from functools import reduce
 from operator import mul
 from collections import defaultdict
 
+def insert_every_nth(lst, nth, item, offset=0):
+    """
+    Inserts item at every nth position in list
+
+    Parameters:
+    lst (list): a list to insert into
+    nth (nth): one-indexed integer position to insert at
+    item (obj): item to insert
+    """
+    new_list = []
+    for start_index in range(offset, len(lst), nth):
+        new_list.extend(lst[start_index:start_index+nth])
+        new_list.append(item)
+    new_list.pop()
+    return new_list
+
 def group_list_by(lst, attr):
     groups = defaultdict(list)
 
@@ -64,6 +80,16 @@ def lists_diff(list1, list2):
     Returns the difference of two lists 
     """
     return list(set(list1).symmetric_difference(set(list2)))  # or return list(set(list1) ^ set(list2))
+
+def missing_list_elems(list1, list2):
+    """
+    Returns the missing elements of list1 in list2; list1 is a list of required elements
+    """
+    missing = []
+    for el in list1:
+        if el not in list2:
+            missing.append(el)
+    return missing
 
 def tests_wrapper(tests):
     """

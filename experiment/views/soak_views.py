@@ -8,6 +8,8 @@ from ..decorators import is_users_experiment
 from ..forms import SoakForm
 from django.utils import timezone
 import csv
+from my_utils.utility_functions import reshape, insert_every_nth
+from my_utils.constants import idx_to_letters_map
 
 @login_required(login_url="/login")
 def soak_edit(request, pk_soak):
@@ -38,10 +40,43 @@ def soak_edit(request, pk_soak):
     }
     return render(request,'modals/modal_form.html', data)
 
+@is_users_experiment
+@login_required(login_url="/login")
+def soak_transfers(request, pk_exp, pk_proj=None):
+    exp = get_object_or_404(Experiment, pk=pk_exp)
+    src_plate_type = exp.srcPlateType
+    dest_plate_type = exp.destPlateType
+    src_plates = exp.plates.filter(isSource=True).prefetch_related('wells')
+    dest_plates = exp.plates.filter(isSource=False).prefetch_related('wells__subwells')
+    src_wells = [w for w in exp.srcWells.select_related('plate', 'compound', 'soak')]
+    dest_subwells = [s_w for s_w in exp.destSubwells.select_related('parentWell__plate', 'soak')]
+    src_wells_reshaped = reshape(src_wells, (src_plates.count(), src_plate_type.numRows, src_plate_type.numCols))
+    dest_subwells_reshaped = reshape(dest_subwells, (dest_plates.count(), dest_plate_type.numRows, dest_plate_type.numCols, dest_plate_type.numSubwells))
+  
+    soaks_qs = exp.soaks.select_related('src__plate','dest__parentWell__plate','transferCompound')
+    src_dest_map = {}
+    dest_src_map = {}
+
+    for soak in soaks_qs:
+        dest_src_map[soak.dest.id] = soak.src.id
+        src_dest_map[soak.src.id] = soak.dest.id
+
+    context = {
+        # we could further optimize this by just having on qs with combined annotations if needed
+        'src_wells':src_wells_reshaped, 
+        'dest_subwells':dest_subwells_reshaped,
+        'src_plates':src_plates,
+        'dest_plates':dest_plates,
+        'dest_src_map':dest_src_map,
+        'src_dest_map':src_dest_map,
+        'idx_to_letters_map':idx_to_letters_map,
+    }
+    return render(request, 'experiment/soak_templates/soak_transfers.html', context)
+
 #view for soaks with filtering and editing soak data
 @is_users_experiment
 @login_required(login_url="/login")
-def soaks(request, pk_proj, pk_exp):
+def soaks(request, pk_exp, pk_proj):
     url_class = "soak_edit_url"
     modal_id = "soak_edit_modal"
     exp = get_object_or_404(Experiment, pk=pk_exp)
@@ -52,7 +87,7 @@ def soaks(request, pk_proj, pk_exp):
     # soaks_table=exp.getSoaksTable()
     RequestConfig(request, paginate={'per_page': 25}).configure(table)
     
-    data = {
+    context = {
         'filter': soaks_filter,
         'table': table,
         # we could further optimize this by just having on qs with combined annotations if needed
@@ -77,7 +112,7 @@ def soaks(request, pk_proj, pk_exp):
         # 'form_action_url': reverse_lazy('libs_delete'),
         
     }
-    return render(request, 'experiment/soak_templates/soaks.html', data)
+    return render(request, 'experiment/soak_templates/soaks.html', context)
 
 @is_users_experiment
 def soaks_csv_view(request, pk_proj, pk_exp, pk_src_plate='', pk_dest_plate=''):

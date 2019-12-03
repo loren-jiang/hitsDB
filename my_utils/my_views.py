@@ -181,7 +181,7 @@ class ModalEditView(AjaxableResponseMixin, UpdateView):
         return helper(self, request, *args, **kwargs)
 
     def get_form_kwargs(self, *args, **kwargs):
-        kwargs = super(ModalEditView, self).get_form_kwargs(*args, **kwargs) 
+        kwargs = super().get_form_kwargs(*args, **kwargs) 
         user = self.request.user
         if user:
             kwargs['user'] = user
@@ -191,7 +191,7 @@ class ModalEditView(AjaxableResponseMixin, UpdateView):
         pk = self.object.pk
         # modalFormData = self.object.getModalFormData()
         modalFormData = build_modal_form_data(type(self.object))
-        context = super(ModalEditView, self).get_context_data(*args, **kwargs)
+        context = super().get_context_data(*args, **kwargs)
         context.update(
             {
             "arg":pk,

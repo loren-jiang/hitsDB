@@ -46,7 +46,8 @@ def isValidEmail( email ):
 def manage_user(request):
     user = request.user
     form = EditUserForm(request.POST or None, 
-        initial={'username':user.username, 'email':user.email})
+        instance=user,
+        )
 
     if request.method == 'POST':
         newUsername = request.POST['username']

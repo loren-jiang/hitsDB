@@ -1,5 +1,11 @@
 from django import forms
 
+class PassRequestToFormViewMixin:
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['request'] = getattr(self, 'request')
+        return kwargs
+
 class MultiFormMixin(forms.Form):
     action = forms.CharField(max_length=60, widget=forms.HiddenInput())
 

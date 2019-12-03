@@ -129,14 +129,19 @@ class ExperimentsTable(tables.Table):
         fields = ('name','project','library', 'created_date','modified_date','protein','owner','checked')
         empty_text = ("There are no experiments yet...")
 
+class ModalEditExperimentsTable(ModalFormMixin, ExperimentsTable):
+    class Meta(ModalFormMixin.Meta, ExperimentsTable.Meta):
+        exclude = ()
+
 class ProjectsTable(tables.Table):
     # name = tables.LinkColumn(viewname='proj', args=[A('pk')])
     name = tables.Column(linkify=('proj',[A('pk')]))
-    checked = tables.CheckBoxColumn(accessor='pk',empty_values=(), verbose_name="checked")
     collaborators = tables.ManyToManyColumn()
+    editors = tables.ManyToManyColumn()
     experiments = tables.ManyToManyColumn(separator=', ',verbose_name="Experiments",
         linkify_item=('exp',{'pk_proj':A('project.pk'),'pk_exp':A('pk')}))
-    
+    checked = tables.CheckBoxColumn(accessor='pk',empty_values=(), verbose_name="checked")
+
     def render_date_modified(self, value):
         return formatDateTime(value)
     
@@ -146,7 +151,7 @@ class ProjectsTable(tables.Table):
     class Meta:
         model = Project 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('name','owner','created_date','modified_date','experiments','collaborators','checked')
+        fields = ('name','owner','created_date','modified_date','experiments','collaborators','editors', 'checked')
 
 class ModalEditProjectsTable(ModalFormMixin, ProjectsTable):
     class Meta(ModalFormMixin.Meta, ProjectsTable.Meta):

@@ -1,6 +1,10 @@
+import string
 """
 File to set constant objects that are needed throughout the hitsDB app
 """
+
+idx_to_letters_map = dict(enumerate(string.ascii_letters.upper()))
+letters_to_idx_map = dict([(v,k) for k,v in idx_to_letters_map.items()])
 
 picklist_map = {
     1: {'name': 'PlateType', 'desc': 'plate to be used as defined in Plate Definition','optional':False},

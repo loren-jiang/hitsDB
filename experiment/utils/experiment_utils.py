@@ -53,7 +53,6 @@ def createSrcPlatesFromLibFile(self, numPlates=0, file=None, file_reader=None):
         with transaction.atomic():
             platesMade = exp.makeSrcPlates(numPlates)
             plateIdxRange = range(1, numPlates+1)
-            print(plateIdxRange)
             compound_dict = {}
             for row in file_reader:
                 
@@ -332,33 +331,39 @@ def createPlatesSoaksFromInitDataJSON(self):
     init_data_plates = exp.initDataJSON.items()
     lst_plates = exp.makePlates(len(init_data_plates), self.destPlateType)
     soaks = []
-    for i, (plate_id, plate_data) in enumerate(init_data_plates):
-        id = plate_data.pop("plate_id", None) 
-        date_time = plate_data.pop("date_time", None)
-        plate = lst_plates[i]
-        plate.rockMakerId = plate_id
-        plate.created_date = make_aware(datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f'))
-        plate.save()
+    try:
+        for i, (plate_id, plate_data) in enumerate(init_data_plates):
+            id = plate_data.pop("plate_id", None) 
+            date_time = plate_data.pop("date_time", None)
+            temp = plate_data.pop("temperature", None)
+            subwells = plate_data.pop("subwells", {})
+            plate = lst_plates[i]
+            plate.rockMakerId = plate_id
+            plate.created_date = make_aware(datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S.%f'))
+            plate.save()
 
-        # loop through well keys and create soaks w/ appropriate data
-        for j, (well_key, well_data) in enumerate(plate_data.items()):
-            well_name, s_w_idx = well_key.split('_')
-            well = plate.wells.filter(name=well_name)[0]
-            s_w = well.subwells.get(idx=s_w_idx) 
-            soaks.append(Soak(
-                experiment_id = exp.id,
-                dest_id = s_w.id, 
-                drop_x = well_data['drop_x'] * PIX_TO_UM, 
-                drop_y = well_data['drop_y'] * PIX_TO_UM,
-                drop_radius = well_data['drop_radius'] * PIX_TO_UM,
-                well_x =  well_data['well_x'] * PIX_TO_UM, 
-                well_y =  well_data['well_y'] * PIX_TO_UM,
-                well_radius =  well_data['well_radius'] * PIX_TO_UM,
-                soakOffsetX =  well_data['well_x'] * PIX_TO_UM,
-                soakOffsetY = well_data['well_y'] * PIX_TO_UM,
-                # soakVolume = ,
-                useSoak= True
-            ))    
+            if subwells:
+                # loop through well keys and create soaks w/ appropriate data
+                for j, (subwell_key, subwell_data) in enumerate(subwells.items()):
+                    well_name, s_w_idx = subwell_key.split('_')
+                    well = plate.wells.filter(name=well_name)[0]
+                    s_w = well.subwells.get(idx=s_w_idx) 
+                    soaks.append(Soak(
+                        experiment_id = exp.id,
+                        dest_id = s_w.id, 
+                        drop_x = subwell_data['drop_x'] * PIX_TO_UM, 
+                        drop_y = subwell_data['drop_y'] * PIX_TO_UM,
+                        drop_radius = subwell_data['drop_radius'] * PIX_TO_UM,
+                        well_x =  subwell_data['well_x'] * PIX_TO_UM, 
+                        well_y =  subwell_data['well_y'] * PIX_TO_UM,
+                        well_radius =  subwell_data['well_radius'] * PIX_TO_UM,
+                        soakOffsetX =  subwell_data['well_x'] * PIX_TO_UM,
+                        soakOffsetY = subwell_data['well_y'] * PIX_TO_UM,
+                        # soakVolume = ,
+                        useSoak= True
+                    ))    
+    except Exception as e:
+        print(e)
     soaks = Soak.objects.bulk_create(soaks)  
     return soaks
 
