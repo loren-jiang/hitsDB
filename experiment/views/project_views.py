@@ -1,6 +1,6 @@
 from hitsDB.views_import import * #common imports for views
 from ..models import Experiment, Plate, Well, SubWell, Soak, Project
-from ..tables import SoaksTable, ExperimentsTable, LibrariesTable, ProjectsTable, ModalEditProjectsTable
+from ..tables import SoaksTable, ExperimentsTable, LibrariesTable, ProjectsTable, ModalEditProjectsTable, PlatesTable
 from django_tables2 import RequestConfig
 from ..exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from lib.models import Library, Compound
@@ -102,6 +102,7 @@ class MultiFormsProjView(MultiFormsView):
         context = super().get_context_data(**kwargs)
         expForm = ExperimentForm()
         projForm = ProjectForm(user=self.request.user, instance=self.proj)
+        srcPlatesTable = PlatesTable(data=Plate.objects.filter(isSource=True,experiment__in=self.proj.experiments.all()))
         context.update({
                 'experimentsTable': self.proj.getExperimentsTable(exc=['project']),
                 'pk_proj':self.proj.id,
@@ -109,6 +110,7 @@ class MultiFormsProjView(MultiFormsView):
                 'collaboratorsTable' :self.proj.getCollaboratorsTable(),
                 'expForm':expForm,
                 'projForm':projForm,
+                'srcPlatesTable':srcPlatesTable,
             }
         )
         return context
@@ -289,40 +291,6 @@ def delete_projects(request, pks):
     return redirect('projects')
 
 # PROJECT Experment VIEWS ------------------------------------------------------------------
-
-#delete experiments in project
-@login_required(login_url="/login")
-def del_proj_exps(request, pk_proj, pks_exp):
-    pks = pks.split('_')
-    for pk in pks:
-            if pk: #check if pk is not empty
-                try:
-                    exp = get_object_or_404(Experiment, pk=pk)
-                    if (exp.owner.pk == request.user.pk):
-                        exp.delete()
-                except:
-                    break
-    if pk_proj:
-        return redirect('proj',pk_proj)
-    else:
-        return redirect('experiments')
-
-@login_required(login_url="/login")
-@user_passes_test(user_base_tests)
-def delete_experiments(request, pks, pk_proj=None):
-    pks = pks.split('_')
-    for pk in pks:
-            if pk: #check if pk is not empty
-                try:
-                    exp = get_object_or_404(Experiment, pk=pk)
-                    if (exp.owner.pk == request.user.pk):
-                        exp.delete()
-                except:
-                    break
-    if pk_proj:
-        return redirect('proj',pk_proj)
-    else:
-        return redirect('experiments')
 
 def _get_form(request, formcls, prefix):
     data = request.POST if prefix in request.POST else None
