@@ -138,7 +138,7 @@ def defaultSubwellLocations():
 class Experiment(models.Model):
     name = models.CharField(max_length=30,)
     library = models.ForeignKey(Library, related_name='experiments', on_delete=models.CASCADE, blank=True, null=True)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='experiments', blank=True, null=True)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='experiments')
     description = models.CharField(max_length=300, blank=True, null=True)
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)

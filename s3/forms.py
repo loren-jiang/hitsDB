@@ -4,7 +4,10 @@ from experiment.models import Plate
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User, Group
 from django.core.validators import FileExtensionValidator
+from django.conf import settings 
 
+class ImageFilePathField(forms.FilePathField, forms.ImageField):
+    pass
 
 class PrivateFileUploadForm(forms.ModelForm):
     # bucket_key = forms.CharField(max_length=100)
@@ -47,8 +50,10 @@ class PrivateFileJSONForm(PrivateFileUploadForm):
         model = PrivateFileJSON
 
 class ImagesFieldForm(forms.Form):
+    # image_field = ImageFilePathField(path=settings.BASE_DIR)
     image_field = forms.ImageField(widget=forms.ClearableFileInput(attrs={'multiple': True}))
     use_local = forms.BooleanField(required=False, initial=True, widget=forms.HiddenInput()) #TODO: remove hidden widget eventually
 
 class FilesFieldForm(forms.Form):
     file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': True}))
+
