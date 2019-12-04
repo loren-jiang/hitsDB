@@ -1,10 +1,16 @@
 ### ORM (object-relational mapping layer) functions to interact with DB
-def update_instance(instance, fields, cleaned_data):
+def update_instance(instance, cleaned_data, fields=[]):
+    if not(fields):
+        fields = [key for key in cleaned_data]
     for field in fields:
         new_field_data = cleaned_data[field]
         old_field_data = getattr(instance, field)
-        if (new_field_data != old_field_data):
-            setattr(instance, field, new_field_data)
+        
+        if old_field_data.__class__.__name__ == 'ManyRelatedManager':
+            old_field_data.set([el for el in new_field_data], clear=True)
+        else:
+            if (new_field_data != old_field_data):
+                setattr(instance, field, new_field_data)
     instance.save()
     # instance.save(update_fields=fields)
 

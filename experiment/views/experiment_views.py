@@ -40,14 +40,7 @@ class MultiFormsExpView(MultiFormsView):
     form_to_step_map = dict([(k,i) for i,k in enumerate(form_classes.keys())])
     form_to_step_map['soaksform'] = 4
     form_to_step_map['picklistform'] = 5
-    # form_classes = { 
-    #                 'expform': ExpAsMultiForm,
-    #                 'platelibform': CreateSrcPlatesMultiForm,
-    #                 'initform': ExpInitDataMultiForm,
-    #                 'platesform': PlatesSetupMultiForm,
-    #                 'soaksform' : SoaksSetupMultiForm,
-    #                 'picklistform': PicklistMultiForm,
-    #                 }
+ 
     form_arguments = {}
     success_urls = {}
 
@@ -64,7 +57,6 @@ class MultiFormsExpView(MultiFormsView):
         
         self.form_arguments['expform'] = {
                                         'user':user,
-                                        'lib_qs':user.libraries.filter(),
                                         'instance':exp
                                     }
         self.form_arguments['initform'] = {
@@ -107,7 +99,7 @@ class MultiFormsExpView(MultiFormsView):
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp = exp_qs.first()
         fields = [key for key in cleaned_data]
-        update_instance(exp, fields, cleaned_data)
+        update_instance(exp, cleaned_data, fields=fields)
         return HttpResponseRedirect(reverse_lazy('exp', kwargs={'pk_proj': exp.project.id, 'pk_exp':exp.id}))
     
     def initform_form_valid(self, form):
@@ -465,25 +457,14 @@ def delete_experiment(request, pk_exp):
         return redirect('proj',pk_proj=pk_proj)
     else:
         return redirect('experiments')
-    
+
+
+
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
-def delete_experiments(request, pks_exp, pk_proj=None):
-    pks = pks_exp
-    if pk_proj:
-        pks = pks.split('/')
-        for pk in pks:
-            if pk: #check if pk is not empty
-                try:
-                    exp = get_object_or_404(Experiment, pk=pk)
-                    if (exp.owner == request.user):
-                        exp.delete()
-                except:
-                    break
-        return redirect('proj',pk_proj)
-    else:
-        pks = pks.split('/')
-        for pk in pks:
+def delete_experiments(request, pks, pk_proj=None):
+    pks = pks.split('_')
+    for pk in pks:
             if pk: #check if pk is not empty
                 try:
                     exp = get_object_or_404(Experiment, pk=pk)
@@ -491,7 +472,21 @@ def delete_experiments(request, pks_exp, pk_proj=None):
                         exp.delete()
                 except:
                     break
+    if pk_proj:
+        return redirect('proj',pk_proj)
+    else:
         return redirect('experiments')
+
+@login_required(login_url="/login")
+@user_passes_test(user_base_tests)
+def remove_exps_from_proj(request, pks, pk_proj):
+    pks = pks.split('_')
+    pks = list(map(lambda s: Experiment.objects.get(id=s), pks))
+    if pk_proj:
+        proj = Project.objects.get(id=pk_proj)
+        proj.experiments.remove(*pks)
+    return redirect('experiments')
+
 
 @is_user_editable_experiment
 @login_required(login_url="/login")

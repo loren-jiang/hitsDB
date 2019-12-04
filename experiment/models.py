@@ -138,7 +138,7 @@ def defaultSubwellLocations():
 class Experiment(models.Model):
     name = models.CharField(max_length=30,)
     library = models.ForeignKey(Library, related_name='experiments', on_delete=models.CASCADE, blank=True, null=True)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='experiments')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='experiments', blank=True, null=True)
     description = models.CharField(max_length=300, blank=True, null=True)
     protein = models.CharField(max_length=100)
     owner = models.ForeignKey(User, related_name='experiments',on_delete=models.CASCADE)
@@ -876,13 +876,13 @@ class XtalContainer(models.Model):
 
 
 # SIGNALS -----------------------------------------------------
-@receiver(m2m_changed, sender=Project.editors.through)
-def ensure_editor_is_collaborator(sender, instance, action, reverse, model, pk_set, using, **kwargs ):
-    """
-    If project's editor is not a collaborator, add as collaborator
-    """
-    if action == 'post_add':
-        instance.collaborators.add(*[u for u in User.objects.filter(pk__in=list(pk_set))])
+# @receiver(m2m_changed, sender=Project.editors.through)
+# def ensure_editor_is_collaborator(sender, instance, action, reverse, model, pk_set, using, **kwargs ):
+#     """
+#     If project's editor is not a collaborator, add as collaborator
+#     """
+#     if action == 'post_add':
+#         instance.collaborators.add(*[u for u in User.objects.filter(pk__in=list(pk_set))])
 
 # @receiver(post_save, sender=Project)
 # def process_project_post_save(sender, instance, created, **kwargs):

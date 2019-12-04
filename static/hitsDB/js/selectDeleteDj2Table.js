@@ -14,7 +14,7 @@ function getSelected(selector) {
 
 function deleteSelected(selected, base_url, delimiter) {
   let url = base_url + selected.join(delimiter);
-  let msg = "Are you sure you want to delete? \n"; //+ selected.join(", ")
+  let msg = "Are you sure? \n"; //+ selected.join(", ")
   if (selected.length > 0) {
 
     if (confirm(msg)) {

@@ -3,7 +3,7 @@
 {% load render_table from django_tables2 %} 
 {% load crispy_forms_tags %}
 {% block content %}
-<script src="{% static 'js/selectDeleteDj2Table.js' %}"></script>
+<script src="{% static 'hitsDB/js/selectDeleteDj2Table.js' %}"></script>
 
 <!-- The Modal -->
 <div class="modal fade" id="newExp">
@@ -22,7 +22,7 @@
           
             {% csrf_token %}
             <!-- {% include 'bs4_form.html' with form=form %} -->
-            {{ form|crispy }}
+            {{ forms.newexpform|crispy }}
         </div>
         
         <!-- Modal footer -->
@@ -41,8 +41,11 @@
         <div class="col-md-3">
             <div class="jumbotron">
                 <h3>Edit <img src="{% static 'icons/atomic.png' %}" class="icon"> </h3>
+                <form method="post">
                 {% csrf_token %}
-                {{ projForm|crispy }}
+                {{ forms.projform|crispy }}
+                <button type="submit" class="btn btn-primary">Save</button>
+                </form>
             </div>
         </div>
 
@@ -65,7 +68,7 @@
                   </button>
                   {% comment %} <!--<a class="btn btn-primary" role="button" href={% url 'new_proj_experiment' pk_proj %}> New Experiment </a>--> {% endcomment %}
                   <a  class="btn btn-danger" role="button" id="delete-exps"> Delete Selected </a>
-                  {# <a  onclick="return deleteSelExps()" class="btn btn-primary" role="button" id="delete-exps" href={% url 'delete_proj_exps' pk_proj '0/'  %}> Delete Selected </a> #}
+                  {% comment %} <a  class="btn btn-danger" role="button" id="remove-exps"> Remove Selected </a> {% endcomment %}
               </div>
                 
             </div>
@@ -105,10 +108,14 @@
       e.preventDefault();
       let selected = getSelected("td input[type='checkbox']:checked");
       let base_url = "{% url 'delete_proj_exps' pk_proj '' %}";
-      // base_url = base_url.slice(0, base_url.length-1);
-      deleteSelected(selected, base_url)
+      deleteSelected(selected, base_url, '_')
     });    
-    
+    $("#remove-exps").on("click", function(e) {
+      e.preventDefault();
+      let selected = getSelected("td input[type='checkbox']:checked");
+      let base_url = "{% url 'remove_proj_exps' pk_proj '' %}";
+      deleteSelected(selected, base_url, '_')
+    });   
   });
 
   

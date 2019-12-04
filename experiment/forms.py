@@ -126,8 +126,8 @@ class ExperimentForm(forms.ModelForm):
         fields = ("name","description", "protein", "srcPlateType", "destPlateType","library",)
         
     def __init__(self, *args, **kwargs):
-        if kwargs.get('user'):
-            self.user = kwargs.pop('user', None)
+        self.user = kwargs.pop('user', None)
+        self.project = kwargs.pop('project', None)
         super().__init__(*args, **kwargs)
         srcPlateType_qs = PlateType.objects.filter(isSource=True)
         destPlateType_qs = PlateType.objects.filter(isSource=False)
@@ -137,25 +137,34 @@ class ExperimentForm(forms.ModelForm):
         self.fields['destPlateType'] = forms.ModelChoiceField(queryset=destPlateType_qs, 
             label="Destination plate type",
             initial=destPlateType_qs.first())
-        
-            
 
+        exp = kwargs.get('instance', None)
+        if exp and self.user:
+            lib_id = exp.library_id
+            qs = self.user.libraries.filter()
+            self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, required=False)
+            self.fields['project'] = forms.ModelChoiceField(queryset=user_editable_projects(self.user), initial=exp.project.id)
+        if self.project:
+            self.fields['project'] = forms.ModelChoiceField(queryset=user_editable_projects(self.user), initial=self.project.id)
 
 # MultiForms -------------------------------------------------------------------------
 
+class ProjAsMultiForm(MultiFormMixin, ProjectForm):
+    pass
+
 class ExpAsMultiForm(MultiFormMixin, ExperimentForm):
 
-    """populate form with current values"""
-    def __init__(self, user, lib_qs=None, *args, **kwargs):
-        super(ExpAsMultiForm, self).__init__(*args, **kwargs)
-        exp = kwargs.get('instance', None)
-        if exp:
-            lib_id = exp.library_id
-            qs = user.libraries.filter()
-            if lib_qs:
-                qs = lib_qs
-            self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, required=False)
-            self.fields['project'] = forms.ModelChoiceField(queryset=user_editable_projects(user), initial=exp.project.id)
+    # """populate form with current values"""
+    # def __init__(self, user, lib_qs=None, *args, **kwargs):
+    #     super(ExpAsMultiForm, self).__init__(*args, **kwargs)
+    #     exp = kwargs.get('instance', None)
+    #     if exp:
+    #         lib_id = exp.library_id
+    #         qs = user.libraries.filter()
+    #         if lib_qs:
+    #             qs = lib_qs
+    #         self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, required=False)
+    #         self.fields['project'] = forms.ModelChoiceField(queryset=user_editable_projects(user), initial=exp.project.id)
 
     class Meta(ExperimentForm.Meta):
         fields = list(ExperimentForm.Meta.fields) + ['project']

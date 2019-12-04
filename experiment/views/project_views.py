@@ -4,7 +4,7 @@ from ..tables import SoaksTable, ExperimentsTable, LibrariesTable, ProjectsTable
 from django_tables2 import RequestConfig
 from ..exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from lib.models import Library, Compound
-from ..forms import ExperimentForm, ProjectForm, SimpleProjectForm, ExpAsMultiForm
+from ..forms import ExperimentForm, ProjectForm, SimpleProjectForm, ExpAsMultiForm, ProjAsMultiForm
 from django.contrib.auth.mixins import LoginRequiredMixin
 from ..decorators import is_users_project, is_user_accessible_project, is_user_editable_project
 from my_utils.orm_functions import make_instance_from_dict, copy_instance
@@ -12,6 +12,9 @@ from ..querysets import user_accessible_projects
 from my_utils.views_helper import build_filter_table_context, build_modal_form_data
 from ..filters import ProjectFilter
 from .experiment_views import experiments
+from my_utils.my_views import MultiFormsView
+from collections import OrderedDict
+from my_utils.orm_functions import update_instance
 
 # PROJECT VIEWS ------------------------------------------------------------------
 class ProjectView(LoginRequiredMixin, TemplateView):
@@ -44,227 +47,71 @@ class ProjectView(LoginRequiredMixin, TemplateView):
             exp.save()
 
         return self.render_to_response(data)
-#TODO
-# @method_decorator([login_required(login_url="/login"), is_user_editable_project], name='dispatch')
-# class MultiFormsProjView(MultiFormsView):
-#     template_name = "experiment/proj_templates/project.html"
-#     form_classes = OrderedDict([
-#         ('projform', ProjectForm), #step 0
-#         ('newexpform', ExperimentForm), #step 1
-#     ])
-#     form_to_step_map = dict([(k,i) for i,k in enumerate(form_classes.keys())])
-#     form_arguments = {}
-#     success_urls = {}
 
-#     # overload to process request to properly update multiforms with form arguments and success urls
-#     def dispatch(self, request, *args, **kwargs):
-#         user = request.user
-#         pk_proj = kwargs.get('pk_proj', None)
-#         proj = get_object_or_404(Project, pk_proj) 
+@method_decorator([login_required(login_url="/login"), is_user_editable_project], name='dispatch')
+class MultiFormsProjView(MultiFormsView):
+    template_name = "experiment/proj_templates/project.html"
+    form_classes = OrderedDict([
+        ('projform', ProjAsMultiForm),
+        ('newexpform', ExpAsMultiForm), 
+    ])
+    form_arguments = {}
+    success_urls = {}
+
+    # overload to process request to properly update multiforms with form arguments and success urls
+    def dispatch(self, request, *args, **kwargs):
+        user = request.user
+        pk_proj = kwargs.get('pk_proj', None)
+        proj = get_object_or_404(Project, pk=pk_proj) 
+        self.request = request
+        self.proj = proj
+        self.form_arguments['projform'] = {
+                                        'user':user,
+                                        'instance':proj,
+                                    }
+        self.form_arguments['newexpform'] = {
+            'user':user,
+            'project':proj,
+        }
         
-#         self.form_arguments['projform'] = {
-#                                         'user':user,
-#                                         'instance':proj,
-#                                     }
-#         self.form_arguments['newexpform'] = {
-#                                         'exp': exp, 
-#                                         # 'instance':exp,
-#         }
-        
-#         # populate success_urls dictionary with urls
-#         exp_view_url = reverse_lazy('exp', kwargs=kwargs)
-        
-#         self.success_urls['expform'] = exp_view_url
-#         self.success_urls['initform'] = exp_view_url  
-#         self.success_urls['platelibform'] = exp_view_url
-#         # self.success_urls['platesform'] = exp_view_url
-#         self.success_urls['soaksform'] = exp_view_url
-#         self.success_urls['picklistform'] = exp_view_url
-
-#         return super().dispatch(request, *args, **kwargs)
+        success = reverse_lazy('proj', kwargs=kwargs)
+        self.success_urls['projform'] = success
+        self.success_urls['newexpform'] = success  
+        return super().dispatch(request, *args, **kwargs)
     
-#     def expform_form_valid(self, form):
-#         pk = self.kwargs.get('pk_exp', None)
-#         cleaned_data = form.cleaned_data
-#         form_name = cleaned_data.pop('action')
-#         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-#         exp = exp_qs.first()
-#         fields = [key for key in cleaned_data]
-#         update_instance(exp, fields, cleaned_data)
-#         return HttpResponseRedirect(reverse_lazy('exp', kwargs={'pk_proj': exp.project.id, 'pk_exp':exp.id}))
+    def projform_form_valid(self, form):
+        pk = self.kwargs.get('pk_proj', None)
+        cleaned_data = form.cleaned_data
+        form_name = cleaned_data.pop('action')
+        update_instance(self.proj, cleaned_data)
+        return HttpResponseRedirect(reverse_lazy('proj', kwargs={'pk_proj': pk,}))
     
-#     def initform_form_valid(self, form):
-#         pk = self.kwargs.get('pk_exp', None)
-#         cleaned_data = form.cleaned_data
-#         form_name = cleaned_data.pop('action')
-#         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-#         exp = exp_qs.first()
-#         exp.destPlateType = PlateType.objects.get(name="Swiss MRC-3 96 well microplate") #TODO: ensure destPlateType is set for experiment
-#         f = cleaned_data['initDataFile']
-#         useS3 = False
-#         try:
-#             with transaction.atomic():
-#                 kwargs = {}
-#                 if useS3:
-#                     kwargs = {'owner':exp.owner, 'upload':f}
-#                 else:
-#                     kwargs = {'owner':exp.owner, 'local_upload':f}
-#                 initData = PrivateFileJSON(**kwargs)
-#                 initData.save()
-#                 exp.initData = initData
-#                 exp.save()  
-#         except Exception as e:
-#             print(e)
-#             pass
+    def newexpform_form_valid(self, form):
+        pk = self.kwargs.get('pk_proj', None)
+        cleaned_data = form.cleaned_data
+        form_name = cleaned_data.pop('action')
+        form = ExperimentForm(self.request.POST)
+        if form.is_valid():
+            exp = form.save(commit=False)
+            exp.project = Project.objects.get(id=pk)
+            exp.owner = self.request.user
+            exp.save()
+        return redirect('proj',pk_proj=pk)
 
-#         return HttpResponseRedirect(self.get_success_url(form_name))
-    
-#     def platelibform_form_valid(self, form):
-#         pk = self.kwargs.get('pk_exp', None)
-#         cleaned_data = form.cleaned_data
-#         form_name = cleaned_data.pop('action')
-#         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-#         exp = exp_qs.first()
-#         lib = exp.library #TODO: ensure library is tied to experiment beforehand
-#         # try:
-#         templateSrcPlates = cleaned_data['templateSrcPlates']
-#         if templateSrcPlates:
-#             exp.importTemplateSourcePlates(templateSrcPlates)
-#             # plates = exp.makeSrcPlates(len(templateSrcPlates))
-#             # for p1, p2 in zip(plates, templateSrcPlates):
-#             #     p1.copyCompoundsFromOtherPlate(p2)
-#         else:
-#             f = TextIOWrapper(cleaned_data['plateLibDataFile'], self.request.encoding)
-#             with transaction.atomic():
-#                 exp.createSrcPlatesFromLibFile(cleaned_data['numSrcPlates'], f)
-  
-#         return HttpResponseRedirect(self.get_success_url(form_name))
-
-#     # def platesform_form_valid(self, form):
-#     #     pk = self.kwargs.get('pk_exp', None)
-#     #     cleaned_data = form.cleaned_data
-#     #     form_name = cleaned_data.pop('action')
-#     #     exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-#     #     exp_qs.update(**cleaned_data)
-#     #     exp_qs.first().generateSrcDestPlates()
-#     #     return HttpResponseRedirect(self.get_success_url(form_name))
-    
-#     def soaksform_form_valid(self, form):
-#         pk = self.kwargs.get('pk_exp', None)
-#         cleaned_data = form.cleaned_data
-#         form_name = cleaned_data.pop('action')
-#         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-#         exp = exp_qs.first()
-#         src_wells = [w for w in exp.srcWellsWithCompounds]
-#         soaks = [s for s in exp.usedSoaks]
-#         if form.data.get('match'):
-#             exp.matchSrcWellsToSoaks(src_wells, soaks)
-#         if form.data.get('interleave'):
-#             exp.interleaveSrcWellsToSoaks(src_wells, soaks)
-#         if cleaned_data['soakVolumeOverride']:
-#             for s in soaks:
-#                 s.soakVolume = cleaned_data['soakVolumeOverride']
-#             Soak.objects.bulk_update(soaks, fields=('soakVolume',))
-#         if cleaned_data['soakDate']:
-#             exp.desired_soak_date = cleaned_data['soakDate']
-#             exp.save()
-#         return HttpResponseRedirect(self.get_success_url(form_name))
-    
-#     def picklistform_form_valid(self, form):
-#         pk = self.kwargs.get('pk_exp', None)
-#         cleaned_data = form.cleaned_data
-#         form_name = cleaned_data.pop('action')
-        
-#         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-#         exp = exp_qs.first()
-
-#         f = PrivateFileCSV(**cleaned_data)
-#         f.save()
-#         exp.picklist = f
-#         exp.save()
-#         return HttpResponseRedirect(self.get_success_url(form_name))
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-#         invalid_form_name = context.get('invalid_form_name')
-#         step = 0
-#         if invalid_form_name:
-#             step = self.form_to_step_map[invalid_form_name]
-#         pk_proj = self.kwargs.get('pk_proj', None)
-#         pk = self.kwargs.get('pk_exp', None)
-#         request = self.request
-#         exp = request.user.experiments.prefetch_related('plates','soaks','library').get(id=pk)
-#         plates = exp.plates.all()
-#         soaks_table = exp.getSoaksTable(exc=[])
-#         RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
-#         src_plates_table = exp.getSrcPlatesTable(exc=[])
-#         plateModalFormData = build_modal_form_data(Plate)
-#         src_plates_qs = plates.filter(isSource=True)
-#         dest_plates_qs = plates.filter(isSource=False)
-#         src_plates_table = ModalEditPlatesTable(
-#             data=src_plates_qs,
-#             data_target=plateModalFormData['edit']['modal_id'], 
-#             a_class="btn btn-primary " + plateModalFormData['edit']['url_class'], 
-#             form_action='a',
-#             view_name='plate_edit',
-
-#         )
-#         # dest_plates_table = DestPlatesForGUITable(
-#         #     data=exp.plates.filter(isSource=False), 
-#         #     data_target="",
-#         #     a_class="btn btn-primary ",
-#         #     form_action='a',
-#         #     view_name='drop_images_upload',
-#         #     exclude=[],
-#         #     )
-#         dest_plates_table = exp.getDestPlatesGUITable(exc=[])
-#         local_initData_path = ''
-#         s3_initData_path = ''
-#         if exp.initData:
-#             local_initData_path = str(exp.initData.local_upload)
-#             if local_initData_path:
-#                 lst_path = local_initData_path.split('/')
-#                 context['initData_local_url'] = '/media/' + local_initData_path
-#                 context['initData_local'] = lst_path[len(lst_path) - 1]
-
-#             s3_initData_path = str(exp.initData.upload)
-#             if s3_initData_path:
-#                 context['init_data_file_url'] = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, 
-#                     'media/private/' + s3_initData_path, 4000)
-#         plateDict = dict(zip([p.id for p in plates],[p for p in plates]))
-#         platePairs = exp.getSoakPlatePairs()
-#         src_dest_plate_pairs = {}
-#         for pair in platePairs:
-#             src_dest_plate_pairs[pair] = {
-#                 'href':reverse_lazy('soaks_csv_view', 
-#                     kwargs={
-#                         'pk_proj':pk_proj,
-#                         'pk_exp':pk,
-#                         'pk_src_plate':pair[0].id,
-#                         'pk_dest_plate':pair[1].id,
-#                     }),
-#                 'src': pair[0],
-#                 'dest': pair[1],
-
-#             }
-
-#         current_step =  exp.getCurrentStep
-#         context['dest_plates_qs'] = dest_plates_qs
-#         context['error_step'] = step
-#         context['exp'] = exp
-#         context['src_plates_table'] = src_plates_table
-#         context['dest_plates_table'] = dest_plates_table
-#         context['soaks_table'] = soaks_table
-#         context['platesValid'] = exp.platesValid
-#         context['current_step'] = current_step
-#         context['soaksValid'] = exp.soaksValid
-#         context['soaks_download'] = reverse('soaks_csv_view', kwargs={'pk_proj': pk_proj, 'pk_exp':exp.id})
-#         context['rockMakerIds'] = [p.rockMakerId for p in exp.plates.filter(rockMakerId__isnull=False)]
-#         context['incompleted_steps'] = [i+1 for i in range(current_step)]
-#         context['picklist_template_download'] = reverse('picklist_template', kwargs={'pk_exp':exp.id, 'pk_proj':pk_proj})
-#         context['src_dest_plate_pairs'] = src_dest_plate_pairs
-#         context['plateDict']= plateDict
-#         return context
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        expForm = ExperimentForm()
+        projForm = ProjectForm(user=self.request.user, instance=self.proj)
+        context.update({
+                'experimentsTable': self.proj.getExperimentsTable(exc=['project']),
+                'pk_proj':self.proj.id,
+                'librariesTable': self.proj.getLibrariesTable(),
+                'collaboratorsTable' :self.proj.getCollaboratorsTable(),
+                'expForm':expForm,
+                'projForm':projForm,
+            }
+        )
+        return context
 
 
 @is_user_editable_project
@@ -292,8 +139,6 @@ def project(request, pk_proj):
         return redirect('proj',pk_proj=pk_proj)
 
     return render(request,'experiment/proj_templates/project.html', context)
-    # else:
-    #     return HttpResponse("Don't have permission") # should create a request denied template later!
 
 # returns user projects as django tables 2 for home page
 # argument should be request for pagination to work properly
@@ -463,6 +308,7 @@ def del_proj_exps(request, pk_proj, pks_exp):
         return redirect('experiments')
 
 @login_required(login_url="/login")
+@user_passes_test(user_base_tests)
 def delete_experiments(request, pks, pk_proj=None):
     pks = pks.split('_')
     for pk in pks:

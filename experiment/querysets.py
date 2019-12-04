@@ -32,13 +32,18 @@ def user_accessible_experiments(user):
     """
     Returns queryset of exeriments that are accesible (ie owned by user or in collaboration with)
     """
-    return Experiment.objects.filter(project__in=user_accessible_projects(user))
+    accesible_exps = Experiment.objects.filter(project__in=user_accessible_projects(user))
+    return Experiment.objects.filter(id__in=accesible_exps)
 
 def user_editable_experiments(user):
     """
     Returns queryset of projects that are editable (ie owned by user or an editor)
     """
-    return Experiment.objects.filter(project__in=user_editable_projects(user))
+    editable_exps = Experiment.objects.filter(project__in=user_editable_projects(user))
+    # user_exps = user.experiments.all()
+    # lst = [e.id for e in editable_exps] + [e.id for e in user_exps]
+    # return Experiment.objects.filter(id__in=lst)
+    return Experiment.objects.filter(id__in=editable_exps)
 
 #-------------------------------------------------Project querysets --------------------------------------------------------------
 def user_projects_with_exps(user):

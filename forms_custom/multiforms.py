@@ -49,8 +49,6 @@ class MultiFormMixin(ContextMixin):
             return HttpResponseRedirect(self.get_success_url(form_name))
      
     def forms_invalid(self, forms, form_name):
-        print('INVALID FORM:')
-        print(form_name)
         return self.render_to_response(self.get_context_data(forms=forms, invalid_form_name=form_name))
     
     def get_initial(self, form_name):
@@ -82,6 +80,8 @@ class ProcessMultipleFormsView(ProcessFormView):
     def post(self, request, *args, **kwargs):
         form_classes = self.get_form_classes()
         form_name = request.POST.get('action')
+        print(form_name)
+
         return self._process_individual_form(form_name, form_classes)
         
     def _process_individual_form(self, form_name, form_classes):

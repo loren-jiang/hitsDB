@@ -40,6 +40,7 @@ class MultiFormMixin(ContextMixin):
         form_arguments = self.get_form_arguments(form_name)
         if form_arguments:
             kwargs.update(form_arguments)
+        print(kwargs)
         return kwargs
     
     def forms_valid(self, forms, form_name):
@@ -67,7 +68,6 @@ class MultiFormMixin(ContextMixin):
 
     def _create_form(self, form_name, form_class):
         form_kwargs = self.get_form_kwargs(form_name)
-        print(form_kwargs)
         form = form_class(**form_kwargs)
         return form
 
@@ -79,18 +79,19 @@ class ProcessMultipleFormsView(ProcessFormView):
         return self.render_to_response(self.get_context_data(forms=forms))
      
     def post(self, request, *args, **kwargs):
+        print("IN POST")
+        print(request.POST)
         form_classes = self.get_form_classes()
         form_name = request.POST.get('action')
-        # form_names = request.POST.getlist('action')
-        # form_name = None
-        # for name in form_names:
-        #     if name in request.POST:
-        #         form_name = name
         return self._process_individual_form(form_name, form_classes)
         
     def _process_individual_form(self, form_name, form_classes):
+        print("IN PROCESS FORM")
         forms = self.get_forms(form_classes)
         form = forms.get(form_name)
+        print(form_name)
+        print(forms)
+        print(form)
         if not form:
             return HttpResponseForbidden()
         elif form.is_valid():
