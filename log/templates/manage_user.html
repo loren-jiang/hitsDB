@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+
+
+<!-- <form method="post" action="{% url 'manage_user'}" class="" /> -->
+<div class="container-fluid">
+        <div class="col-lg-8 offset-md-2">
+            <h1>Edit Profile</h1>
+            {% comment %} <p> <b> Username: </b> <br> {{user.username}} </p>
+            <p> <b> Email: </b> <br> {{user.email}} </p>
+            <p> <b> Group: </b> <br> 
+                {% for group in user.groups.all %}
+                    {{group}} 
+                {% endfor %}
+            </p> {% endcomment %}
+            <hr>
+            <form method="post" >
+                {% csrf_token %}
+                {{ form | crispy }}
+                <button class="btn btn-primary" type="submit">Save</button>
+                <a class="btn btn-danger" href= {% url 'deactivate_user' %}> Deactivate user </a> 
+            </form>
+        </div>
+</div>
+
+
+
+{% endblock %}

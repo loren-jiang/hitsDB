@@ -1,0 +1,48 @@
+<form action={{action}} class='ajax_form' method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Submit">
+</form>
+
+<script>
+$(document).on('submit', '.ajax_form', function(ev) {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    console.log($(this)[0])
+    let data_ = new FormData($(this)[0]);
+    console.log(...data_)
+    $.ajax({ 
+        type: $(this).attr('method'), 
+        //type:'POST',
+        url: this.action, 
+        data: data_,
+        context: this,
+        dataType: 'json',
+        processData: false,
+        contentType: false,
+        success: function(data, status) {
+            // GoBackWithRefresh(ev);
+            location.replace(location.origin + location.pathname);
+            
+        },
+        error: function(data, xhr, ajaxOptions, thrownError) {
+            console.log(thrownError);
+            const errors = JSON.parse(data.responseJSON.errors);
+
+            const keys = Object.keys(errors);
+            var i;
+            for (i = 0; i < keys.length; i++) {
+                const selector = '#div_id_' + keys[i];
+                $sel = $(selector);
+                $sel.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
+                $sel.find('input').addClass('form-control is-invalid');
+                errors[keys[i]].forEach((err)=> {
+                    $sel.append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
+                });
+                
+              }
+        }
+    });
+    return false;
+}); 
+</script>

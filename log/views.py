@@ -13,8 +13,12 @@ from .tokens import account_activation_token
 from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
 from django.core.mail import EmailMessage
+from django.contrib.auth import views as authviews
 
-# # Create your views here.
+class MyLoginView(authviews.LoginView):
+    def post(self, request, *args, **kwargs):
+        # messages.error(request, "Please enter a correct username and password. Note that both fields may be case-sensitive.")
+        return super().post(request, *args, **kwargs)
 
 @login_required(login_url="/login")
 def deactivate_user(request):
@@ -33,7 +37,7 @@ def deactivate_user(request):
 
     return redirect('user_recover') 
 
-def isValidEmail( email ):
+def isValidEmail(email):
     from django.core.validators import validate_email
     from django.core.exceptions import ValidationError
     try:
@@ -54,6 +58,7 @@ def manage_user(request):
         newEmail = request.POST['email']
         newPassword = request.POST['password1']
         if form.is_valid():
+            print("vlaid form ")
             user.username = newUsername
             user.email = newEmail
             if newPassword:
@@ -62,6 +67,9 @@ def manage_user(request):
             messages.success(request,'Account successfully updated.')
             update_session_auth_hash(request, user)
             return HttpResponseRedirect(request.path_info)
+        else:
+            print(form.errors)
+            print('invlaidform')
 
     context = {
         "form": form,
@@ -79,7 +87,7 @@ def register(request):
             user = form.save(commit=False)
             user.is_active = False
             user.save()
-            for grp in form.cleaned_data['_groups']:
+            for grp in form.cleaned_data['groups']:
                 user.groups.add(grp)
             groups = user.groups.all()
             current_site = get_current_site(request)
@@ -88,7 +96,6 @@ def register(request):
                 'user': user,
                 'groups':groups,
                 'domain': current_site.domain,
-                # 'uid':urlsafe_base64_encode(force_bytes(user.pk)).decode(), #Doesn't work for python 3?
                 'uid':urlsafe_base64_encode(force_bytes(user.pk)), 
                 'token':account_activation_token.make_token(user),
             })
@@ -116,14 +123,14 @@ def activate(request, uidb64, token):
         user.save()
         update_session_auth_hash(request, user)
         login(request, user)
-        # return redirect('home')
         messages.success(request, '[hitsDB] Account has been successfully activated.')
         return redirect('home')
     else:
-        return HttpResponse('Activation link is invalid!')
+        messages.error(request, "Activation link is invalid.", extra_tags='permanent')
+        return redirect('home')
 
 def reset_password(request, uidb64, token):
-    tempPass = 'User.objects.make_random_password()'
+    tempPass = User.objects.make_random_password()
     try:
         uid = force_text(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
@@ -136,9 +143,12 @@ def reset_password(request, uidb64, token):
         user.save()
         update_session_auth_hash(request, user)
         login(request, user)
-        return redirect('home')
+        messages.success(request, "A temporary password has been set to " + tempPass + ". Reset password before logging out. ") 
+
+        return redirect('manage_user')
     else:
-        return HttpResponse('Activation link is invalid!')
+        messages.error(request, "Activation link is invalid.", extra_tags='permanent')
+        return redirect('user_recover')
 
 def user_recover(request):
     if request.method == 'POST':
@@ -152,7 +162,6 @@ def user_recover(request):
             message = render_to_string('resetpw_email.html', {
                 'user': user,
                 'domain': current_site.domain,
-                # 'uid':urlsafe_base64_encode(force_bytes(user.pk)).decode(), #Doesn't work for python 3?
                 'uid':urlsafe_base64_encode(force_bytes(user.pk)), 
                 'token':account_activation_token.make_token(user),
             })
@@ -163,8 +172,6 @@ def user_recover(request):
             messages.success(request, 'Activation email sent to ' + to_email)
             email.send()
             return redirect(reverse('user_recover'))
-        # else:
-        #     messages.info(request, 'No matching username found.')
 
     else:
         f = RecoverUserForm()

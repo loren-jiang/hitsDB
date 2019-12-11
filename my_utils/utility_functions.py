@@ -2,6 +2,11 @@ from functools import reduce
 from operator import mul
 from collections import defaultdict
 
+def reverse_dict(dic, prop=''):
+    if prop:
+        return dict([(v.get(prop),k) for k,v in dic.items()])    
+    return dict([(v,k) for k,v in dic.items()])
+
 def insert_every_nth(lst, nth, item, offset=0):
     """
     Inserts item at every nth position in list
@@ -18,19 +23,39 @@ def insert_every_nth(lst, nth, item, offset=0):
     new_list.pop()
     return new_list
 
-def group_list_by(lst, attr):
-    groups = defaultdict(list)
+def group_list_by(lst, attrs, separator='_'):
+    if lst:
+        if type(lst[0]) is dict:
+            return group_dicts_list_by(lst, attrs, separator)
+        else:
+            return group_objs_lists_by(lst, attrs, separator)
+    else:
+        return lst
 
+def group_dicts_list_by(lst, attrs, separator='_'):
+    groups = defaultdict(list)
     for obj in lst:
-        groups[getattr(obj, attr)].append(obj)
-    return groups.values()
+        keys = [str(obj.get(attr, '')) for attr in attrs]
+        cleaned_key  = separator.join(keys)
+        groups[cleaned_key].append(obj)
+    return groups
+
+def group_objs_lists_by(lst, attrs, separator='_'):
+    groups = defaultdict(list)
+    for obj in lst:
+        keys = [str(getattr(obj, attr, '')) for attr in attrs]
+        cleaned_key  = separator.join(keys)
+        groups[cleaned_key].append(obj)
+    return groups
+
+def get_max_len(lsts):
+    return max(list(map(lambda lst: len(lst), lsts)))
 
 def interleave(lsts):
     """
     Takes n lists and interleaves them. If one list is longer, then the remainder of that list is appended
     """
-    lens = list(map(lambda lst: len(lst), lsts))
-    max_len = max(lens)
+    max_len = get_max_len(lsts)
 
     lsts = list(map(lambda x: none_pad(x, max_len), lsts))
     ret = []
@@ -38,6 +63,21 @@ def interleave(lsts):
         temp = list(map(lambda x: x[k], lsts))
         ret.extend(temp)
     return remove_falsey_values(ret)
+
+def priority_interleave(lsts, priority_range=None, is_lst_of_dicts=False):
+    if priority_range:
+        ret = []
+        for p in [str(k) for k in priority_range]:
+            sublist = []
+            for el in list(map( lambda x: group_list_by(x, ['priority']), lsts)):
+                x = el.get(p, None)
+                if x: 
+                    sublist.append(x)
+            if sublist:
+                ret.extend(interleave(sublist))
+        return ret
+    else:
+        return(interleave(lsts))
 
 def remove_falsey_values(lst):
     """

@@ -2,6 +2,8 @@
 {% load render_table from django_tables2 %} 
 {% load crispy_forms_tags %}
 {% load static %}
+{% block title %} Projects - {{ block.super }} {% endblock %}
+
 {% block content %}
 
     {% with table=table filter=filter modals=modals buttons=buttons%}

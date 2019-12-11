@@ -1,5 +1,7 @@
 {% load experiment_tags %}
+{% load static %}
 
+<link href="{% static 'apps/experiment/css/src_plate.css' %}" rel="stylesheet">
 <div class='well-matrix'>
     <div class='row plate-row'> 
         <div class='col y-axis'> </div>
@@ -7,6 +9,7 @@
             <div class='col x-axis'> {{forloop.counter}} </div>
         {% endfor %}
     </div>
+    
     {% for row in plate %}
         <div class='row plate-row justify-content-center'>
             {% if idx_to_letters_map %}
@@ -22,10 +25,38 @@
                     
                     {% endwith %}
                     {% else %}
-                    <div class="soak" id="src_{{col.id}}" >&nbsp;&nbsp;</div>
+                        {% if canEdit and well_form_map %}
+                            <div class="soak" id="src_{{col.id}}">
+                                
+                                <a class="popover-btn" href="" id="popover_{{col.id}}">
+                                    <div class="well_box"> 
+                                        <div class="priority_indicator" id="priority_indicator_{{col.id}}"> {{col.priority}}</div>
+                                    </div>
+                                </a>
+                                <div class="edit_well" id=popover_{{col.id}}-content style="display:none;">
+                                    {% comment %} <form method="POST" class="edit_well ajax_form" id=edit_well_{{col.id}} action={{col.editInstanceUrl}}>
+                                        {% csrf_token %}
+                                        {% with form=well_form_map|hash:col.id %}
+                                            {{form.as_p}}
+                                        {% endwith %}
+                                        <input type="submit" style="display:none;" value="Submit">
+                                    </form> {% endcomment %}
+                                    <span> <b> Well {{col.name}} </b> </span>
+                                    <br>
+                                    <span> <a href={{col.compound.get_absolute_url}}> {{col.compound}} </a> </span>
+                                    <form id="popoverform_{{col.id}}" method="POST" class="ajax_form" action={{col.editInstanceUrl}}>
+                                        {% csrf_token %}
+                                        <label> Priority: </label>
+                                        <input class="edit_well_priority" type="number" name="priority" min="1" max="10" value={{col.priority}}>
+                                    </form> 
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="soak" id="src_{{col.id}}" >&nbsp;&nbsp;</div>
+                        {% endif %}
+                    
                     {% endif %}
                     
-                    {% comment %} {{col.id}} {% endcomment %}
                 </div>
             {% endfor %}
         </div>

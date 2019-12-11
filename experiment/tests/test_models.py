@@ -26,9 +26,7 @@ class ExperimentTests(TestCase):
     ### SIGNAL TESTING ###
     def testAwareOfState(self):
         lib1 = LibraryFactory(compounds=make_n_compounds(randint(100,1000)))
-        # lib2 = LibraryFactory(compounds=make_n_compounds(randint(100,1000)))
         init_data1 = example_init_data()
-        # init_data2 = example_init_data()
 
         exp = ExperimentFactory(library=lib1)
         exp.initData = init_data1
@@ -38,16 +36,8 @@ class ExperimentTests(TestCase):
         os.remove("./media/" + str(exp.initData.local_upload)) 
         
         same_exp = Experiment.objects.filter(id=exp.id)
-        # exp.library = lib2
-        # exp.save()  
-        # self.assertEquals(exp.prev_library_id, lib2.id) #library id taken note of
 
     def testInitDataPostSignal(self):
-        # exp = ExperimentFactory()
-        # init_data = example_init_data()
-        # exp.initData = init_data
-        # exp.save()
-        # os.remove("./media/" + str(init_data.local_upload)) 
         exp = experiment_with_init_data()
         plates_qs_1 = exp.plates.all()
         exp.save()
@@ -91,94 +81,41 @@ class ExperimentTests(TestCase):
         exp = experiment_with_source_plates()
 
         exp.interleaveSrcWellsToSoaks()
-        # used_soak_src_wells = [s.src for s in exp.usedSoaks.select_related('src')]
         self.assertEquals(exp.usedSoaks.count() , exp.srcWells.filter(soak__isnull=False).count())
         self.assertTrue(exp.soaksValid)
 
-        # delete first destination plate; should still work
-        exp.plates.filter(isSource=False).first().delete()
         exp.interleaveSrcWellsToSoaks()
-        used_soak_src_wells = [s.src for s in exp.usedSoaks.select_related('src')]
         self.assertEquals(exp.usedSoaks.count() , exp.srcWells.filter(soak__isnull=False).count())
         self.assertTrue(exp.soaksValid)
+
+    def testPriorityInterleaveSrcWellsToSoaks(self):
+        exp = experiment_with_source_plates()
+        wells = [w for w in exp.srcWellsWithCompounds]
+        for w in wells:
+            w.priority = randint(1, 10)
+
+        Well.objects.bulk_update(wells,['priority'])
+
+        exp.priorityInterleaveSrcWellsToSoaks()
+        self.assertEquals(exp.usedSoaks.count() , exp.srcWells.filter(soak__isnull=False).count())
+        self.assertTrue(exp.soaksValid)
+        exp_soaks = exp.soaks.select_related('src', 'dest__parentWell').order_by('src__name')
+        # print([(s.src.priority, s.src.name, s.dest.parentWell.name) for s in exp_soaks])
 
     def testGetSoakPlatePairs(self):
         exp = experiment_with_matched_soaks()
         pairs = exp.getSoakPlatePairs()
-        print(pairs)
+        self.assertEquals(
+            [(pair[0].name, pair[1].name) for pair in pairs], 
+            [('src_1', 'dest_1')]
+        )
 
         exp.interleaveSrcWellsToSoaks()
         pairs = exp.getSoakPlatePairs()
-        print(pairs)
-
-    # def setUp(self):
-    #     self.user = User.objects.get_or_create(username='testuser')[0]
-    #     self.echo_src_plate = PlateType.createEchoSourcePlate()
-    #     self.mrc3_dest_plate = PlateType.create96MRC3DestPlate()
-    #     self.library = Library.objects.get_or_create(name="test_library")[0]
-    #     self.project = Project.objects.get_or_create(name="test_proj", owner=self.user)[0]
-    #     self.experiment = Experiment.objects.get_or_create(
-    #         name="test_exp",
-    #         project=self.project,
-    #         protein="test_protein",
-    #         owner=self.user,
-    #         srcPlateType=self.echo_src_plate,
-    #         destPlateType=self.mrc3_dest_plate,
-    #         library=self.library,
-    #     )[0]
-    #     self.client = Client()
-
-    # def testExperimentMethods(self):
-    #     exp = self.experiment
-    #     num = 3
-    #     exp.makePlates(num, self.mrc3_dest_plate) #make 3 mrc3 dest plates 
-    #     exp.makePlates(num, self.echo_src_plate) #make 3 echo source plates 
-
-    #     """Check various instance properties """        
-    #     # Case: check destSubwells
-    #     with self.assertNumQueries(1):
-    #         self.assertEqual(exp.destSubwells.count(), num*96*3)
-            
-    #     # Case: check srcWells
-    #     with self.assertNumQueries(1):
-    #         self.assertEqual(exp.srcWells.count(), num*384)
-
-
-    # def testPlateWellSubwell(self):
-    #     exp = self.experiment
-    #     platesMade = exp.makePlates(3, self.mrc3_dest_plate)
-    #     self.assertEqual(len(platesMade), 3)
-    #     for p in platesMade:    
-    #         wells = p.wells.filter()
-    #         self.assertEqual(p.isSource, False) #check correct source or dest label
-    #         self.assertEqual(wells.count(), 96) #check number of wells
-    #         self.assertEqual(SubWell.objects.filter(parentWell__in=wells).count(), 96*3) #check number of subwells
-
-    #     """Test DB contraints on Plate"""
-    #     # Case: duplicate key value violates unique constraint "unique_src_dest_plate_idx"
-    #     try:
-    #         test_plate = Plate(plateType=self.mrc3_dest_plate, experiment_id=exp.id,
-    #             isSource=self.mrc3_dest_plate.isSource, plateIdxExp=1)
-    #         with transaction.atomic():
-    #             test_plate.save()
-    #     except Exception as e:
-    #         self.assertEqual(IntegrityError, type(e)) # django.db.utils.IntegrityError: duplicate key value violates unique constraint "unique_src_dest_plate_idx"
-    #     # Case: 
-
-    #     """Test DB constraints on Well"""
-    #     # Case: bad name that doesn't match regex validator on field 'name'
-    #     try:
-    #         test_plate = Plate(name='test_plate',plateType=self.mrc3_dest_plate, experiment_id=exp.id,
-    #             isSource=self.mrc3_dest_plate.isSource, plateIdxExp=exp.plates.all().last().plateIdxExp + 1)
-    #         test_plate.save()
-    #         test_well_1 = Well(name='A01', wellIdx=1, wellRowIdx=1, wellColIdx=1, maxResVol=130, minResVol=10, plate_id=test_plate.id)
-    #         test_well_2 = Well(name='A01', wellIdx=2, wellRowIdx=1, wellColIdx=2, maxResVol=130, minResVol=10, plate_id=test_plate.id)
-
-    #         with transaction.atomic():
-    #             test_well_1.save()
-    #             test_well_2.save()
-    #     except IntegrityError as e:
-    #         self.assertEqual(IntegrityError, type(e))
+        self.assertEquals(
+            [(pair[0].name, pair[1].name) for pair in pairs], 
+            [('src_1', 'dest_1'), ('src_2', 'dest_1')]
+        )
 
 class PlateTests(TestCase):
     def setUp(self):

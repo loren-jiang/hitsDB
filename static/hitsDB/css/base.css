@@ -5,8 +5,6 @@
     background-color: #052049;
 }
 
-
-
 /* change the brand and text color */
 .navbar-custom .navbar-brand,
 .navbar-custom .navbar-text {
@@ -50,4 +48,29 @@
 /* TABLE STYLES */
 .pagination li {
     margin-left:10px;
+}
+
+/* DJANGO MESSAGES STYLES */
+.message.success {
+    background-color:palegreen;
+}
+.message.debug {
+
+}
+.message.info {
+
+}
+.message.warning {
+    background-color:red;
+}
+.message.error {
+    background-color:red;
+}
+
+.message.permanent {
+    display: block !important;
+}
+
+.prompt {
+    background-color: lightyellow;
 }

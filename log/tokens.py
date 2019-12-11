@@ -1,5 +1,6 @@
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils import six
+
 # https://shuup.readthedocs.io/en/latest/_modules/django/contrib/auth/tokens.html
 class TokenGenerator(PasswordResetTokenGenerator):
     def _make_hash_value(self, user, timestamp):

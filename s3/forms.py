@@ -27,10 +27,10 @@ class PrivateFileUploadForm(forms.ModelForm):
 #         model = PrivateFileCSV
 
 class PrivateFileCSVForm(forms.ModelForm):
-    upload = forms.FileField(label="Initialization file [.csv]",
+    upload = forms.FileField(label="Upload file [.csv]",
             validators=[FileExtensionValidator(['csv'])], required=False
             )
-    local_upload = forms.FileField(label="Initialization file [.csv]",
+    local_upload = forms.FileField(label="Local upload file [.csv]",
             validators=[FileExtensionValidator(['csv'])],required=False
             )
     class Meta:

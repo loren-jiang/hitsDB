@@ -5,6 +5,7 @@
 {% load crispy_forms_tags %}
 {% load static %}
 {% load experiment_tags %}
+{% block title %} Experiment {{exp.name}} - {{ block.super }} {% endblock %}
 
 {% block content %}
 <script src="{% static 'hitsDB/js/modalForm.js' %}"></script>

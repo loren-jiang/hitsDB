@@ -29,22 +29,18 @@ def home(request):
 
 @method_decorator([login_required(login_url="/login"), ], name='dispatch')
 class SecureProjectModifyFromTable(ModifyFromTableView):
-    def post(self, request, *args, **kwargs):
-        prev = request.META.get('HTTP_REFERER')
-        form = request.POST
+    pass
+    # def post(self, request, *args, **kwargs):
+    #     prev = request.META.get('HTTP_REFERER')
+    #     form = request.POST
         
-        btn_id = form.get('btn', None)
-        if btn_id and self.model_class:
-            pks = form.getlist('checked') #list of model instance pks
-            qs = self.model_class.objects.filter(id__in=pks)
-            user_qs = qs.filter(owner=request.user)
-            if btn_id=="delete_selected":
-                user_qs.delete()
-            diff_qs = qs.difference(user_qs)
-            if diff_qs.exists():
-                for p in diff_qs:
-                    messages.error(request, "Could not delete project '" + p.name + "' because you are not the owner.")
-        return redirect(prev)
+    #     btn_id = form.get('btn', None)
+    #     if btn_id and self.model_class:
+    #         pks = form.getlist('checked') #list of model instance pks
+    #         if btn_id=="delete_selected":
+    #             self.delete_model_instances(request, pks, owner=request.user)
+        
+    #     return redirect(prev)
 
 @method_decorator([login_required(login_url="/login"), ], name='dispatch')
 class SecureExperimentModifyFromTable(ModifyFromTableView):

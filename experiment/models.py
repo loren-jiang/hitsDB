@@ -165,6 +165,20 @@ class Experiment(models.Model):
     new_instance_viewname = 'exp_new'
     edit_instance_viewname = 'exp_edit'
     model_name = 'Experiment'
+    @classmethod
+    def newInstanceUrl(cls):
+        """
+        Class method to return url to create new instance; compared to editInstanceUrl, this function should be a class method
+        vs instance property because instance data (self.pk) is not needed
+        """
+        return reverse(cls.new_instance_viewname)
+
+    @property
+    def editInstanceUrl(self):
+        """
+        Returns url to edit class instance; should be @property because instance data is needed
+        """
+        return reverse(self.edit_instance_viewname, kwargs={'pk_proj':self.pk})
 
     class Meta:
         get_latest_by="modified_date"
@@ -177,13 +191,6 @@ class Experiment(models.Model):
 
     def __str__(self):
         return self.name
-
-    @property
-    def editInstanceUrl(self):
-        """
-        Returns url to edit class instance; should be @property because instance data is needed
-        """
-        return reverse(self.edit_instance_viewname, kwargs={'pk_exp':self.pk})
 
     @property
     def soakTime(self):
@@ -363,6 +370,14 @@ class Experiment(models.Model):
         """
         return self.srcWells.exclude(compound__isnull=True)
     
+    def processPicklist(self):
+        """
+        Process uploaded picklist file and updates soaks accordingly
+        """
+        from .utils.experiment_utils import processPicklist as func
+        if getattr(self, 'picklist'):
+            return func(self, self.picklist.local_upload.file) 
+
     def importTemplateSourcePlates(self, templateSrcPlates):
         """
         Makes new source plates from template source plates, usually with compounds
@@ -385,6 +400,10 @@ class Experiment(models.Model):
         """
         from .utils.experiment_utils import createSrcPlatesFromLibFile as func
         return func(self, numPlates, file)
+
+    def priorityInterleaveSrcWellsToSoaks(self, src_wells=[], soaks=[]):
+        from .utils.experiment_utils import priorityInterleaveSrcWellsToSoaks as func
+        return func(self, src_wells, soaks)
 
     def interleaveSrcWellsToSoaks(self, src_wells=[], soaks=[]):
         """
@@ -754,6 +773,18 @@ class Well(models.Model):
     wellIdx = models.PositiveIntegerField(default=0)
     wellRowIdx = models.PositiveIntegerField(default=0)
     wellColIdx = models.PositiveIntegerField(default=0)
+    min_priority = 1
+    max_priority = 10
+    priority = models.PositiveIntegerField(default=10, validators=[MinValueValidator(min_priority), MaxValueValidator(max_priority)])
+    edit_instance_viewname = 'well_edit'
+
+    @property
+    def editInstanceUrl(self):
+        return reverse(self.edit_instance_viewname, kwargs={'pk':self.pk})
+        
+    @classmethod
+    def getPriorityRange(cls):
+        return range(cls.min_priority, cls.max_priority + 1)
 
     @property
     def numSubwells(self):
@@ -830,6 +861,13 @@ class Soak(models.Model):
     isMounted = models.BooleanField(default=False)
     mountedTimeStamp = models.DateTimeField(null=True, blank=True)
 
+    shifterComment = models.CharField(max_length=100, default='')
+    shifterCrystalID = models.CharField(max_length=10, default='')
+    shifterArrivalTime = models.DateTimeField(null=True, blank=True)
+    shifterDepartureTime = models.DateTimeField(null=True, blank=True)
+
+    barcode = models.CharField(max_length=50, default='')
+    shifterExternalComment = models.CharField(max_length=100, default='')
 
     @property
     def transferVol(self):
@@ -872,8 +910,13 @@ class Soak(models.Model):
         # return self.experiment.name + "_soak_" + str(self.id)
 
 class XtalContainer(models.Model):
-    pass
+    name = models.CharField(unique=True, null=True, blank=True, max_length=25)
+    type = models.CharField(max_length=25, default='') #Must be 'puck' or 'cane'
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(check=(models.Q(type__in=['puck', 'cane'])), name="type_is_puck_or_cane"), 
+        ]
 
 # SIGNALS -----------------------------------------------------
 # @receiver(m2m_changed, sender=Project.editors.through)

@@ -89,3 +89,12 @@ def user_accessible_plates(user):
     Returns queryset of plates that are accesible to user
     """
     return Plate.objects.filter(experiment__in=user_accessible_experiments(user))
+
+#-------------------------------------------------Soak queryset ------------------------------------------------------------------
+def plate_soaks(plate):
+    if type(plate) == Plate:
+        if not(plate.isSource):
+            return Soak.objects.filter(dest__parentWell__plate=plate)
+        else:
+            return Soak.objects.filter(src__plate=plate)
+    return Soak.objects.none()

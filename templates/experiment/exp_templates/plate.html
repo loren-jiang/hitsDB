@@ -1,103 +1,176 @@
 {% extends 'base.html' %}
-{% load static %}
 {% load experiment_tags %}
 
 {% block content %}
 
-{% if plate.isSource %}
-<div class='well-matrix'>
-    <div class='row plate-row'> 
-        <div class='col y-axis'> </div>
-        {% for h in wellMatrix.0 %}
-            <div class='col x-axis'> {{forloop.counter}} </div>
-        {% endfor %}
-    </div>
-    {% for row in wellMatrix %}
-        <div class='row plate-row'>
-            <div class='col y-axis'> {{forloop.counter}} </div>
-            {% for col in row %}
-                <div class='col well'>
-                    <div title={{col.compound}}> o</div>
-                    {% comment %} {{col.compound}} {% endcomment %}
-                    {% comment %} {% with sw1=col.subwells.0 sw2=col.subwells.1 sw3=col.subwells.2 usedAndSavedSubwellClass='col-md-auto   subwell soak-used soak-saved' usedSubwellClass='col-md-auto   subwell soak-used' subwellClass='col-md-auto   subwell' %}
-                    <div class='row justify-content-md-center'>
-                        <a {% if sw1.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}" {% elif sw1.saveCount == 0 %} class="{{usedSubwellClass}}"  {% else %} class="{{subwellClass}}" {% endif %}  
-                            data-toggle="tooltip" data-placement="top" title="{{sw1.file_name}}"
-                            {% if sw1.guiURL %} href="{{sw1.guiURL}}" {% endif %}> 
-                            &nbsp;&nbsp;
-                        </a>
-                        <a class='col-md-auto subwell empty-block  '> 
-                            &nbsp;&nbsp;
-                        </a>
-                    </div>
-
-                    <div class='row justify-content-md-center'>
-                        <a {% if sw2.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}" {% elif sw2.saveCount == 0 %} class="{{usedSubwellClass}}"  {% else %} class="{{subwellClass}}" {% endif %} 
-                            data-toggle="tooltip" data-placement="top" title="{{sw2.file_name}}"
-                            {% if sw2.guiURL %} href="{{sw2.guiURL}}" {% endif %}> 
-                            &nbsp;&nbsp;
-                        </a>
-                        <a {% if sw3.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}" {% elif sw3.saveCount == 0 %} class="{{usedSubwellClass}}"  {% else %} class="{{subwellClass}}" {% endif %}  
-                            data-toggle="tooltip" data-placement="top" title="{{sw3.file_name}}"
-                            {% if sw3.guiURL %} href="{{sw3.guiURL}}" {% endif %}> 
-                            &nbsp;&nbsp;
-                        </a>
-                    </div>
-                    {% endwith %} {% endcomment %}
-                </div>
-            {% endfor %}
-        </div>
-    {% endfor %}
-</div>
-
-{% else %}
-<div class='well-matrix'>
-    <div class='row plate-row'> 
-        <div class='col y-axis'> </div>
-        {% for h in wellMatrix.0 %}
-            <div class='col x-axis'> {{forloop.counter}} </div>
-        {% endfor %}
-    </div>
-    {% for row in wellMatrix %}
-        <div class='row plate-row'>
-            <div class='col y-axis'> {{forloop.counter}} </div>
-            {% for col in row %}
-                <div class='col well'>
-                    {% comment %} <div title={{col.compound}}> o</div> {% endcomment %}
-                    
-                    {% for s_w in col.subwells.all %}
-                    {{s_w}}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class='col col-md-4'>
+            {% if plate.isSource %}
+            {% include 'src_plate.html' with plate=wellMatrix idx_to_letters_map=idx_to_letters_map %}
+            {% comment %} <div class='well-matrix'>
+                <div class='row plate-row'>
+                    <div class='col y-axis'> </div>
+                    {% for h in wellMatrix.0 %}
+                    <div class='col x-axis'> {{forloop.counter}} </div>
                     {% endfor %}
-                    {% comment %} {% with sw1=col.subwells.0 sw2=col.subwells.1 sw3=col.subwells.2 usedAndSavedSubwellClass='col-md-auto   subwell soak-used soak-saved' usedSubwellClass='col-md-auto   subwell soak-used' subwellClass='col-md-auto   subwell' %}
-                    <div class='row justify-content-md-center'>
-                        <a {% if sw1.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}" {% elif sw1.saveCount == 0 %} class="{{usedSubwellClass}}"  {% else %} class="{{subwellClass}}" {% endif %}  
-                            data-toggle="tooltip" data-placement="top" title="{{sw1.file_name}}"
-                            {% if sw1.guiURL %} href="{{sw1.guiURL}}" {% endif %}> 
-                            &nbsp;&nbsp;
-                        </a>
-                        <a class='col-md-auto subwell empty-block  '> 
-                            &nbsp;&nbsp;
-                        </a>
-                    </div>
-
-                    <div class='row justify-content-md-center'>
-                        <a {% if sw2.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}" {% elif sw2.saveCount == 0 %} class="{{usedSubwellClass}}"  {% else %} class="{{subwellClass}}" {% endif %} 
-                            data-toggle="tooltip" data-placement="top" title="{{sw2.file_name}}"
-                            {% if sw2.guiURL %} href="{{sw2.guiURL}}" {% endif %}> 
-                            &nbsp;&nbsp;
-                        </a>
-                        <a {% if sw3.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}" {% elif sw3.saveCount == 0 %} class="{{usedSubwellClass}}"  {% else %} class="{{subwellClass}}" {% endif %}  
-                            data-toggle="tooltip" data-placement="top" title="{{sw3.file_name}}"
-                            {% if sw3.guiURL %} href="{{sw3.guiURL}}" {% endif %}> 
-                            &nbsp;&nbsp;
-                        </a>
-                    </div>
-                    {% endwith %} {% endcomment %}
                 </div>
-            {% endfor %}
+                {% for row in wellMatrix %}
+                <div class='row plate-row'>
+                    <div class='col y-axis'> {{forloop.counter}} </div>
+                    {% for col in row %}
+                    <div class='col well'>
+                        <div title={{col.compound}}> o</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div> {% endcomment %}
+
+            {% else %}
+            <div class='well-matrix'>
+                <div class='row plate-row'>
+                    <div class='col y-axis'> </div>
+                    {% for h in wellMatrix.0 %}
+                    <div class='col x-axis'> {{forloop.counter}} </div>
+                    {% endfor %}
+                </div>
+                {% for row in wellMatrix %}
+                <div class='row plate-row'>
+                    <div class='col y-axis'> {{forloop.counter}} </div>
+                    {% for col in row %}
+                    <div class='col well'>
+                        {% comment %} <div title={{col.compound}}> o</div> {% endcomment %}
+
+                        {% for s_w in col.subwells.all %}
+                        {{s_w}}
+                        {% endfor %}
+                        {% comment %}
+                        {% with sw1=col.subwells.0 sw2=col.subwells.1 sw3=col.subwells.2 usedAndSavedSubwellClass='col-md-auto   subwell soak-used soak-saved' usedSubwellClass='col-md-auto   subwell soak-used' subwellClass='col-md-auto   subwell' %}
+                        <div class='row justify-content-md-center'>
+                            <a {% if sw1.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}"
+                                {% elif sw1.saveCount == 0 %} class="{{usedSubwellClass}}" {% else %}
+                                class="{{subwellClass}}" {% endif %} data-toggle="tooltip" data-placement="top"
+                                title="{{sw1.file_name}}" {% if sw1.guiURL %} href="{{sw1.guiURL}}" {% endif %}>
+                                &nbsp;&nbsp;
+                            </a>
+                            <a class='col-md-auto subwell empty-block  '>
+                                &nbsp;&nbsp;
+                            </a>
+                        </div>
+
+                        <div class='row justify-content-md-center'>
+                            <a {% if sw2.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}"
+                                {% elif sw2.saveCount == 0 %} class="{{usedSubwellClass}}" {% else %}
+                                class="{{subwellClass}}" {% endif %} data-toggle="tooltip" data-placement="top"
+                                title="{{sw2.file_name}}" {% if sw2.guiURL %} href="{{sw2.guiURL}}" {% endif %}>
+                                &nbsp;&nbsp;
+                            </a>
+                            <a {% if sw3.saveCount > 0 %} class="{{usedAndSavedSubwellClass}}"
+                                {% elif sw3.saveCount == 0 %} class="{{usedSubwellClass}}" {% else %}
+                                class="{{subwellClass}}" {% endif %} data-toggle="tooltip" data-placement="top"
+                                title="{{sw3.file_name}}" {% if sw3.guiURL %} href="{{sw3.guiURL}}" {% endif %}>
+                                &nbsp;&nbsp;
+                            </a>
+                        </div>
+                        {% endwith %} {% endcomment %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+
+            {% endif %}
+
         </div>
-    {% endfor %}
+    </div>
 </div>
 
-{% endif %}
+
+
+
+
+<script>
+
+$(function(){
+    // $('form input').change(function () {
+    //     $(this).attr("value", $(this).val());
+    //     $(this).closest('form').submit();
+    // });
+
+    $(document).on('submit', '.ajax_form', function (ev) {
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        let data_ = new FormData($(this)[0]);
+        $.ajax({
+            type: $(this).attr('method'),
+            // type:'POST',
+            url: this.action,
+            data: data_,
+            context: this,
+            dataType: 'json',
+            processData: false,
+            contentType: false,
+            success: function (data, status) {
+                // GoBackWithRefresh(ev);
+                //location.replace(location.origin + location.pathname);
+
+            },
+            error: function (data, xhr, ajaxOptions, thrownError) {
+                console.log(data)
+                const errors = JSON.parse(data.responseJSON.errors);
+
+                const keys = Object.keys(errors);
+                var i;
+                for (i = 0; i < keys.length; i++) {
+                    const selector = '#div_id_' + keys[i];
+                    $sel = $(selector);
+                    $sel.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
+                    $sel.find('input').addClass('form-control is-invalid');
+                    errors[keys[i]].forEach((err) => {
+                        $sel.append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
+                    });
+
+                }
+            }
+        });
+        return false;
+    }); 
+
+    $('.popover-btn').each(
+        (idx, el) => {
+            $(el).popover({
+                trigger:"click",
+                placement: 'top',
+                // title: 'Well',
+                html:true,
+                content:  function () {
+                    id = $(el).attr('id')
+                    $popover_content = $('#'+id+'-content')
+                    return $popover_content.html();
+                },
+            })
+        }
+    ).on('click', function(ev) {
+        $('.popover').hide();
+        ev.preventDefault();
+        const popover_id = $(this).attr('aria-describedby')
+        const popover = $('#'+popover_id);
+        popover.show();
+    }).on('shown.bs.popover', function() {
+        id = $(this).attr('id').split('_')[1]
+        let input = $('#popoverform_'+id + ' input');
+        input.focus();
+        input.change(function() {
+            const val = ''+ $(this).val();
+            $('#popoverform_'+id).find('input').val(val);
+            $('#priority_indicator_'+id).html(val);
+            $(this).closest('form').submit();
+        })
+    })
+ 
+  
+})
+</script>
+
 {% endblock %}

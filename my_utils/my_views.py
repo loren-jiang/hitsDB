@@ -1,11 +1,12 @@
 from django.views.generic.base import ContextMixin, TemplateResponseMixin
-from django.views.generic.edit import UpdateView, View, CreateView, ProcessFormView
+from django.views.generic.edit import UpdateView, View, CreateView, ProcessFormView, FormView
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils.decorators import method_decorator
 from .views_helper import build_modal_form_data
+from django.contrib.messages.views import SuccessMessageMixin
 
 class MultiFormMixin(ContextMixin):
     # taken from https://gist.github.com/badri/4a1be2423ce9353373e1b3f2cc67b80b
@@ -86,20 +87,14 @@ class ProcessMultipleFormsView(ProcessFormView):
         return self._process_individual_form(form_name, form_classes)
         
     def _process_individual_form(self, form_name, form_classes):
-        print("IN PROCESS FORM")
         forms = self.get_forms(form_classes)
         form = forms.get(form_name)
-        print(form_name)
-        print(forms)
-        print(form)
+
         if not form:
             return HttpResponseForbidden()
         elif form.is_valid():
-            print('FORM VALID')
             return self.forms_valid(forms, form_name)
         else:
-            print('FORM INVALID')
-            print(form.errors)
             return self.forms_invalid(forms, form_name)
  
 class BaseMultipleFormsView(MultiFormMixin, ProcessMultipleFormsView):
@@ -116,7 +111,7 @@ class AjaxableResponseMixin:
     #taken/ tweaked from https://docs.djangoproject.com/en/2.2/topics/class-based-views/generic-editing/#ajax-example
     """
     Mixin to add AJAX support to a form.
-    Must be used with an object-based FormView (e.g. CreateView)
+    Must be used with an object-based FormView (e.g. CreateView or UpdateView)
     """
     def form_invalid(self, form):
         response = super().form_invalid(form)
@@ -133,6 +128,7 @@ class AjaxableResponseMixin:
         # call form.save() for example).
         response = super().form_valid(form) 
         if self.request.is_ajax():
+            
             data = {'result':'success'}
             data.update({
                 'pk': self.object.pk,
@@ -141,8 +137,29 @@ class AjaxableResponseMixin:
         
         return response
 
-class ModalCreateView(AjaxableResponseMixin, CreateView):
+class AjaxCreateView(AjaxableResponseMixin, CreateView):
+    template_name = 'ajax_form_template.html'
+    pass
+
+class AjaxUpdateView(AjaxableResponseMixin, UpdateView):
+    template_name = 'ajax_form_template.html'
+    def get_context_data(self, *args, **kwargs):
+        context = super().get_context_data(*args, **kwargs)
+        
+        context.update({
+            "action":self.object.editInstanceUrl
+        })
+        return context 
+
+class ModalCreateView(SuccessMessageMixin, AjaxableResponseMixin, CreateView):
     template_name = 'modals/modal_form.html'
+    success_message =  "%(model_instance)s created successfully."
+
+    def get_success_message(self, cleaned_data):
+        return self.success_message % dict(
+            cleaned_data,
+            model_instance= type(self.object).__name__ + ' ' + str(self.object),
+        )
 
     def dispatch(self, request, *args, **kwargs):
         decorators = kwargs.pop("decorators", [])
@@ -157,6 +174,9 @@ class ModalCreateView(AjaxableResponseMixin, CreateView):
 
     def get_form_kwargs(self, *args, **kwargs):
         kwargs = super(ModalCreateView, self).get_form_kwargs(*args, **kwargs) 
+        if self.kwargs.get('to_pass_to_context'):
+            for key in self.kwargs['to_pass_to_context']:
+                kwargs[key] = self.kwargs.get(key)
         user = self.request.user
         if user:
             kwargs['user'] = user
@@ -164,6 +184,7 @@ class ModalCreateView(AjaxableResponseMixin, CreateView):
 
     def get_context_data(self, *args, **kwargs):
         context = super(ModalCreateView, self).get_context_data(*args, **kwargs)
+        
         context.update({
             "modal_title":"New " + self.form_class.Meta.model.model_name ,
             "action": self.form_class.Meta.model.newInstanceUrl(), 
@@ -171,8 +192,15 @@ class ModalCreateView(AjaxableResponseMixin, CreateView):
         })
         return context 
 
-class ModalEditView(AjaxableResponseMixin, UpdateView):
+class ModalEditView(SuccessMessageMixin, AjaxableResponseMixin, UpdateView):
     template_name = 'modals/modal_form.html'
+    success_message = "%(model_instance)s edited successfully."
+
+    def get_success_message(self, cleaned_data):
+        return self.success_message % dict(
+            cleaned_data,
+            model_instance= type(self.object).__name__ + ' ' + str(self.object),
+        )
 
     def dispatch(self, request, *args, **kwargs):
         decorators = kwargs.pop("decorators", [])
@@ -190,9 +218,9 @@ class ModalEditView(AjaxableResponseMixin, UpdateView):
 
     def get_context_data(self, *args, **kwargs):
         pk = self.object.pk
-        # modalFormData = self.object.getModalFormData()
         modalFormData = build_modal_form_data(type(self.object))
         context = super().get_context_data(*args, **kwargs)
+
         context.update(
             {
             "arg":pk,
@@ -203,16 +231,34 @@ class ModalEditView(AjaxableResponseMixin, UpdateView):
         })
         return context
 
-class ModifyFromTableView(View):
+class ModifyFromTableView(SuccessMessageMixin, FormView):
     model_class = None
+    
+    def delete_model_instances(self, request, pks, owner=None):
+        if getattr(self, 'model_class', None):
+            qs = self.model_class.objects.filter(pk__in=pks)
+            user_qs = qs.filter(owner=owner) if owner else qs.filter()
+            for instance in qs:
+                messages.success(request," ".join([self.model_class.__name__, str(instance)]) + " deleted.")
+            user_qs.delete()
+            diff_qs = qs.difference(user_qs)
+            if diff_qs.exists():
+                for instance in diff_qs:
+                    messages.error(request, "Could not delete '" + " ".join([self.model_class.__name__, str(instance)]) + "' because you are not the owner.")
+
+    def dispatch(self, request, *args, **kwargs):
+        decorators = kwargs.pop("decorators", [])
+        @method_decorator(decorators)
+        def helper(self, request, *args, **kwargs):
+            return super().dispatch(request, *args, **kwargs)
+        return helper(self, request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         prev = request.META.get('HTTP_REFERER')
         form = request.POST
         btn_id = form['btn']
-        if btn_id:
+        if btn_id and self.model_class:
             pks = form.getlist('checked') #list of model instance pks
-            qs = self.model_class.objects.filter(id__in=pks)
             if btn_id=="delete_selected":
-                qs.delete()
+                self.delete_model_instances(request, pks, owner=request.user)
         return redirect(prev)

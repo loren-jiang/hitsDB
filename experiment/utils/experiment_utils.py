@@ -5,9 +5,10 @@ from my_utils.utility_functions import lists_diff, lists_equal
 from django.db.models import F
 from my_utils.utility_functions import chunk_list, items_at, ceiling_div, gen_circ_list, \
     PIX_TO_UM, UM_TO_PIX, IMG_SCALE, VolumeToRadius, RadiusToVolume, \
-        mapUmToPix, mapPixToUm, group_list_by, interleave
+        mapUmToPix, mapPixToUm, group_objs_lists_by, interleave, priority_interleave
 from django.utils.timezone import make_aware
 from datetime import datetime
+from ..querysets import plate_soaks
 
 import json 
 import csv 
@@ -110,6 +111,22 @@ def createSrcPlatesFromLibFile(self, numPlates=0, file=None, file_reader=None):
     except KeyError as e:
         print(e)
 
+def priorityInterleaveSrcWellsToSoaks(self, src_wells=[], soaks=[]):
+    """
+    Match soaks to source wells interleaved by priority and plate id
+
+    Parameters:
+    src_wells (list): List of an experiment's source wells with compounds
+    soaks (list): List of an experiment's used soaks 
+
+    Returns:
+    None
+    """
+    src_wells = self.srcWellsWithCompounds.select_related('plate')
+    wells_grouped_by_plate_id = group_objs_lists_by([w for w in src_wells], ['plate_id']).values()
+    wells_interleaved = priority_interleave(wells_grouped_by_plate_id, Well.getPriorityRange())
+    return matchSrcWellsToSoaks(self, wells_interleaved, soaks)
+
 def interleaveSrcWellsToSoaks(self, src_wells=[], soaks=[]):
     """
     Match soaks to source wells interleaved by plate id
@@ -122,7 +139,7 @@ def interleaveSrcWellsToSoaks(self, src_wells=[], soaks=[]):
     None
     """
     src_wells = self.srcWellsWithCompounds.select_related('plate')
-    wells_grouped_by_plate_id = group_list_by([w for w in src_wells], 'plate_id')
+    wells_grouped_by_plate_id = group_objs_lists_by([w for w in src_wells], ['plate_id']).values()
     wells_interleaved = interleave(wells_grouped_by_plate_id)
     # wells_interleaved.sort(key=lambda x: x.plate.plateIdxExp)
     return matchSrcWellsToSoaks(self, wells_interleaved, soaks)
@@ -145,9 +162,7 @@ def matchSrcWellsToSoaks(self, src_wells=[], soaks=[]):
     if not(src_wells):
         src_wells = [w for w in self.srcWellsWithCompounds]
 
-    # assert len(soaks) <= len(src_wells)
     min_len = min(len(soaks), len(src_wells))
-    #TODO: slice lists to min_len, then sort by plate idx
     soaks_sliced = soaks[:min_len]
     src_wells_sliced = src_wells[:min_len]
 
@@ -367,57 +382,58 @@ def createPlatesSoaksFromInitDataJSON(self):
     soaks = Soak.objects.bulk_create(soaks)  
     return soaks
 
+def processPicklist(exp, f):
+    """
+    Takes picklist file and processes the data, updating soaks in destination plates as appropriate
+    """
+    from my_utils.constants import reverse_subwell_map, subwell_map
+    from io import TextIOWrapper
 
-
-# def formattedSoaks(self, qs_soaks,
-#                 s_num_rows=16, s_num_cols = 24, 
-#                 d_num_rows=8, d_num_cols=12, d_num_subwells=3):
-#     num_src_plates = self.numSrcPlates
-#     num_dest_plates = self.numDestPlates
-        
-#     s_num_wells = s_num_rows * s_num_cols
-#     d_num_wells = d_num_rows * d_num_cols
-#     # qs_soaks = self.soaks.select_related('dest__parentWell__plate','src__plate',
-#     #     ).prefetch_related('transferCompound',).order_by('id')
-
-#     soaks_lst = [soak for soak in qs_soaks]
-#     src_wells = [0]*num_src_plates*s_num_wells
-#     dest_subwells = [0]*num_dest_plates*d_num_wells*d_num_subwells
-
-#     for j in range(len(soaks_lst)):
-#         s = soaks_lst[j]
-#         src = s.src # source Well
-#         src_well_idx = src.wellIdx
-#         src_plate_idx = src.plate.plateIdxExp
-#         s_w_idx = getWellIdx(src_plate_idx,src_well_idx, s_num_wells)
-#         dest = s.dest
-#         dest_subwell_idx = dest.idx
-#         dest_parentwell_idx = dest.parentWell.wellIdx
-#         dest_plate_idx = dest.parentWell.plate.plateIdxExp
-#         d_sw_idx = getSubwellIdx(dest_plate_idx,dest_parentwell_idx,
-#             dest_subwell_idx, d_num_wells,d_num_subwells) 
-#         compound = s.transferCompound
-#         src_wells[s_w_idx] = {
-#                             'well_id':src.id, 
-#                             'well_name':src.name, 
-#                             'compound':compound.nameInternal,
-#                             'dest_subwell_id':dest.id,
-#                             'soak_id':s.id
-#                             }
-
-#         dest_subwells[d_sw_idx] = {
-#                             'src_well_id': src.id,
-#                             'parentWell_id': dest.parentWell.id,
-#                             'parentWell_name': dest.parentWell.name,
-#                             'subwell_id':dest.id,
-#                             'subwell_idx':dest.idx,
-#                             'compound':compound.nameInternal,
-#                             }
-
-#     src_wells = chunk_list(src_wells,s_num_cols)
-#     dest_subwells = chunk_list(dest_subwells,d_num_subwells) #group subwells 1-3 into well
-#     dest_subwells = chunk_list(dest_subwells,d_num_cols) #group columns into row
-
-#     return {'src_plates':split_list(src_wells,num_src_plates), 
-#             'dest_plates':split_list(dest_subwells,num_dest_plates),
-#             }
+    file_reader = csv.reader(TextIOWrapper(f), delimiter=',')
+    soaks_qs = exp.soaks.select_related('dest__parentWell__plate')
+    soaks_map = {}
+    for soak in soaks_qs:
+        soak_key = "_".join([soak.dest.parentWell.plate.rockMakerId, 
+            soak.dest.parentWell.name, 
+            subwell_map[soak.dest.idx]])
+        soaks_map[soak_key] = soak
+    from collections import OrderedDict
+    rows_dict = {}
+    for row in file_reader: 
+        data = OrderedDict([
+            ('plate_type',''),
+            ('plate_id',''),
+            ('location', ''),
+            ('plate_row', ''),
+            ('plate_column', ''),
+            ('plate_subwell', ''),
+            ('comment', ''),
+            ('crystal_id', ''),
+            ('arrival_time', ''),
+            ('departure_time', ''),
+            ('duration', ''),
+            ('destination_name', ''),
+            ('destination_location', ''),
+            ('barcode', ''),
+            ('external_comment', ''),
+        ])
+        data_keys = list(data.keys())
+        for i, col in enumerate(row):
+            data[data_keys[i]] = col
+        tweaked_col = data['plate_column'] if len(data['plate_column'])==2 else '0' + data['plate_column']
+        rows_dict["_".join([data['plate_id'],data['plate_row']+tweaked_col,data['plate_subwell']])] = data
+    print(soaks_map)
+    for k,v in rows_dict.items():
+        soak = soaks_map.get(k)
+        if soak:
+            soak.isMounted = True
+            soak.storage_position = int(v['destination_location']) if v['destination_location'] else None
+            soak.shifterComment = v['comment']
+            soak.shifterCrystalID = v['crystal_id']
+            print(v['arrival_time'])
+            soak.shifterArrivalTime = datetime.strptime(v['arrival_time'], '%Y-%m-%d %H:%M:%S.%f') if v['arrival_time'] else None
+            soak.shifterDepartureTime = datetime.strptime(v['departure_time'], '%Y-%m-%d %H:%M:%S.%f') if v['departure_time'] else None
+            soak.barcode = v['barcode']
+            soak.shifterExternalComment = v['external_comment']
+    Soak.objects.bulk_update([v for k,v in soaks_map.items()], fields=['storage_position',
+        'shifterComment','shifterCrystalID','shifterArrivalTime', 'shifterDepartureTime', 'barcode','shifterExternalComment'])

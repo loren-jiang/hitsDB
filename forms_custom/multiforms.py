@@ -80,8 +80,6 @@ class ProcessMultipleFormsView(ProcessFormView):
     def post(self, request, *args, **kwargs):
         form_classes = self.get_form_classes()
         form_name = request.POST.get('action')
-        print(form_name)
-
         return self._process_individual_form(form_name, form_classes)
         
     def _process_individual_form(self, form_name, form_classes):

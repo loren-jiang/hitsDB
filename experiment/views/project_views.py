@@ -84,6 +84,7 @@ class MultiFormsProjView(MultiFormsView):
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
         update_instance(self.proj, cleaned_data)
+        messages.success(self.request, "Project " + self.proj.name + " updated.")
         return HttpResponseRedirect(reverse_lazy('proj', kwargs={'pk_proj': pk,}))
     
     def newexpform_form_valid(self, form):
@@ -111,6 +112,7 @@ class MultiFormsProjView(MultiFormsView):
                 'expForm':expForm,
                 'projForm':projForm,
                 'srcPlatesTable':srcPlatesTable,
+                'project':self.proj,
             }
         )
         return context

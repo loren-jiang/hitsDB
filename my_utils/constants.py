@@ -1,10 +1,11 @@
 import string
+from .utility_functions import reverse_dict
 """
 File to set constant objects that are needed throughout the hitsDB app
 """
 
 idx_to_letters_map = dict(enumerate(string.ascii_letters.upper()))
-letters_to_idx_map = dict([(v,k) for k,v in idx_to_letters_map.items()])
+letters_to_idx_map = reverse_dict(idx_to_letters_map)
 
 picklist_map = {
     1: {'name': 'PlateType', 'desc': 'plate to be used as defined in Plate Definition','optional':False},
@@ -34,6 +35,6 @@ subwell_map = {
     3: 'c',
 }
 
-
+reverse_subwell_map = reverse_dict(subwell_map)
 
 

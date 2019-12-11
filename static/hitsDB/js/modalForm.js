@@ -1,3 +1,5 @@
+
+
 function setUpModalForm(urlClass, modalId, formClass) {
     function GoBackWithRefresh(event) {
         if ('referrer' in document) {
@@ -36,42 +38,42 @@ function setUpModalForm(urlClass, modalId, formClass) {
             }
         }
     });
-    $(document).on('submit', '.ajax_form', function(ev) {
-        ev.preventDefault();
-        ev.stopImmediatePropagation();
-        let data_ = new FormData($(this)[0]);
-        $.ajax({ 
-            type: $(this).attr('method'), 
-            // type:'POST',
-            url: this.action, 
-            data: data_,
-            context: this,
-            dataType: 'json',
-            processData: false,
-            contentType: false,
-            success: function(data, status) {
-                // GoBackWithRefresh(ev);
-                location.replace(location.origin + location.pathname);
+    // $(document).on('submit', '.ajax_form', function(ev) {
+    //     ev.preventDefault();
+    //     ev.stopImmediatePropagation();
+    //     let data_ = new FormData($(this)[0]);
+    //     $.ajax({ 
+    //         type: $(this).attr('method'), 
+    //         // type:'POST',
+    //         url: this.action, 
+    //         data: data_,
+    //         context: this,
+    //         dataType: 'json',
+    //         processData: false,
+    //         contentType: false,
+    //         success: function(data, status) {
+    //             // GoBackWithRefresh(ev);
+    //             location.replace(location.origin + location.pathname);
                 
-            },
-            error: function(data, xhr, ajaxOptions, thrownError) {
-                const errors = JSON.parse(data.responseJSON.errors);
-                const keys = Object.keys(errors);
-                var i;
-                for (i = 0; i < keys.length; i++) {
-                    const selector = '#div_id_' + keys[i];
-                    $sel = $(selector);
-                    $sel.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
-                    $sel.find('input').addClass('form-control is-invalid');
-                    errors[keys[i]].forEach((err)=> {
-                        $sel.append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
-                    });
+    //         },
+    //         error: function(data, xhr, ajaxOptions, thrownError) {
+    //             const errors = JSON.parse(data.responseJSON.errors);
+    //             const keys = Object.keys(errors);
+    //             var i;
+    //             for (i = 0; i < keys.length; i++) {
+    //                 const selector = '#div_id_' + keys[i];
+    //                 $sel = $(selector);
+    //                 $sel.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
+    //                 $sel.find('input').addClass('form-control is-invalid');
+    //                 errors[keys[i]].forEach((err)=> {
+    //                     $sel.append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
+    //                 });
                     
-                  }
-            }
-        });
-        return false;
-    });
+    //               }
+    //         }
+    //     });
+    //     return false;
+    // });
 
     $("." + urlClass).click(function(ev) { // for each modal url
         ev.preventDefault(); // prevent navigation
@@ -82,3 +84,42 @@ function setUpModalForm(urlClass, modalId, formClass) {
         return false; // prevent the click propagation
     });
 }
+
+
+$(document).on('submit', '.ajax_form', function(ev) {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    let data_ = new FormData($(this)[0]);
+    $.ajax({ 
+        type: $(this).attr('method'), 
+        // type:'POST',
+        url: this.action, 
+        data: data_,
+        context: this,
+        dataType: 'json',
+        processData: false,
+        contentType: false,
+        success: function(data, status) {
+            // GoBackWithRefresh(ev);
+            location.replace(location.origin + location.pathname);
+            
+        },
+        error: function(data, xhr, ajaxOptions, thrownError) {
+            const errors = JSON.parse(data.responseJSON.errors);
+
+            const keys = Object.keys(errors);
+            var i;
+            for (i = 0; i < keys.length; i++) {
+                const selector = '#div_id_' + keys[i];
+                $sel = $(selector);
+                $sel.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
+                $sel.find('input').addClass('form-control is-invalid');
+                errors[keys[i]].forEach((err)=> {
+                    $sel.append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
+                });
+                
+              }
+        }
+    });
+    return false;
+});

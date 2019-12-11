@@ -100,6 +100,7 @@ class MultiFormsExpView(MultiFormsView):
         exp = exp_qs.first()
         fields = [key for key in cleaned_data]
         update_instance(exp, cleaned_data, fields=fields)
+        messages.success(self.request, "Experiment " + exp.name + " updated.")
         return HttpResponseRedirect(reverse_lazy('exp', kwargs={'pk_proj': exp.project.id, 'pk_exp':exp.id}))
     
     def initform_form_valid(self, form):
@@ -122,8 +123,10 @@ class MultiFormsExpView(MultiFormsView):
                 initData.save()
                 exp.initData = initData
                 exp.save()  
+            dest_plates_ids = [str(p.rockMakerId) for p in exp.plates.filter(isSource=False)]
+            messages.success(self.request, "Experiment " + exp.name + " initialized with plates: " +
+            ", ".join(dest_plates_ids))
         except Exception as e:
-            print(e)
             pass
 
         return HttpResponseRedirect(self.get_success_url(form_name))
@@ -146,7 +149,8 @@ class MultiFormsExpView(MultiFormsView):
             f = TextIOWrapper(cleaned_data['plateLibDataFile'], self.request.encoding)
             with transaction.atomic():
                 exp.createSrcPlatesFromLibFile(cleaned_data['numSrcPlates'], f)
-  
+        messages.success(self.request, "Source plates " + ", ".join([str(p.name) for p in exp.plates.filter(isSource=True)]) 
+            + "created.")
         return HttpResponseRedirect(self.get_success_url(form_name))
 
     # def platesform_form_valid(self, form):
@@ -349,29 +353,39 @@ def exp_plates(request, pk_exp):
         'plates_table': plates_table,
     }
     return render(request, 'experiment/exp_templates/plates_table.html', data)
+from ..forms import WellPriorityForm
+from my_utils.my_views import AjaxUpdateView
+class WellUpdateView(AjaxUpdateView):
+    model = Well
+    form_class = WellPriorityForm
+    success_url='/'
 
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
 def plate(request, pk_plate, pk_proj=None):
-
+    
+    from my_utils.constants import idx_to_letters_map, letters_to_idx_map
     p = get_object_or_404(Plate, pk=pk_plate)
     if p:
         wells_qs = p.wells.select_related('compound','soak').prefetch_related('subwells').order_by('name')
         wells = [w for w in wells_qs]
+        well_form_map = {}
         subwells = []
         for w in wells:
             subwells.extend([s for s in w.subwells.all()])
-
+            well_form_map[w.id] = WellPriorityForm(instance=w)
         reshaped_wells = reshape(wells, (p.numRows, p.numCols))
         soaks_qs = Soak.objects.select_related('dest','src').filter(dest__in=subwells)
         soaks = [s for s in soaks_qs]
         subwellToSoakMap = dict([(s.dest.name, s) for s in soaks])
-        # print(subwellToSoakMap)
-        # print([s.dest.name for s in soaks])
+
         context = {
             'wellMatrix':reshaped_wells,
             'subwellToSoakMap': subwellToSoakMap,
             'plate':p,
+            'idx_to_letters_map':idx_to_letters_map,
+            'canEdit':True, 
+            'well_form_map':well_form_map,
         }
         return render(request, 'experiment/exp_templates/plate.html', context)
         # return HttpResponse(str(pk_plate))
@@ -470,8 +484,10 @@ def delete_experiments(request, pks, pk_proj=None):
                     exp = get_object_or_404(Experiment, pk=pk)
                     if (exp.owner.pk == request.user.pk):
                         exp.delete()
+                        messages.success(request," ".join([type(exp).__name__, str(exp)]) + " deleted.")
                 except:
                     break
+    
     if pk_proj:
         return redirect('proj',pk_proj)
     else:
@@ -514,6 +530,8 @@ def picklist_template_view(request,pk_exp, pk_proj=None):
         items = match.group()
         writer.writerow([exp.destPlateType, items[0], int(items[1:]), subwell_map[subwell_idx]])
     return response
+
+
 
 # ----------------- HELPER functions --------------------------
 def make_instance_from_dict(instance_model_a_as_dict,model_a):

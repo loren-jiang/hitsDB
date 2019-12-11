@@ -1,14 +1,12 @@
 #experiment/forms.py
 from django import forms
 from django.contrib.auth.models import User, Group
-from .models import Experiment, Plate, Ingredient, Project, PlateType, Soak
+from .models import Experiment, Plate, Ingredient, Project, PlateType, Soak, Well, SubWell
 from django.forms import ModelChoiceField
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from lib.models import Compound, Library
 from django.core.exceptions import ValidationError
-from crispy_forms.bootstrap import InlineField
-from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit
+
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
 import json
@@ -24,8 +22,19 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from my_utils.my_forms import FormFieldPopoverMixin, MultiFormMixin
 from my_utils.fields import GroupedMutlipleModelChoiceField, GroupedModelChoiceField
 # crispy form imports
+from crispy_forms.bootstrap import InlineField
+from crispy_forms.layout import Submit
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, HTML, Button
+
+class WellForm(forms.ModelForm):
+    class Meta:
+        model = Well
+        fields = ['priority',]
+
+class WellPriorityForm(WellForm):
+    class Meta(WellForm.Meta):
+        fields = ['priority',]
 
 class PlateForm(forms.ModelForm):
     class Meta:
@@ -53,10 +62,6 @@ class LibraryForm(forms.ModelForm):
     class Meta:
         model = Library
         fields=("name","description","supplier",)
-
-    # def __init__(self, *args, **kwargs):
-        # self.form_class = kwargs.pop("form_class", None)
-        # super(LibraryForm, self).__init__(*args, **kwargs)
 
 # simple form to edit Project fields (name, description)
 class SimpleProjectForm(forms.ModelForm):
@@ -123,14 +128,20 @@ class ExperimentForm(forms.ModelForm):
     
     class Meta:
         model = Experiment
-        fields = ("name","description", "protein", "srcPlateType", "destPlateType","library",)
+        fields = ("name","description", "protein", "srcPlateType", "destPlateType","library","owner","project")
         
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         self.project = kwargs.pop('project', None)
+        self.pk_proj = kwargs.pop('pk_proj', None)
         super().__init__(*args, **kwargs)
+        if self.pk_proj:
+            self.project = Project.objects.get(pk=self.pk_proj)
         srcPlateType_qs = PlateType.objects.filter(isSource=True)
-        destPlateType_qs = PlateType.objects.filter(isSource=False)
+        destPlateType_qs = PlateType.objects.filter(isSource=False) 
+        if self.user:
+            self.fields['owner'] = forms.ModelChoiceField(queryset=User.objects.filter(id=self.user.id), initial=self.user.id)  
+
         self.fields['srcPlateType'] = forms.ModelChoiceField(queryset=srcPlateType_qs, 
             label="Source plate type",
             initial=srcPlateType_qs.first())
@@ -386,7 +397,8 @@ class PicklistMultiForm(MultiFormMixin, PrivateFileCSVForm):
                     
                     for row in reader:
                         if row:
-                            while row[-1]:
+                            print(row)
+                            while not row[-1]:
                                 row.pop()
                             if len(row) < 4:
                                 self.add_error(None,
@@ -394,7 +406,7 @@ class PicklistMultiForm(MultiFormMixin, PrivateFileCSVForm):
                                         ('Missing columns. See instructions.'),
                                         code='invalid',
                                     )
-                                )
+                                )   
                             if len(row) > len(picklist_map.keys()):
                                 self.add_error(None,
                                     ValidationError(            
@@ -402,7 +414,6 @@ class PicklistMultiForm(MultiFormMixin, PrivateFileCSVForm):
                                         code='invalid',
                                     ))
                             plate_id = row[1]
-                            print(plate_id)
                             if not(plate_ids.get(plate_id)):
                                 plate_ids[plate_id] = plate_id
                 editable_plate_qs = user_editable_plates(self.exp.owner).filter(rockMakerId__in=plate_ids.keys())

@@ -2,12 +2,13 @@
 {% load static %}
 {% load render_table from django_tables2 %} 
 {% load crispy_forms_tags %}
+{% block title %} Project {{project.name}} - {{ block.super }} {% endblock %}
 {% block content %}
 <script src="{% static 'hitsDB/js/selectDeleteDj2Table.js' %}"></script>
 
 <!-- The Modal -->
 <div class="modal fade" id="newExp">
-  <form method="post" >
+  <form method="post" class="ajax_form" action="/home/exps/new" >
     <div class="modal-dialog">
       <div class="modal-content">
       
@@ -119,6 +120,49 @@
   });
 
   
+$('.ajax_form').on('submit', function(ev) {
+    console.log("dsfds");
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    let data_ = new FormData($(this)[0]);
+    $.ajax({ 
+        type: $(this).attr('method'), 
+        // type:'POST',
+        url: '/home/exps/new',
+        data: data_,
+        context: this,
+        dataType: 'json',
+        processData: false,
+        contentType: false,
+        success: function(data, status) {
+            // GoBackWithRefresh(ev);
+            location.replace(location.origin + location.pathname);
+            
+        },
+        error: function(data, xhr, ajaxOptions, thrownError) {
+            const errors = JSON.parse(data.responseJSON.errors);
+            const keys = Object.keys(errors);
+            var i;
+            for (i = 0; i < keys.length; i++) {
+                const selector = '#div_id_' + keys[i];
+                $sel = $(selector);
+                $sel.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
+                $sel.find('input').addClass('form-control is-invalid');
+                errors[keys[i]].forEach((err)=> {
+                    $sel.append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
+                });
+                if (keys[i]=='__all__') {
+                  errors[keys[i]].forEach((err)=> {
+                    $modal_body = $('#newExp').find('.modal-body');
+                    $modal_body.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
+                    $modal_body.prepend('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
+                  });
+                }
+              }
+        }
+    });
+    return false;
+});
 </script>
 
 {% endblock %}
