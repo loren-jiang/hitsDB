@@ -76,7 +76,7 @@ class PlatesTable(tables.Table):
     class Meta:
         model = Plate
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields=('name','plateType',)
+        fields=('name','plateType','plateIdxExp','isTemplate')
 
 class ModalEditPlatesTable(ModalFormMixin, PlatesTable):
     class Meta(ModalFormMixin.Meta, PlatesTable.Meta):

@@ -296,53 +296,70 @@ def makePlates(self, num_plates, plate_type, plates_init_data=None):
     except Exception as e:
         return []
 
-def revertToStep(self, step):
+def revertToStep(exp, step):
     def revertToStepOne(exp):
         """
         """
-
-        # Delete plates in experiment except source plates that are templates
+        # Delete dest plates in experiment 
         dest_plates = exp.plates.filter(isSource=False) 
         dest_plates.delete()
+          
+        # Remove soaks
+        exp.soaks.remove()
+
+    def revertToStepTwo(exp):
+        """
+        Delete 
+        """
+        # Delete src plates in experiment except ones that are templates; in that case, remove
         src_plates = exp.plates.filter(isSource=True)
         for p in src_plates:
             if p.isTemplate:
                 exp.plates.remove(p)
             else:
-                p.delete()    
-
-        # Remove soaks
-        exp.soaks.remove()
-
-        # Save
-        exp.save()
-
-        # Remove picklist file if it exists
-        exp.picklist = None
-
-    def revertToStepTwo(exp):
-        """
-        """
-        pass
+                p.delete()  
 
     def revertToStepThree(exp):
-        pass
+        """
+        Removes relationship between plates and their drop_images
+        """
+        dest_plates = exp.plates.filter(isSource=False).prefetch_related('drop_images')
+        for p in dest_plates:
+            p.drop_images.remove(*[img for img in p.drop_images.all()])
 
     def revertToStepFour(exp):
-        pass
+        """
+        Remove source well from soaks
+        """
+        soaks = [s for s in exp.soaks.all()]
+        for s in soaks:
+            s.src = None
+        Soak.objects.bulk_update(soaks, fields=['src'])
 
-    if step==1:
-        revertToStepOne(self)
-    if step==2:
-        revertToStepTwo(self)
-    if step==3:
-        revertToStepThree(self)
-    if step==4:
-        revertToStepFour(self)
+    def revertToStepFive(exp):
+        # Remove picklist file if it exists
+        exp.picklist = None
+        exp.save()
+    
+    fxn_array = [
+        revertToStepOne,
+        revertToStepTwo,
+        revertToStepThree,
+        revertToStepFour,
+        revertToStepFive,
+    ]
+
+    def apply(fxn_array, exp, step):
+        for i in range(step-1, len(fxn_array)):
+            print(fxn_array[i])
+            fxn_array[i](exp)
+
+    apply(fxn_array, exp, step)
+
 
 def createPlatesSoaksFromInitDataJSON(self):
     exp = self
-    revertToStep(exp, 1)
+    # revertToStep(exp, 1)
     init_data_plates = exp.initDataJSON.items()
     lst_plates = exp.makePlates(len(init_data_plates), self.destPlateType)
     soaks = []
@@ -422,7 +439,6 @@ def processPicklist(exp, f):
             data[data_keys[i]] = col
         tweaked_col = data['plate_column'] if len(data['plate_column'])==2 else '0' + data['plate_column']
         rows_dict["_".join([data['plate_id'],data['plate_row']+tweaked_col,data['plate_subwell']])] = data
-    print(soaks_map)
     for k,v in rows_dict.items():
         soak = soaks_map.get(k)
         if soak:
@@ -430,9 +446,8 @@ def processPicklist(exp, f):
             soak.storage_position = int(v['destination_location']) if v['destination_location'] else None
             soak.shifterComment = v['comment']
             soak.shifterCrystalID = v['crystal_id']
-            print(v['arrival_time'])
-            soak.shifterArrivalTime = datetime.strptime(v['arrival_time'], '%Y-%m-%d %H:%M:%S.%f') if v['arrival_time'] else None
-            soak.shifterDepartureTime = datetime.strptime(v['departure_time'], '%Y-%m-%d %H:%M:%S.%f') if v['departure_time'] else None
+            soak.shifterArrivalTime = make_aware(datetime.strptime(v['arrival_time'], '%Y-%m-%d %H:%M:%S.%f')) if v['arrival_time'] else None
+            soak.shifterDepartureTime = make_aware(datetime.strptime(v['departure_time'], '%Y-%m-%d %H:%M:%S.%f')) if v['departure_time'] else None
             soak.barcode = v['barcode']
             soak.shifterExternalComment = v['external_comment']
     Soak.objects.bulk_update([v for k,v in soaks_map.items()], fields=['storage_position',

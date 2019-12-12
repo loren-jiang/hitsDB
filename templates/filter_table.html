@@ -15,7 +15,7 @@
             <form id="{{filter.filter_form_id}}" action="" method="get" class="form">
                 {% csrf_token %}
                 {{filter.form | crispy}}
-                <button type="submit" class="btn btn-primary">Filter</button>
+                <button id="filter_submit" type="submit" class="btn btn-primary">Filter</button>
                 <button id="clear_fields" type="submit" class="btn btn-secondary">Clear fields</button>
             </form>
         </div>
@@ -76,12 +76,13 @@
 
             }
         });    
-        
+
         $('#clear_fields').click(function(e) {
             e.preventDefault();
             $form = $("#" + "{{filter.filter_form_id}}");
             clearForms($form);
             // $form.trigger("reset");
+            console.log($form)
             $form.submit();
         });
     });

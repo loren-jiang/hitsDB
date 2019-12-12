@@ -258,11 +258,10 @@ class Experiment(models.Model):
         Returns True if experiment soaks exist and if each soak's dest subwell and source well exist,
         else returns False
         """
-        if not(self.soaks.count()):
-            return False
-
         usedSoaks = self.usedSoaks
 
+        if not(usedSoaks.count()):
+            return False
         return not(usedSoaks.filter(src__isnull=True).exists()) and not(usedSoaks.filter(dest__isnull=True).exists())
         # for s in usedSoaks.select_related('src__plate', 'dest__parentWell__plate'):
         #     if not(s.src_id and s.dest_id):
@@ -286,6 +285,8 @@ class Experiment(models.Model):
         Returns True if all dest plates have drop images, else False
         """
         dest_plates = self.plates.filter(isSource=False).prefetch_related('drop_images')
+        if not(dest_plates):
+            return False
         for p in dest_plates:
             if not(p.drop_images.count()):
                 return False
@@ -577,6 +578,8 @@ class Plate(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
 
+    created_by = models.ForeignKey(User, related_name='plates_create', on_delete=models.SET_NULL, null=True, blank=True)
+    
     new_instance_viewname = 'plate_new'
     edit_instance_viewname = 'plate_edit'
     model_name = 'Plate'
@@ -856,6 +859,7 @@ class Soak(models.Model):
     
     storage_position = models.PositiveIntegerField(null=True, blank=True)
     storage_barcode = models.CharField(max_length=100, default='')
+    storage_location = models.CharField(max_length=20, default='')
     storage = models.ForeignKey('XtalContainer', on_delete=models.SET_NULL, null=True, blank=True, related_name='soaks')
 
     isMounted = models.BooleanField(default=False)

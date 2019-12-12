@@ -117,8 +117,15 @@ $(document).on('submit', '.ajax_form', function(ev) {
                 errors[keys[i]].forEach((err)=> {
                     $sel.append('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
                 });
-                
+                if (keys[i]=='__all__') {
+                    errors[keys[i]].forEach((err)=> {
+                      $modal_body = $('.modal.show').find('.modal-body');
+                      $modal_body.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
+                      $modal_body.prepend('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
+                    });
+                  }
               }
+
         }
     });
     return false;

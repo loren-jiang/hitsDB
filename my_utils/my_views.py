@@ -128,7 +128,6 @@ class AjaxableResponseMixin:
         # call form.save() for example).
         response = super().form_valid(form) 
         if self.request.is_ajax():
-            
             data = {'result':'success'}
             data.update({
                 'pk': self.object.pk,

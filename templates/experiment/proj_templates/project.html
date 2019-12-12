@@ -153,7 +153,7 @@ $('.ajax_form').on('submit', function(ev) {
                 });
                 if (keys[i]=='__all__') {
                   errors[keys[i]].forEach((err)=> {
-                    $modal_body = $('#newExp').find('.modal-body');
+                    $modal_body = $('.modal.show').find('.modal-body');
                     $modal_body.find('.invalid-feedback').remove(); //removes invalid feedback message so messages don't propagate
                     $modal_body.prepend('<p class="invalid-feedback" style="display:flex;"><strong>' + err.message + '</strong></p>');
                   });

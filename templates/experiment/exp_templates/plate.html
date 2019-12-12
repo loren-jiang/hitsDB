@@ -1,10 +1,21 @@
 {% extends 'base.html' %}
 {% load experiment_tags %}
+{% load render_table from django_tables2 %}
 
 {% block content %}
 
 <div class="container-fluid">
     <div class="row justify-content-center">
+        <div class='col col-md-4'>
+            <div class='jumbotron'>
+                <h3> Edit Plate </h3>
+                <form action="" method="POST">
+                    {% csrf_token %}
+                    {{plateForm.as_p}}
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
         <div class='col col-md-4'>
             {% if plate.isSource %}
             {% include 'src_plate.html' with plate=wellMatrix idx_to_letters_map=idx_to_letters_map %}
@@ -84,6 +95,11 @@
 
         </div>
     </div>
+
+    <div class="row justify-content-center"> 
+        {% include 'filter_table.html' with table=table filter=filter %}
+    </div>
+            
 </div>
 
 
@@ -93,12 +109,7 @@
 <script>
 
 $(function(){
-    // $('form input').change(function () {
-    //     $(this).attr("value", $(this).val());
-    //     $(this).closest('form').submit();
-    // });
-
-    $(document).on('submit', '.ajax_form', function (ev) {
+    $(document).on('submit', '.ajax_form_no_refresh', function (ev) {
         ev.preventDefault();
         ev.stopImmediatePropagation();
         let data_ = new FormData($(this)[0]);
@@ -117,9 +128,7 @@ $(function(){
 
             },
             error: function (data, xhr, ajaxOptions, thrownError) {
-                console.log(data)
                 const errors = JSON.parse(data.responseJSON.errors);
-
                 const keys = Object.keys(errors);
                 var i;
                 for (i = 0; i < keys.length; i++) {

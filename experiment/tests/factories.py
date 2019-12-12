@@ -83,3 +83,10 @@ class MRC3DestPlateTypeFactory(DjangoModelFactory):
     class Meta:
         model = 'experiment.PlateType'
 
+#--------------------------------------------XtalContainer--------------------------------------------
+class PuckFactory(DjangoModelFactory):
+    name = factory.sequence(lambda n: '%d' % n)
+    type = 'puck'
+
+    class Meta:
+        'experiment.XtalContainer'

@@ -36,4 +36,10 @@ $(document).ready(function() {
     });
 
     $('.has-popover').popover({'trigger':'hover'});
+
+    $('.form-option .collapse-btn').on('click', function() {
+        $form_option = $(this).parent('.form-option');
+        $collapse = $form_option.find('collapse');
+        $('.form-option .collapse').not($collapse).collapse('hide');
+    });
 });
