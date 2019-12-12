@@ -455,9 +455,12 @@
 
 
 <div class="modal" id="plate_edit_modal"></div>
-<div class="modal" id="dropimages_upload_modal"></div>
+<div class="modal" id="drop_images_upload_modal"></div>
 
 <script>
+    $(document).ready(function () {
+        setUpModalForm("drop_images_upload", "drop_images_upload_modal")
+    });
     $(document).ready(function () {
         lib_pk = "{{exp.library.pk|safe}}";
         confirmLibraryChange(lib_pk);

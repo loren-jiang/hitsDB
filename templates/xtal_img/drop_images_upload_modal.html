@@ -1,0 +1,8 @@
+{% extends 'modals/modal_form.html' %}
+
+{% block extra_modal_content %}
+    <p> Images uploaded: </p>
+    {% for img in images %}
+        {{img.file_name}}, 
+    {% endfor %}
+{% endblock %}

@@ -74,3 +74,17 @@
 .prompt {
     background-color: lightyellow;
 }
+
+/* JUMBOTRON */
+
+.jumbotron {
+    padding: 2rem !important;
+}
+
+.jumbotron > h3:first-of-type:first-child {
+    background:aliceblue;
+    padding: .5rem 1rem;
+    border-radius: .3rem;
+    /* font-style: italic; */
+    /* font-family: Georgia, 'Times New Roman', Times, serif !important; */
+}

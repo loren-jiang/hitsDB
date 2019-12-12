@@ -1,6 +1,8 @@
 <!-- Template for form as modal. 
   Note: Data passed should have
   - form appropriately named 'form' when passing data
+  - 'form_class'
+  - 'use_ajax'
   - modal-title named 'modal_title'
   - form action named 'action' #should be a view ideally
 -->
@@ -9,10 +11,8 @@
 {% block content %}
 {% if form.media %}
   {{ form.media }}
-{% else %}
-  <script src="/static/admin/js/jsi18n.js"> </script>
-  <link href="/static/admin/css/widgets.css" rel="stylesheet">
 {% endif %}
+
 
 <div class="modal-dialog">
   {% if use_ajax %}
@@ -30,8 +30,11 @@
       
       <!-- Modal body -->
       <div class="modal-body">
+          
           {% csrf_token %}
           {{form | crispy}}
+          {% block extra_modal_content %} 
+          {% endblock %}
       </div>
       
       <!-- Modal footer -->

@@ -850,6 +850,14 @@ class Soak(models.Model):
     well_y = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
     well_radius = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
 
+    drop_x_initial = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+    drop_y_initial = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+    drop_radius_initial = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+
+    well_x_initial = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+    well_y_initial = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+    well_radius_initial = models.DecimalField(max_digits=6, decimal_places=2,default=0, validators=[MinValueValidator(0.0)]) #in um
+
     useSoak = models.BooleanField(default=False)
     saveCount = models.PositiveIntegerField(default=0)
     saveTimeStamp = models.DateTimeField(null=True, blank=True)

@@ -10,7 +10,6 @@ function confirmLibraryChange(lib_pk) {
                 $(this).val(previous);
             } 
         }
-        
     });
 }
 
@@ -19,7 +18,6 @@ function initCurrentStep(step) {
     let exp_step = `#exp-tab a:nth-child(${parseInt(step)})`;
     const hash = window.location.hash;
     const selector = hash ? hash + '-tab': exp_step;
-    console.log(selector);
     $(selector).tab('show');
 }
 
@@ -27,7 +25,6 @@ $(document).ready(function() {
     
     $('#delete-exp').on('click', function(e) {
         r = confirm("Are you sure?");
-        console.log(r);
         if (r==true) {
 
         } else {
@@ -37,6 +34,7 @@ $(document).ready(function() {
 
     $('.has-popover').popover({'trigger':'hover'});
 
+    $('.form-option-title:first').click();
     $('.form-option .collapse-btn').on('click', function() {
         $form_option = $(this).parent('.form-option');
         $collapse = $form_option.find('collapse');

@@ -207,9 +207,9 @@ class MultiFormsExpView(MultiFormsView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         invalid_form_name = context.get('invalid_form_name')
-        step = 0
+        error_step = 0
         if invalid_form_name:
-            step = self.form_to_step_map[invalid_form_name]
+            error_step = self.form_to_step_map[invalid_form_name]
         pk_proj = self.kwargs.get('pk_proj', None)
         pk = self.kwargs.get('pk_exp', None)
         request = self.request
@@ -269,7 +269,7 @@ class MultiFormsExpView(MultiFormsView):
 
         current_step =  exp.getCurrentStep
         context['dest_plates_qs'] = dest_plates_qs
-        context['error_step'] = step
+        context['error_step'] = error_step
         context['exp'] = exp
         context['src_plates_table'] = src_plates_table
         context['dest_plates_table'] = dest_plates_table

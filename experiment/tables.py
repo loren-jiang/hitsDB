@@ -51,9 +51,12 @@ class ModifyTable:
     attrs = {'class': 'table modify-table'}
 
 class DestPlatesForGUITable(ModalFormMixin):
-    upload_drop_images = tables.LinkColumn(verbose_name="Upload", viewname='drop_images_upload', args=[A('pk')], orderable=False, empty_values=())
+    # upload_drop_images = tables.LinkColumn(verbose_name="Upload", viewname='drop_images_upload', args=[A('pk')], orderable=False, empty_values=())
     drop_images_GUI = tables.LinkColumn(verbose_name="GUI", viewname='imageGUI', 
-        kwargs={'plate_id': A('pk'), 'user_id': A('experiment.owner.pk'), 'file_name': A('drop_images.first.file_name')}, orderable=False, empty_values=())
+        kwargs={'plate_id': A('pk'), 'user_id': A('experiment.owner.pk'), 'file_name': A('drop_images.first.file_name')}, 
+        orderable=False, empty_values=(),
+        )
+    upload_drop_images = ModalFormColumn('drop_images_upload_modal', 'drop_images_upload', 'drop_images_upload_modal')
     name = tables.Column(verbose_name="RockMaker ID", accessor='rockMakerId')
 
     def render_upload_drop_images(self):

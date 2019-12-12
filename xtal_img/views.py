@@ -37,8 +37,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 class DropImagesUploadView(FormView):
     form_class = ImagesFieldForm
     template_name = './s3/private_images_upload.html'
-    # pk = None
-
+    # template_name = 'modals/modal_form.html'
 
     def get_success_url(self):
         p = Plate.objects.get(id=self.kwargs['pk_plate'])
@@ -65,11 +64,14 @@ class DropImagesUploadView(FormView):
 
     def post(self, request, *args, **kwargs):
         p = get_object_or_404(Plate, id=kwargs['pk_plate'])
+        self.object = p
         if p.experiment.owner == request.user: #only the appropriate user can upload images 
-            p.drop_images.filter().delete() #delete well images associated with plate before uploading new ones
+            p.drop_images.remove(*[img for img in p.drop_images.all()])
+            # p.drop_images.filter().delete() #delete well images associated with plate before uploading new ones
             form_class = self.get_form_class()
             form = self.get_form(form_class)
             files = request.FILES.getlist('image_field')
+            drop_images = []
             if form.is_valid():
                 for f in files:
                     file_name = f.name.split('.')[0] #just get the file name, not the extension
@@ -77,11 +79,30 @@ class DropImagesUploadView(FormView):
                         new_file = DropImage(local_upload=f, owner=request.user, plate=p, file_name=file_name, useS3=False)
                     else:
                         new_file = DropImage(upload=f, owner=request.user, plate=p, file_name=file_name, useS3=True)
-                    new_file.save()
+                    drop_images.append(new_file)
+                    # new_file.save()
+                DropImage.objects.bulk_create(drop_images)
                 return self.form_valid(form)
             else:
                 return self.form_invalid(form)
 
+from my_utils.my_views import AjaxableResponseMixin
+class DropImagesUploadModalView(AjaxableResponseMixin, DropImagesUploadView):
+    def get(self, request, *args, **kwargs):
+        pk = kwargs.get('pk_plate', None)
+        if pk:
+            p = get_object_or_404(Plate, pk=pk)
+            drop_images = p.drop_images.filter()
+            form = self.get_form(self.get_form_class())
+            context = {
+                'form': form,
+                'images': drop_images,
+                'dont_show_path': True,
+                'use_ajax':True,
+                'modal_title':"Upload drop images",
+                'action': reverse('drop_images_upload_modal', kwargs={'pk_plate':pk})
+            }
+            return render(request, 'xtal_img/drop_images_upload_modal.html', context)
 
 @login_required(login_url="/login")
 def DropImageViewGUI(request, *args, **kwargs):    

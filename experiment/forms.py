@@ -196,6 +196,7 @@ class ExpInitDataMultiForm(FormFieldPopoverMixin, MultiFormMixin):
     initDataFile = forms.FileField(label="Initialization file [.json]",
             validators=[FileExtensionValidator(['json'])],
             help_text=".json file to initialize experiment",
+            widget=forms.FileInput(attrs={'accept': ".json"}),
             )
     def __init__(self, exp, *args, **kwargs):
         self.exp = exp
@@ -252,7 +253,7 @@ class ExpInitDataMultiForm(FormFieldPopoverMixin, MultiFormMixin):
 class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
     numSrcPlates = forms.IntegerField(required=False, label="Number of plates", help_text="Number of plates you wish to create")
     plateLibDataFile = forms.FileField(required=False, label="Source plate(s) file [.csv]", help_text=".csv file defining where compounds are in plate",
-        validators=[FileExtensionValidator(['csv'])],)
+        validators=[FileExtensionValidator(['csv'])],widget=forms.FileInput(attrs={'accept': ".csv"}))
     templateSrcPlates = forms.ModelMultipleChoiceField(
         queryset=Plate.objects.none(), 
         required=False, label="Template source plates",
@@ -268,38 +269,52 @@ class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Div(
-                Row(
-                    Column(HTML(
+                Div(
+                    HTML(
                         """
                         <h5 class="form-option-title collapse-btn collapsed" data-toggle="collapse" data-target="#option1-content"> Option 1</h5> 
-                        """), css_class='col')
-                ),
-                Div(
-                    Row(
-                        Column('numSrcPlates', css_class='col'),
-                        Column('plateLibDataFile', css_class='col'),
-                        css_class='form-row align-items-start',
+                        """), 
+                        css_class='card-header'
                     ),
+
+                Div(
+                    Div(
+                        Row(
+                            Column('numSrcPlates', css_class='col'),
+                            Column('plateLibDataFile', css_class='col'),
+                            css_class='form-row align-items-start',
+                        ),
+                        css_class='card-body'
+                    ),
+                    
                     css_class='collapse',
                     id='option1-content',
                 ),
-                css_class="form-option",
+                css_class="card form-option",
             ),
-
             Div(
-                Row(
-                Column(HTML("""<h5 class="form-option-title collapse-btn collapsed" data-toggle="collapse" data-target="#option2-content">Option 2</h5>"""), css_class='col')
-                ),
                 Div(
-                    Row(
-                        Column('templateSrcPlates', css_class='col'),
-                        css_class='form-row align-items-start',
+                    HTML(
+                        """
+                        <h5 class="form-option-title collapse-btn collapsed" data-toggle="collapse" data-target="#option2-content"> Option 2</h5> 
+                        """), 
+                        css_class='card-header'
                     ),
+                Div(
+                    Div(
+                        Row(
+                            Column('templateSrcPlates', css_class='col'),
+                            css_class='form-row align-items-start',
+                        ),
+                        css_class='card-body'
+                    ),
+                    
                     css_class='collapse',
                     id='option2-content',
-                ), 
-                css_class='form-option',
+                ),
+                css_class="card form-option",
             ),
+
             Column('action', css_class='hidden'),
             Submit('submit', 'Submit')
         )

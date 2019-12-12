@@ -1,24 +1,52 @@
 // builds navigation path with url links
-function buildNavPath() {
-    let url_path = $('#url_path').text();
+function buildNavPath(check_responses=false) {
+    let url_path = $('#url_path').text().trim();
     let url_paths = [];
     let output='';
     let last;
     if (url_path) {
         let url_path_arr = url_path.split('/');
-        last = url_path_arr.pop(); //pop off last element        
-        // console.log(url_path_arr);
+        url_path_arr = url_path_arr.filter((el, idx)=> el.length!=0 || idx==0 );
+        let last;
         for (let i = 0; i < url_path_arr.length; i++) { 
             url_paths.push(
             	url_path_arr.slice(0,i+1).join('/')
             );
         }
-        for (let j = 0; j < url_paths.length; j++) { 
-            output += '<a href="' + url_paths[j] + '">'+ url_path_arr[j] +'</a>' + '/';
+        if (check_responses) {
+            if (url_paths.map((el, idx)=> testURL(el)).every((el)=>el)) {
+                for (let j = 0; j < url_paths.length; j++) { 
+                    output += '<a href="' + url_paths[j] + '">'+ url_path_arr[j] +'</a>' + '/';
+                }
+            }
+        }
+        else {
+            for (let j = 0; j < url_paths.length; j++) { 
+                output += '<a href="' + url_paths[j] + '">'+ url_path_arr[j] +'</a>' + '/';
+            }
         }
         
+        
     }
-    return output + last;
+    return output;
+}
+
+function testURL(url) {
+    let bool;
+    $.ajax({
+        type: 'HEAD',
+        url: url,
+        async: false,
+        success: function() {
+                // page exists
+            bool = true;
+        },
+        error: function() {
+                // page does not exist
+            bool = false;
+        }
+    });
+    return bool;
 }
 
 function toggleMessages(show_dur, hide_dur, init_delay_dur, delay_inc, cascade_dur) {
