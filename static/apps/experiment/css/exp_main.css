@@ -7,3 +7,13 @@
 .invalid-feedback {
     display: flex;
 }
+
+
+.form-option-title:after {
+    content: "-";
+    float: right; 
+}
+.form-option-title.collapsed:after {
+    /* symbol for "collapsed" panels */
+    content: "+"; 
+}

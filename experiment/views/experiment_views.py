@@ -5,7 +5,7 @@ from django_tables2 import RequestConfig
 from ..exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from lib.models import Library, Compound
 from ..forms import CreateSrcPlatesMultiForm, ExperimentForm, PlatesSetupMultiForm, \
-    ExpAsMultiForm, SoaksSetupMultiForm, ExpInitDataMultiForm, PicklistMultiForm
+    ExpAsMultiForm, SoaksSetupMultiForm, ExpInitDataMultiForm, PicklistMultiForm, PlateForm
 from forms_custom.multiforms import MultiFormsView
 from django.db.models import Count, F, Value
 from ..decorators import is_users_experiment, is_user_accessible_experiment, is_user_editable_experiment, \
@@ -24,6 +24,7 @@ from ..querysets import user_editable_plates, user_editable_experiments
 from ..filters import PlateFilter, ExperimentFilter
 from my_utils.utility_functions import reshape
 from collections import OrderedDict
+from ..utils.experiment_utils import revertToStep
 
 @method_decorator([login_required(login_url="/login"), is_user_accessible_experiment], name='dispatch')
 class MultiFormsExpView(MultiFormsView):
@@ -54,7 +55,7 @@ class MultiFormsExpView(MultiFormsView):
             raise PermissionDenied
 
         exp = user.experiments.get(id=pk_exp)
-        
+        self.exp = exp
         self.form_arguments['expform'] = {
                                         'user':user,
                                         'instance':exp
@@ -91,7 +92,13 @@ class MultiFormsExpView(MultiFormsView):
         self.success_urls['picklistform'] = exp_view_url
 
         return super().dispatch(request, *args, **kwargs)
-    
+
+    def revertExp(self, exp, form_name):
+        step = self.form_to_step_map[form_name]
+        print("REVERTED TO STEP " + str(step))
+        print(step)
+        revertToStep(exp, step)
+
     def expform_form_valid(self, form):
         pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
@@ -109,6 +116,7 @@ class MultiFormsExpView(MultiFormsView):
         form_name = cleaned_data.pop('action')
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp = exp_qs.first()
+        self.revertExp(exp, form_name)
         exp.destPlateType = PlateType.objects.get(name="Swiss MRC-3 96 well microplate") #TODO: ensure destPlateType is set for experiment
         f = cleaned_data['initDataFile']
         useS3 = False
@@ -137,14 +145,12 @@ class MultiFormsExpView(MultiFormsView):
         form_name = cleaned_data.pop('action')
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp = exp_qs.first()
-        lib = exp.library #TODO: ensure library is tied to experiment beforehand
+        self.revertExp(exp, form_name)
         # try:
         templateSrcPlates = cleaned_data['templateSrcPlates']
         if templateSrcPlates:
             exp.importTemplateSourcePlates(templateSrcPlates)
-            # plates = exp.makeSrcPlates(len(templateSrcPlates))
-            # for p1, p2 in zip(plates, templateSrcPlates):
-            #     p1.copyCompoundsFromOtherPlate(p2)
+         
         else:
             f = TextIOWrapper(cleaned_data['plateLibDataFile'], self.request.encoding)
             with transaction.atomic():
@@ -168,6 +174,7 @@ class MultiFormsExpView(MultiFormsView):
         form_name = cleaned_data.pop('action')
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp = exp_qs.first()
+        self.revertExp(exp, form_name)
         src_wells = [w for w in exp.srcWellsWithCompounds]
         soaks = [s for s in exp.usedSoaks]
         if form.data.get('match'):
@@ -190,7 +197,7 @@ class MultiFormsExpView(MultiFormsView):
         
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp = exp_qs.first()
-
+        self.revertExp(exp, form_name)
         f = PrivateFileCSV(**cleaned_data)
         f.save()
         exp.picklist = f
@@ -214,14 +221,13 @@ class MultiFormsExpView(MultiFormsView):
         plateModalFormData = build_modal_form_data(Plate)
         src_plates_qs = plates.filter(isSource=True)
         dest_plates_qs = plates.filter(isSource=False)
-        src_plates_table = ModalEditPlatesTable(
-            data=src_plates_qs,
-            data_target=plateModalFormData['edit']['modal_id'], 
-            a_class="btn btn-primary " + plateModalFormData['edit']['url_class'], 
-            form_action='a',
-            view_name='plate_edit',
-
-        )
+        # src_plates_table = ModalEditPlatesTable(
+        #     data=src_plates_qs,
+        #     data_target=plateModalFormData['edit']['modal_id'], 
+        #     a_class="btn btn-primary " + plateModalFormData['edit']['url_class'], 
+        #     form_action='a',
+        #     view_name='plate_edit',
+        # )
         # dest_plates_table = DestPlatesForGUITable(
         #     data=exp.plates.filter(isSource=False), 
         #     data_target="",
@@ -365,30 +371,53 @@ class WellUpdateView(AjaxUpdateView):
 def plate(request, pk_plate, pk_proj=None):
     
     from my_utils.constants import idx_to_letters_map, letters_to_idx_map
-    p = get_object_or_404(Plate, pk=pk_plate)
+    p = get_object_or_404(Plate, pk=pk_plate) 
     if p:
-        wells_qs = p.wells.select_related('compound','soak').prefetch_related('subwells').order_by('name')
-        wells = [w for w in wells_qs]
-        well_form_map = {}
-        subwells = []
-        for w in wells:
-            subwells.extend([s for s in w.subwells.all()])
-            well_form_map[w.id] = WellPriorityForm(instance=w)
-        reshaped_wells = reshape(wells, (p.numRows, p.numCols))
-        soaks_qs = Soak.objects.select_related('dest','src').filter(dest__in=subwells)
-        soaks = [s for s in soaks_qs]
-        subwellToSoakMap = dict([(s.dest.name, s) for s in soaks])
-
-        context = {
-            'wellMatrix':reshaped_wells,
-            'subwellToSoakMap': subwellToSoakMap,
-            'plate':p,
-            'idx_to_letters_map':idx_to_letters_map,
-            'canEdit':True, 
-            'well_form_map':well_form_map,
-        }
+        plateForm = PlateForm(instance=p)
+        ### Handle PlateForm()
+        if request.method=="POST":
+            if request.is_ajax():
+                print("sfdsf")
+                pass
+            else:
+                plateForm = PlateForm(request.POST, instance=p)
+                if plateForm.is_valid():
+                    update_instance(p, plateForm.cleaned_data, plateForm.cleaned_data.keys())
+                    messages.success(request, 'Plate ' + p.name + ' updated.')
+                    return redirect('plate', pk_plate=p.pk)
+        else:
+            wells_qs = p.wells.select_related('compound','soak').prefetch_related('subwells').order_by('name')
+            wells = [w for w in wells_qs]
+            well_form_map = {}
+            subwells = []
+            for w in wells:
+                subwells.extend([s for s in w.subwells.all()])
+                well_form_map[w.id] = WellPriorityForm(instance=w)
+            reshaped_wells = reshape(wells, (p.numRows, p.numCols))
+            soaks_qs = Soak.objects.select_related('dest','src').filter(dest__in=subwells)
+            soaks = [s for s in soaks_qs]
+            subwellToSoakMap = dict([(s.dest.name, s) for s in soaks])
+            context = {}
+            from lib.tables import CompoundsTable, ModalEditCompoundsTable
+            from lib.filters import CompoundFilter
+            compoundsFilter = CompoundFilter(
+                request.GET, queryset=p.compounds.all(),
+                filter_id='compounds_filter', form_id='compounds_filter_form')
+            compoundsTable = ModalEditCompoundsTable(
+                data=compoundsFilter.qs,
+                table_id='compounds_table',)
+            RequestConfig(request, paginate={'per_page': 20}).configure(compoundsTable)
+            context = build_filter_table_context(compoundsFilter, compoundsTable, [], [])
+            context.update({
+                'wellMatrix':reshaped_wells,
+                'subwellToSoakMap': subwellToSoakMap,
+                'plate':p,
+                'idx_to_letters_map':idx_to_letters_map,
+                'canEdit':True, 
+                'well_form_map':well_form_map,
+                'plateForm':plateForm, 
+            })
         return render(request, 'experiment/exp_templates/plate.html', context)
-        # return HttpResponse(str(pk_plate))
 
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)

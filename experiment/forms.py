@@ -44,6 +44,18 @@ class PlateForm(forms.ModelForm):
         if kwargs.get('user'):
             self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        if self.instance.isSource==False:
+            self.fields.pop('isTemplate')
+
+    def clean(self, *args, **kwargs):
+        cd = self.cleaned_data
+        if self.instance.isSource==False and cd.get('isTemplate'):
+            self.add_error(None,
+                    ValidationError(            
+                        ('Destination plates cannot be templates.'),
+                        code='invalid',
+                    )
+                )
 
 class SoakForm(forms.ModelForm):
     class Meta:
@@ -255,25 +267,43 @@ class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
         # make from crispy
         self.helper = FormHelper()
         self.helper.layout = Layout(
-            Row(
-                Column(HTML("""<h5>Option 1</h5>"""), css_class='col')
+            Div(
+                Row(
+                    Column(HTML(
+                        """
+                        <h5 class="form-option-title collapse-btn collapsed" data-toggle="collapse" data-target="#option1-content"> Option 1</h5> 
+                        """), css_class='col')
+                ),
+                Div(
+                    Row(
+                        Column('numSrcPlates', css_class='col'),
+                        Column('plateLibDataFile', css_class='col'),
+                        css_class='form-row align-items-start',
+                    ),
+                    css_class='collapse',
+                    id='option1-content',
+                ),
+                css_class="form-option",
             ),
-            Row(
-                Column('numSrcPlates', css_class='col'),
-                Column('plateLibDataFile', css_class='col'),
-                css_class='form-row align-items-start'
-            ),
-            Row(
-                Column(HTML("""<h5>Option 2</h5>"""), css_class='col')
-            ),
-            Row(
-                Column('templateSrcPlates', css_class='col'),
-                css_class='form-row align-items-start'
+
+            Div(
+                Row(
+                Column(HTML("""<h5 class="form-option-title collapse-btn collapsed" data-toggle="collapse" data-target="#option2-content">Option 2</h5>"""), css_class='col')
+                ),
+                Div(
+                    Row(
+                        Column('templateSrcPlates', css_class='col'),
+                        css_class='form-row align-items-start',
+                    ),
+                    css_class='collapse',
+                    id='option2-content',
+                ), 
+                css_class='form-option',
             ),
             Column('action', css_class='hidden'),
             Submit('submit', 'Submit')
         )
-    def clean_plateLibDataFile(self):
+    def checkOptionOneValid(self):
         f = self.cleaned_data.get('plateLibDataFile')
         numSrcPlates = self.cleaned_data.get('numSrcPlates')
         headers_required =['zinc_id', 'well', 'plate_idx']
@@ -313,20 +343,19 @@ class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
                 if type(e) is OverflowError:
                     self.add_error('plateLibDataFile','File is too big!')
         
-        return f
-
     def clean(self):
         cd = super().clean()
         numSrcPlates = cd.get('numSrcPlates', None)
         plateLibDataFile = cd.get('plateLibDataFile', None)
         templateSrcPlates = cd.get('templateSrcPlates', None)
-
-        fromFile = numSrcPlates and plateLibDataFile
-        fromTemplates = templateSrcPlates
-
-        if not(fromFile or fromTemplates) or (fromFile and fromTemplates):
-            self.add_error(None,'Please choose only ONE option.')
-
+        optionOneValid = all([numSrcPlates, plateLibDataFile])
+        optionTwoValid = all([templateSrcPlates])
+        if optionOneValid and optionTwoValid:
+            self.add_error(None, "Please only fill out one option.")
+        elif (not(optionOneValid) and not(optionTwoValid)):
+            self.add_error(None,'Invalid form. Please choose only ONE of Option 1 or Option 2 and make sure all fields for whichever option are filled.')
+        else:
+            self.checkOptionOneValid()
         return cd
 
 class PlatesSetupMultiForm(MultiFormMixin):
@@ -397,7 +426,6 @@ class PicklistMultiForm(MultiFormMixin, PrivateFileCSVForm):
                     
                     for row in reader:
                         if row:
-                            print(row)
                             while not row[-1]:
                                 row.pop()
                             if len(row) < 4:

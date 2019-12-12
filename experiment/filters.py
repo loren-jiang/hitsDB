@@ -53,5 +53,6 @@ class PlateFilter(CustomFilterMixin, django_filters.FilterSet):
         model = Plate
         fields = {
             'name':['icontains'],
-            'isTemplate':['exact']
-        }
+            'isTemplate':['exact'],
+            'plateType__name':['icontains'],
+        }   
