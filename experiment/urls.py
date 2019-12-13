@@ -75,7 +75,11 @@ urlpatterns = [
                 form_class=ExperimentForm, model=ExperimentForm.Meta.model), 
                 {'decorators' : [login_required(login_url="/login"), ]},
                 name='exp_new'),
-            re_path(r'^modify_exps/$', SecureExperimentModifyFromTable.as_view(model_class=ExperimentForm.Meta.model), name='modify_exps'),
+            re_path(r'^modify_exps/$', ModifyFromTableView.as_view(
+                model_class=ExperimentForm.Meta.model), 
+                {'decorators' : [login_required(login_url="/login"), ]},
+                name='modify_exps'),
+            # re_path(r'^modify_exps/$', SecureExperimentModifyFromTable.as_view(model_class=ExperimentForm.Meta.model), name='modify_exps'),
         ])),
 
         # --------------- urls to Plate views ------------------------------    

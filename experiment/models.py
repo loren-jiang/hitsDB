@@ -37,6 +37,11 @@ class Project(models.Model):
     edit_instance_viewname = 'proj_edit'
     model_name = 'Project'
 
+    class Meta:
+        get_latest_by = "modified_date"
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'owner'], name='unique_project_name_per_owner'),
+        ]
     @classmethod
     def newInstanceUrl(cls):
         """
@@ -58,28 +63,7 @@ class Project(models.Model):
         Class method to return data needed for modal form to edit and make new instance of model
         """ 
         from my_utils.views_helper import build_modal_form_data as func
-        return func(cls)
-        # new_id = cls.new_instance_viewname
-        # edit_id = cls.edit_instance_viewname
-        # model_name = cls.model_name
-
-        # return {
-        #     'new': {
-        #         'url_class': '%s_url' % new_id,
-        #         'modal_id': '%s_modal' % new_id,
-        #         'form_class': '%s_form' % new_id,
-        #         # 'button': {'id': new_id, 'text': 'New %s' % model_name,'class': 'btn-primary ' + '%s_url' % new_id, 
-        #         #     'href':reverse(new_id, kwargs={'form_class':"%s_form" % new_id})},
-        #     },
-        #     'edit': {
-        #         'url_class': '%s_url' % edit_id,
-        #         'modal_id': '%s_modal' % edit_id, 
-        #         'form_class': '%s_form' % edit_id,
-        #         # 'button': {'id': edit_id, 'text': 'Edit %s' % model_name,'class': 'btn-primary ' + '%s_url' % edit_id, 
-        #         #     'href':reverse(edit_id, kwargs={'form_class':"%s_form" % edit_id})},
-        #     }
-            
-        # }   
+        return func(cls) 
 
     def getExperimentsTable(self, exc=[]):
         """
@@ -119,9 +103,6 @@ class Project(models.Model):
         libs_qs = Library.objects.filter(experiments__in=self.experiments.all()).union(
             Library.objects.filter(isTemplate=True))
         return LibrariesTable(libs_qs, exclude=exc)
-
-    class Meta:
-        get_latest_by = "modified_date"
 
     def get_absolute_url(self):
         return "/home/projects/%i/" % self.id
@@ -165,6 +146,7 @@ class Experiment(models.Model):
     new_instance_viewname = 'exp_new'
     edit_instance_viewname = 'exp_edit'
     model_name = 'Experiment'
+    
     @classmethod
     def newInstanceUrl(cls):
         """
@@ -178,7 +160,7 @@ class Experiment(models.Model):
         """
         Returns url to edit class instance; should be @property because instance data is needed
         """
-        return reverse(self.edit_instance_viewname, kwargs={'pk_proj':self.pk})
+        return reverse(self.edit_instance_viewname, kwargs={'pk_exp':self.pk})
 
     class Meta:
         get_latest_by="modified_date"
@@ -652,6 +634,10 @@ class Plate(models.Model):
         """
         from .utils.plate_utils import copyCompoundsFromOtherPlate as func
         return func(self, plate)
+
+    def removeDropImages(self):
+        from .utils.plate_utils import removeDropImages as func
+        return func(self)
 
 class PlateType(models.Model):
     name = models.CharField(max_length=50, unique=True) 

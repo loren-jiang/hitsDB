@@ -55,7 +55,7 @@ class SecureExperimentModifyFromTable(ModifyFromTableView):
             user_editable_qs = user_editable_experiments(request.user)
             # user_editable_qs = qs.filter(owner=request.user)
             if btn_id=="delete_selected":
-                qs.intersect(user_editable_qs).delete()
+                qs.intersection(user_editable_qs).delete()
             diff_qs = qs.difference(user_editable_qs)
             if diff_qs.exists():
                 for p in diff_qs:

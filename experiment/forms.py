@@ -140,7 +140,7 @@ class ExperimentForm(forms.ModelForm):
     
     class Meta:
         model = Experiment
-        fields = ("name","description", "protein", "srcPlateType", "destPlateType","library","owner","project")
+        fields = ("name","description", "protein", "srcPlateType", "destPlateType","owner","project")
         
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
@@ -152,7 +152,7 @@ class ExperimentForm(forms.ModelForm):
         srcPlateType_qs = PlateType.objects.filter(isSource=True)
         destPlateType_qs = PlateType.objects.filter(isSource=False) 
         if self.user:
-            self.fields['owner'] = forms.ModelChoiceField(queryset=User.objects.filter(id=self.user.id), initial=self.user.id)  
+            self.fields['owner'] = forms.ModelChoiceField(queryset=User.objects.filter(id=self.user.id), initial=self.user.id, widget=forms.HiddenInput())  
 
         self.fields['srcPlateType'] = forms.ModelChoiceField(queryset=srcPlateType_qs, 
             label="Source plate type",
@@ -168,7 +168,7 @@ class ExperimentForm(forms.ModelForm):
             self.fields['library'] = forms.ModelChoiceField(queryset=qs, initial=lib_id, required=False)
             self.fields['project'] = forms.ModelChoiceField(queryset=user_editable_projects(self.user), initial=exp.project.id)
         if self.project:
-            self.fields['project'] = forms.ModelChoiceField(queryset=user_editable_projects(self.user), initial=self.project.id)
+            self.fields['project'] = forms.ModelChoiceField(queryset=user_editable_projects(self.user), initial=self.project.id, widget=forms.HiddenInput())
 
 # MultiForms -------------------------------------------------------------------------
 
@@ -373,6 +373,10 @@ class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
             self.checkOptionOneValid()
         return cd
 
+class RemovePlatesDropImagesForm(MultiFormMixin):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
 class PlatesSetupMultiForm(MultiFormMixin):
     subwells = (
         (1,'1'),
@@ -420,7 +424,7 @@ class SoaksSetupMultiForm(FormFieldPopoverMixin, MultiFormMixin):
         help_text="")
 
     def __init__(self, exp, *args, **kwargs):
-        super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)
+        super().__init__(*args,**kwargs)
 
 class PicklistMultiForm(MultiFormMixin, PrivateFileCSVForm):
     def __init__(self, *args, **kwargs):
@@ -489,33 +493,6 @@ class PicklistMultiForm(MultiFormMixin, PrivateFileCSVForm):
             f= self.uploaded_file_clean(f)
         return f
     def clean(self):
-        cd = super(PrivateFileCSVForm, self).clean()
+        cd = super().clean()
         return cd
     pass
-
-# class SoaksSetupMultiForm(MultiFormMixin):
-#     def __init__(self, exp, *args, **kwargs):
-#         super(SoaksSetupMultiForm, self).__init__(*args,**kwargs)
-#         soakVolume = 25
-#         soakOffsetX = 0
-#         soakOffsetY = 0
-#         if exp.soaks.count():
-#             s = exp.soaks.all()[0]
-#             soakVolume = s.soakVolume
-#             soakOffsetX = s.soakOffsetX
-#             soakOffsetY = s.soakOffsetY
-#         self.fields['soakVolume'] = forms.IntegerField(initial=soakVolume)
-#         self.fields['soakOffsetX'] = forms.DecimalField(max_digits=10, decimal_places=2,initial=soakOffsetX)
-#         self.fields['soakOffsetY'] = forms.DecimalField(max_digits=10, decimal_places=2,initial=soakOffsetY)
-    
-#     def clean(self):
-#         cd = self.cleaned_data
-#         if cd['soakVolume'] <= 0:
-#             self._errors['soakVolume'] = ["Must be positive."]
-#         cd_copy = cd.copy()
-#         fields = [k for k in self.fields]
-#         for key in cd_copy:
-#             if not key in fields:
-#                 cd.pop(key)
-#         return cd
-

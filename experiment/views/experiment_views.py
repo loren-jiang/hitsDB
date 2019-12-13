@@ -449,6 +449,19 @@ def plates(request, pk_exp=None):
 
     return render(request, 'experiment/proj_templates/projects.html', context)
 
+@login_required(login_url="/login")
+@user_passes_test(user_base_tests)
+def remove_drop_images_from_plate(request, pk_plate, pk_exp=None):
+    p = get_object_or_404(Plate, pk=pk_plate)
+    if request.method == "POST":
+        if p:
+            p.removeDropImages()
+        if pk_exp:
+            return redirect('exp', pk_exp)
+        else:
+            return redirect('plate', pk_plate)
+
+
 @is_user_accessible_project
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
@@ -480,8 +493,13 @@ def experiments(request, qs=None):
         view_name='exp_edit',
         )   
     RequestConfig(request, paginate={'per_page': 5}).configure(table)
-    buttons = []
+    buttons = [
+        {'id': 'delete_selected', 'text': 'Delete Selected','class': 'btn-danger btn-confirm'},
+        {'id': 'new_exp_btn','text': 'New Experiment','class': 'btn-primary ' + 'exp_new_url', 
+            'href':reverse('exp_new')},
+    ]
     modals = [
+        modalFormData['new'],
         modalFormData['edit'],
         ]
     context = build_filter_table_context(expFilter, table, modals, buttons)

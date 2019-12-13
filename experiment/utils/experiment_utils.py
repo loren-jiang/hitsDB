@@ -325,7 +325,8 @@ def revertToStep(exp, step):
         """
         dest_plates = exp.plates.filter(isSource=False).prefetch_related('drop_images')
         for p in dest_plates:
-            p.drop_images.remove(*[img for img in p.drop_images.all()])
+            p.removeDropImages()
+            # p.drop_images.remove(*[img for img in p.drop_images.all()])
 
     def revertToStepFour(exp):
         """
@@ -383,13 +384,19 @@ def createPlatesSoaksFromInitDataJSON(self):
                     soaks.append(Soak(
                         experiment_id = exp.id,
                         dest_id = s_w.id, 
+                        drop_x_initial = subwell_data['drop_x'] * PIX_TO_UM, 
+                        drop_y_initial = subwell_data['drop_y'] * PIX_TO_UM,
+                        drop_radius_initial = subwell_data['drop_radius'] * PIX_TO_UM,
+                        well_x_initial  =  subwell_data['well_x'] * PIX_TO_UM, 
+                        well_y_initial  =  subwell_data['well_y'] * PIX_TO_UM,
+                        well_radius_initial  =  subwell_data['well_radius'] * PIX_TO_UM,
                         drop_x = subwell_data['drop_x'] * PIX_TO_UM, 
                         drop_y = subwell_data['drop_y'] * PIX_TO_UM,
                         drop_radius = subwell_data['drop_radius'] * PIX_TO_UM,
                         well_x =  subwell_data['well_x'] * PIX_TO_UM, 
                         well_y =  subwell_data['well_y'] * PIX_TO_UM,
                         well_radius =  subwell_data['well_radius'] * PIX_TO_UM,
-                        soakOffsetX =  subwell_data['well_x'] * PIX_TO_UM,
+                        soakOffsetX =  subwell_data['well_x'] * PIX_TO_UM, #defaults to well center
                         soakOffsetY = subwell_data['well_y'] * PIX_TO_UM,
                         # soakVolume = ,
                         useSoak= True

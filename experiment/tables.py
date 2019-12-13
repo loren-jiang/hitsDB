@@ -4,59 +4,23 @@ from .models import Project, Experiment, Soak, Plate
 from lib.models import Compound, Library
 from django.contrib.auth.models import User, Group
 from django_tables2 import RequestConfig
-from my_utils.my_tables import ModalFormMixin, ModalFormColumn
-
-# def ModalFormColumn(data_target, a_class, view_name, verbose_name='', orderable=False, accessor='pk'):
-#     return tables.Column(verbose_name=verbose_name, 
-#                 orderable=orderable, 
-#                 empty_values=(),
-#                 linkify=(view_name, [A(accessor)]), 
-#                 attrs={'a': {
-#                                 "data-toggle":"modal", 
-#                                 "data-target":"#" + data_target,
-#                                 "class":a_class
-#                             }
-#                     })
-
-# class ModalFormMixin(tables.Table):
-#     """
-#     Table mixin to create 'modify' column which links to a modal edit form for the model instance
-#     """
-#     def render_modify(self, value):
-#         return "Edit"
-#     class Meta:
-#         attrs = {'class': 'table modify-table'}
-
-#     def __init__(self, *args, **kwargs):
-#         self.table_id = kwargs.pop('table_id', '')
-#         self.form_id =  kwargs.pop('form_id', '')
-#         self.data_target =  kwargs.pop('data_target', '')
-#         self.a_class =  kwargs.pop('a_class', '')
-#         self.form_action = kwargs.pop('form_action', '')
-#         self.view_name = kwargs.pop('view_name','')
-
-#         if all([self.data_target, self.a_class, self.form_action, self.view_name]):
-#             modify = ModalFormColumn(**{
-#                 'data_target': self.data_target, 
-#                 'a_class': self.a_class,
-#                 'view_name': self.view_name
-#             })
-#             kwargs.update(
-#                 {
-#                     'extra_columns':[('modify',modify)],
-#                 })
-#         super( ModalFormMixin, self ).__init__(*args, **kwargs)
+from my_utils.my_tables import ModalFormMixin, ModalFormColumn, ModalFormColumn_, SelectionMixin
+from django.db.models import Count, F, Value
 
 class ModifyTable:
     attrs = {'class': 'table modify-table'}
 
-class DestPlatesForGUITable(ModalFormMixin):
+class DestPlatesForGUITable(SelectionMixin, tables.Table):
     # upload_drop_images = tables.LinkColumn(verbose_name="Upload", viewname='drop_images_upload', args=[A('pk')], orderable=False, empty_values=())
     drop_images_GUI = tables.LinkColumn(verbose_name="GUI", viewname='imageGUI', 
         kwargs={'plate_id': A('pk'), 'user_id': A('experiment.owner.pk'), 'file_name': A('drop_images.first.file_name')}, 
         orderable=False, empty_values=(),
         )
-    upload_drop_images = ModalFormColumn('drop_images_upload_modal', 'drop_images_upload', 'drop_images_upload_modal')
+    upload_drop_images = ModalFormColumn_(
+        verbose_name='Drop Images',
+        data_target='drop_images_upload_modal', 
+        a_class='drop_images_upload btn btn-primary', 
+        view_name='drop_images_upload_modal')
     name = tables.Column(verbose_name="RockMaker ID", accessor='rockMakerId')
 
     def render_upload_drop_images(self):
@@ -119,6 +83,15 @@ class ExperimentsTable(tables.Table):
     checked = tables.CheckBoxColumn(accessor='pk',empty_values=())
     library = tables.Column(linkify=('lib',[A('library.pk')]))
     project = tables.Column(linkify=('proj',[A('project.pk')]))
+    step = tables.Column(accessor='getCurrentStep', empty_values=(), orderable=False)
+
+    # def order_step(self, queryset, is_descending):
+        # print(queryset)
+        # # queryset = queryset.annotate(
+        # #     step=
+        # #     # step=F("getCurrentStep")
+        # # ).order_by(("-" if is_descending else "") + "step")
+        # return (queryset, True)
 
     def render_date_created(self, value):
         return formatDateTime(value)
@@ -129,10 +102,10 @@ class ExperimentsTable(tables.Table):
     class Meta:
         model = Experiment 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('name','project','library', 'created_date','modified_date','protein','owner','checked')
+        fields = ('name','project','step', 'library', 'created_date','modified_date','protein','owner','checked')
         empty_text = ("There are no experiments yet...")
 
-class ModalEditExperimentsTable(ModalFormMixin, ExperimentsTable):
+class ModalEditExperimentsTable(SelectionMixin, ModalFormMixin, ExperimentsTable):
     class Meta(ModalFormMixin.Meta, ExperimentsTable.Meta):
         exclude = ()
 
@@ -143,7 +116,7 @@ class ProjectsTable(tables.Table):
     editors = tables.ManyToManyColumn()
     experiments = tables.ManyToManyColumn(separator=', ',verbose_name="Experiments",
         linkify_item=('exp',{'pk_proj':A('project.pk'),'pk_exp':A('pk')}))
-    checked = tables.CheckBoxColumn(accessor='pk',empty_values=(), verbose_name="checked")
+    # checked = tables.CheckBoxColumn(accessor='pk',empty_values=(), verbose_name="checked")
 
     def render_date_modified(self, value):
         return formatDateTime(value)
@@ -154,27 +127,27 @@ class ProjectsTable(tables.Table):
     class Meta:
         model = Project 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('name','owner','created_date','modified_date','experiments','collaborators','editors', 'checked')
+        fields = ['name','owner','created_date','modified_date','experiments','collaborators','editors',]
 
-class ModalEditProjectsTable(ModalFormMixin, ProjectsTable):
-    class Meta(ModalFormMixin.Meta, ProjectsTable.Meta):
-        exclude = ()
+class ModalEditProjectsTable(SelectionMixin, ModalFormMixin, ProjectsTable):
+    class Meta(ProjectsTable.Meta):
+        fields = ProjectsTable.Meta.fields
 
 class LibrariesTable(tables.Table):
     name = tables.Column(linkify=('lib',[A('pk')]))
     id = tables.Column(accessor='id')
     numCompounds = tables.Column(accessor='numCompounds', empty_values=(), verbose_name="# compounds")
-    checked = tables.CheckBoxColumn(accessor='pk',empty_values=())
+    # checked = tables.CheckBoxColumn(accessor='pk',empty_values=())
 
     class Meta:
         model=Library
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields=('name','owner','numCompounds','supplier','checked')
-        exclude=('id',)
+        fields=('name','owner','numCompounds','supplier',)
+        # exclude=('id',)
 
-class ModalEditLibrariesTable(ModalFormMixin, LibrariesTable):
-    class Meta(ModalFormMixin.Meta, LibrariesTable.Meta):
-        exclude = ()
+class ModalEditLibrariesTable(SelectionMixin, ModalFormMixin, LibrariesTable):
+    class Meta(LibrariesTable.Meta):
+        fields = LibrariesTable.Meta.fields
 
 class CompoundsTable(tables.Table):
     selection = tables.CheckBoxColumn(accessor='pk')

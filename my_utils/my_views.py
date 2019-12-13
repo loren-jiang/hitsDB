@@ -232,7 +232,13 @@ class ModalEditView(SuccessMessageMixin, AjaxableResponseMixin, UpdateView):
 
 class ModifyFromTableView(SuccessMessageMixin, FormView):
     model_class = None
+    def __init__(self, *args, **kwargs):
+        self.actions = {'delete_selected': self.delete_model_instances}
+        actions_to_add = kwargs.pop('actions', {})
+        self.actions.update(actions_to_add)
+        super().__init__(*args, **kwargs)
     
+
     def delete_model_instances(self, request, pks, owner=None):
         if getattr(self, 'model_class', None):
             qs = self.model_class.objects.filter(pk__in=pks)
@@ -258,6 +264,8 @@ class ModifyFromTableView(SuccessMessageMixin, FormView):
         btn_id = form['btn']
         if btn_id and self.model_class:
             pks = form.getlist('checked') #list of model instance pks
-            if btn_id=="delete_selected":
-                self.delete_model_instances(request, pks, owner=request.user)
+            if self.actions.get(btn_id, None):
+                self.actions[btn_id](request, pks, owner=request.user)
+            # if btn_id=="delete_selected":
+                # self.delete_model_instances(request, pks, owner=request.user)
         return redirect(prev)

@@ -52,7 +52,6 @@
         $buttons = $("a.btn-confirm");
         $buttons.on('click', function(e) {
             btn = $(this)['0'];
-            console.log($(this));
             e.preventDefault();
             let msg = '';
             if (btn.msg) {

@@ -1,6 +1,19 @@
 from functools import reduce 
 from operator import mul
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
+
+def clean_css_class_string(s):
+    """
+    Removes unnecessary white space and duplicate class names
+    """
+    lst = list(filter(lambda x: bool(x), s.split(' ')))
+    return ' '.join(remove_duplicates(lst))
+    
+def remove_duplicates(lst):
+    """
+    Removes duplicates elements in list lst
+    """
+    return list(OrderedDict.fromkeys(lst)) 
 
 def reverse_dict(dic, prop=''):
     if prop:

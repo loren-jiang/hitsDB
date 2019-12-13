@@ -7,6 +7,9 @@ Plate = apps.get_model('experiment', 'Plate')
 Well = apps.get_model('experiment', 'Well')
 SubWell = apps.get_model('experiment', 'SubWell')
 
+def removeDropImages(p):
+    if p.drop_images.count():
+        p.drop_images.remove(*[img for img in p.drop_images.all()])
 
 def createPlateWells(self):
     """
