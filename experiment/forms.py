@@ -203,7 +203,6 @@ class ExpInitDataMultiForm(FormFieldPopoverMixin, MultiFormMixin):
         super(ExpInitDataMultiForm, self).__init__(*args,**kwargs)
 
     def clean_initDataFile(self):
-        # cleaned_data = super().clean()
         initDataFile = self.cleaned_data.get('initDataFile', None)
         required_plate_keys = ['plate_id', 'date_time', 'temperature', 'subwells']
         if initDataFile:
@@ -254,10 +253,16 @@ class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
     numSrcPlates = forms.IntegerField(required=False, label="Number of plates", help_text="Number of plates you wish to create")
     plateLibDataFile = forms.FileField(required=False, label="Source plate(s) file [.csv]", help_text=".csv file defining where compounds are in plate",
         validators=[FileExtensionValidator(['csv'])],widget=forms.FileInput(attrs={'accept': ".csv"}))
-    templateSrcPlates = forms.ModelMultipleChoiceField(
-        queryset=Plate.objects.none(), 
+    # templateSrcPlates = forms.ModelMultipleChoiceField(
+    #     queryset=Plate.objects.none(), 
+    #     required=False, label="Template source plates",
+    #     help_text="Source plates marked as 'template' from which to import")
+
+    templateSrcPlates= GroupedMutlipleModelChoiceField(
+        queryset=Plate.objects.none(),
         required=False, label="Template source plates",
-        help_text="Source plates marked as 'template' from which to import")
+        help_text="Source plates marked as 'template' from which to import",
+        choices_groupby='experiment',)
 
     def __init__(self, exp, *args, **kwargs):
         template_qs = kwargs.pop('template_src_plates_qs')
@@ -272,7 +277,9 @@ class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
                 Div(
                     HTML(
                         """
-                        <h5 class="form-option-title collapse-btn collapsed" data-toggle="collapse" data-target="#option1-content"> Option 1</h5> 
+                        <h5 class="form-option-title collapse-btn collapsed" data-toggle="collapse" data-target="#option1-content"> 
+                        Option 1: Import .csv file
+                        </h5> 
                         """), 
                         css_class='card-header'
                     ),
@@ -296,8 +303,10 @@ class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
                 Div(
                     HTML(
                         """
-                        <h5 class="form-option-title collapse-btn collapsed" data-toggle="collapse" data-target="#option2-content"> Option 2</h5> 
-                        """), 
+                        <h5 class="form-option-title collapse-btn collapsed" data-toggle="collapse" data-target="#option2-content"> 
+                        Option 2: Copy from templates
+                        </h5> 
+                        """),
                         css_class='card-header'
                     ),
                 Div(
@@ -314,7 +323,7 @@ class CreateSrcPlatesMultiForm(FormFieldPopoverMixin, MultiFormMixin):
                 ),
                 css_class="card form-option",
             ),
-
+            HTML("""<br>"""),
             Column('action', css_class='hidden'),
             Submit('submit', 'Submit')
         )
@@ -492,7 +501,7 @@ class PicklistMultiForm(MultiFormMixin, PrivateFileCSVForm):
         if f:
             f= self.uploaded_file_clean(f)
         return f
+
     def clean(self):
         cd = super().clean()
         return cd
-    pass

@@ -13,6 +13,10 @@ function confirmLibraryChange(lib_pk) {
     });
 }
 
+function getCurrentStep(step) {
+    return $(`#exp-tab a:nth-child(${parseInt(step)})`);
+}
+
 function initCurrentStep(step) {
 
     let exp_step = `#exp-tab a:nth-child(${parseInt(step)})`;
@@ -22,19 +26,15 @@ function initCurrentStep(step) {
 }
 
 $(document).ready(function() {
-    
     $('#delete-exp').on('click', function(e) {
         r = confirm("Are you sure?");
         if (r==true) {
-
         } else {
             e.preventDefault();
         }
     });
 
-    $('.has-popover').popover({'trigger':'hover'});
-
-    $('.form-option-title:first').click();
+    // $('.form-option-title:first').click();
     $('.form-option .collapse-btn').on('click', function() {
         $form_option = $(this).parent('.form-option');
         $collapse = $form_option.find('collapse');

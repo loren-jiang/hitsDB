@@ -16,23 +16,11 @@ from experiment.decorators import is_dest_plate
 from my_utils.utility_functions import UM_TO_PIX, PIX_TO_UM, IMG_SCALE, STROKE_WIDTH, VolumeToRadius, RadiusToVolume, reshape
 from django.db.models import F
 from django.forms.models import model_to_dict
-
+from django.conf import settings
 import json
 from django.core.serializers.json import DjangoJSONEncoder
+
 # Create your views here.
-
-# def upload_drop_image(request):
-#     if request.method == 'POST':
-#         form = DropImageUploadForm(request.POST, request.FILES)
-#         if form.is_valid():
-#             form.save()
-#             return HttpResponseRedirect(request.path_info)
-#     else:
-#         form = DropImageUploadForm()
-#     return render(request, 'basic_form.html', {
-#         'form': form
-#     })
-
 #loads drop images with corresponding model instance and associated plate id and user id 
 class DropImagesUploadView(FormView):
     form_class = ImagesFieldForm
@@ -75,10 +63,14 @@ class DropImagesUploadView(FormView):
             if form.is_valid():
                 for f in files:
                     file_name = f.name.split('.')[0] #just get the file name, not the extension
-                    if form.cleaned_data['use_local']:
-                        new_file = DropImage(local_upload=f, owner=request.user, plate=p, file_name=file_name, useS3=False)
-                    else:
-                        new_file = DropImage(upload=f, owner=request.user, plate=p, file_name=file_name, useS3=True)
+                    kwargs = {'upload':f, 'owner':request.user, 'plate':p, 'file_name':file_name}
+                    if settings.USE_LOCAL_STORAGE:
+                    # if form.cleaned_data['use_local']:
+                        kwargs.update({
+                            'local_upload':f,
+                        })
+                        # new_file = DropImage(local_upload=f, owner=request.user, plate=p, file_name=file_name, useS3=False)
+                    new_file = DropImage(**kwargs)
                     drop_images.append(new_file)
                     # new_file.save()
                 DropImage.objects.bulk_create(drop_images)
@@ -161,6 +153,8 @@ def DropImageViewGUI(request, *args, **kwargs):
     perc_complete = len(list(filter(lambda x: bool(x), soakSaves))) / len(soakSaves)
     
     useS3 = p_drop_images.first().useS3
+    useS3 = True
+    # useS3 = False
     target_well = well_qs.get(name=well_name)
     s_w = target_well.subwells.get(idx=subwell_idx)
     soak = s_w.soak
@@ -178,7 +172,7 @@ def DropImageViewGUI(request, *args, **kwargs):
     
     obj_keys = [w.key for w in p_drop_images]
     file_names = [w.file_name for w in p_drop_images]
-    prefix_s3 = 'media/private/' + str(user_id) + '/' + str(plate_id) + '/'
+    prefix_s3 = 'media/private/user_folder/' + str(user_id) + '/dropimages/' + str(plate_id) + '/'
     prefix_local = '/media/local/user_folder/' + str(user_id) + '/dropimages/' + str(plate_id) + '/'
     prefix = prefix_s3 if useS3 else prefix_local
 

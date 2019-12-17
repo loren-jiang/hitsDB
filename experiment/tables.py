@@ -4,7 +4,7 @@ from .models import Project, Experiment, Soak, Plate
 from lib.models import Compound, Library
 from django.contrib.auth.models import User, Group
 from django_tables2 import RequestConfig
-from my_utils.my_tables import ModalFormMixin, ModalFormColumn, ModalFormColumn_, SelectionMixin
+from my_utils.my_tables import ModalFormMixin, ModalFormColumn, ModalFormColumn_, SelectionMixin, OrderableOffMixin
 from django.db.models import Count, F, Value
 
 class ModifyTable:
@@ -37,7 +37,8 @@ class DestPlatesForGUITable(SelectionMixin, tables.Table):
         template_name = 'django_tables2/bootstrap-responsive.html'
         fields=('name','plateType','upload_drop_images','drop_images_GUI')
 
-class PlatesTable(tables.Table):
+
+class PlatesTable(OrderableOffMixin, tables.Table):
     name = tables.Column(orderable=True, linkify=True)
 
     class Meta:

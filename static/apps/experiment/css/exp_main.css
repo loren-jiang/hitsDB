@@ -8,7 +8,6 @@
     display: flex;
 }
 
-
 .form-option-title:after {
     content: "-";
     float: right; 
@@ -16,4 +15,27 @@
 .form-option-title.collapsed:after {
     /* symbol for "collapsed" panels */
     content: "+"; 
+}
+
+.collapse-btn {
+    /* background-color: lightgrey; */
+    padding: .0rem .0rem;
+    border-radius: .3rem;
+    transition-property: background-color;
+    transition-duration: 0.15s;
+}
+
+.collapse-btn:hover {
+    /* background-color: darkgrey; */
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.current-step {
+    background-color: #17a2b8 !important;
+    color: white !important;
+}
+
+.current-step:hover {
+    color: lightgray !important;
 }

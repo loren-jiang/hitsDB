@@ -91,6 +91,7 @@ urlpatterns = [
                 ), name='plate_edit'
                 ),
             re_path(r'^modify_plates/$', SecurePlateModifyFromTable.as_view(model_class=PlateForm.Meta.model), name='modify_plates'),
+            re_path(r'^(?P<pk_exp>\d+)/remove_drop_images_from_plates/(?P<pks>\d*(?:_\d+)*)$', views.remove_drop_images_from_plates, name='remove_drop_images_from_plates')
         ])),
        
         # --------------- urls to Soak views ------------------------------  

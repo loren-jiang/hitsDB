@@ -43,6 +43,7 @@
     }
 
     $(document).ready(function() {
+ 
         modals = JSON.parse('{{modals.json|safe}}');
         modals.forEach(modal => {
             setUpModalForm(modal.url_class, modal.modal_id, modal.form_class);
@@ -81,7 +82,6 @@
             $form = $("#" + "{{filter.filter_form_id}}");
             clearForms($form);
             // $form.trigger("reset");
-            console.log($form)
             $form.submit();
         });
     });

@@ -186,7 +186,7 @@ S3_URL = 'http://%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
 
 MEDIA_DIRECTORY = '/media/'
 MEDIA_URL = S3_URL + MEDIA_DIRECTORY
-USE_LOCAL_STORAGE = True
+USE_LOCAL_STORAGE = True and DEBUG # can only be used when DEBUG=TRUE to be able to retrieve local files from /media folder
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
@@ -201,7 +201,6 @@ AWS_PRIVATE_MEDIA_LOCATION = 'media/private'
 PRIVATE_FILE_STORAGE = 's3.s3utils.PrivateMediaStorage'
 
 AWS_QUERYSTRING_EXPIRE = '5000' # expiration time for signed urls in seconds
-
 
 # CRISPY FORMS SETTINGS:
 CRISPY_TEMPLATE_PACK = 'bootstrap4'

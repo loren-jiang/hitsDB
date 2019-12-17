@@ -14,6 +14,10 @@ def upload_local_path(instance, filename):
         return 'local/' +  user_file_upload_path(instance, filename)
 
 def user_file_upload_path(instance, filename): 
+    if instance.key:
+        if instance.filetype:
+            return user_upload_path(instance, filename) + str(instance.key) + instance.filetype
+        return user_upload_path(instance, filename) + str(instance.key)
     return user_upload_path(instance, filename) + filename
 
 def user_upload_path(instance, filename):
@@ -30,7 +34,8 @@ class FileAbstract(models.Model):
     local_upload = models.FileField(upload_to=upload_local_path, storage=fs, null=True, blank=True)
     key = models.UUIDField(default=uuid.uuid4, unique=True) #unique id to grab from s3 bucket
     filetype = models.CharField(max_length=5, default='')
-
+    filename = models.CharField(max_length=100, default='')
+    
     class Meta:
         abstract=True
 
@@ -44,6 +49,7 @@ class PrivateFileJSON(FileAbstract):
     local_upload = models.FileField(validators=[FileExtensionValidator(['json'])], 
                                 upload_to=upload_local_path,storage=fs,
                                 null=True, blank=True)
+    filetype = models.CharField(max_length=5, default='.json')
     class Meta(FileAbstract.Meta):
         constraints = [
             models.CheckConstraint(check=~(models.Q(local_upload__in=['',None]) 
@@ -58,7 +64,7 @@ class PrivateFileCSV(FileAbstract):
     local_upload = models.FileField(validators=[FileExtensionValidator(['csv'])], 
                                 upload_to=upload_local_path,storage=fs, 
                                 null=True, blank=True)
-
+    filetype = models.CharField(max_length=5, default='.csv')    
     class Meta(FileAbstract.Meta):
         constraints = [
             has_upload_constraint(),

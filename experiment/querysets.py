@@ -82,7 +82,10 @@ def user_editable_plates(user):
     """
     Returns queryset of plates that are editable to user
     """
-    return Plate.objects.filter(experiment__in=user_editable_experiments(user))
+    user_plates = user.plates.all()
+    user_editable = Plate.objects.filter(experiment__in=user_editable_experiments(user))
+    ids = [p.id for p in user_plates.union(user_editable)]
+    return Plate.objects.filter(id__in=ids)
 
 def user_accessible_plates(user):
     """

@@ -117,7 +117,7 @@ def defaultSubwellLocations():
     return list([1])
 
 class Experiment(models.Model):
-    name = models.CharField(max_length=30,)
+    name = models.CharField(max_length=10,)
     library = models.ForeignKey(Library, related_name='experiments', on_delete=models.CASCADE, blank=True, null=True)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='experiments')
     description = models.CharField(max_length=300, blank=True, null=True)
@@ -528,7 +528,7 @@ class Experiment(models.Model):
     def getSrcPlatesTable(self, exc=[]):
         from .tables import PlatesTable
         # might want to implement try catch
-        return PlatesTable(self.plates.filter(isSource=True), exclude=exc)
+        return PlatesTable(self.plates.filter(isSource=True), exclude=exc, orderable_off=True)
 
     def getDestPlatesTable(self, exc=[]):
         from .tables import PlatesTable
@@ -560,7 +560,7 @@ class Plate(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
 
-    created_by = models.ForeignKey(User, related_name='plates_create', on_delete=models.SET_NULL, null=True, blank=True)
+    owner = models.ForeignKey(User, related_name='plates', on_delete=models.SET_NULL, null=True, blank=True)
     
     new_instance_viewname = 'plate_new'
     edit_instance_viewname = 'plate_edit'
@@ -851,10 +851,11 @@ class Soak(models.Model):
     created_date = models.DateTimeField(auto_now_add=True)
     modified_date = models.DateTimeField(auto_now=True)
     
-    storage_position = models.PositiveIntegerField(null=True, blank=True)
+    storage_position = models.PositiveSmallIntegerField(null=True, blank=True)
     storage_barcode = models.CharField(max_length=100, default='')
     storage_location = models.CharField(max_length=20, default='')
     storage = models.ForeignKey('XtalContainer', on_delete=models.SET_NULL, null=True, blank=True, related_name='soaks')
+    storage_nth = models.PositiveSmallIntegerField(default=0,)
 
     isMounted = models.BooleanField(default=False)
     mountedTimeStamp = models.DateTimeField(null=True, blank=True)
@@ -866,6 +867,20 @@ class Soak(models.Model):
 
     barcode = models.CharField(max_length=50, default='')
     shifterExternalComment = models.CharField(max_length=100, default='')
+
+    dataset = models.CharField(max_length=50, default='')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['experiment', 'dataset'],condition=~models.Q(dataset=''), name="unique_dataset_in_experiment"), 
+        ]
+
+    @property
+    def defaultDataset(self):
+        storage_name = self.storage.name
+        storage_position = str(self.storage_position)
+        storage_nth = str(self.storage_nth) if self.storage_nth else ''
+        return '_'.join([storage_name, storage_position, storage_nth])
 
     @property
     def transferVol(self):

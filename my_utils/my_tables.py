@@ -2,7 +2,14 @@ import django_tables2 as tables
 from django_tables2.utils import A  # alias for Accessor
 from django_tables2 import RequestConfig
 
-
+class OrderableOffMixin(tables.Table):
+    def __init__(self, *args, **kwargs):
+        orderable_off = kwargs.pop('orderable_off', False)
+        super().__init__(*args, **kwargs)
+        if orderable_off:
+            self._orderable=False
+            for k,v in self.columns.columns.items():
+                setattr(v.column, 'orderable', False)
 
 class ModalFormColumn_(tables.Column):
     def __init__(self, *args, **kwargs):

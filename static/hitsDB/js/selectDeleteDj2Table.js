@@ -52,14 +52,6 @@ $.fn.shiftSelectable = function() {
         $chkboxes.slice(Math.min(start,end), Math.max(start,end)+ 1).prop('checked', lastChecked.checked);
       }
 
-      // if(evt.shiftKey) {
-      //     var start = $chkboxes.index(this),
-      //         end = $chkboxes.index(lastChecked);
-      //     $chkboxes.slice(Math.min(start, end), Math.max(start, end) + 1)
-      //         .attr('checked', lastChecked.checked)
-      //         .trigger('change');
-      // }
-
       lastChecked = this;
   });
 };

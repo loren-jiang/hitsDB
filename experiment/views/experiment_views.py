@@ -5,7 +5,7 @@ from django_tables2 import RequestConfig
 from ..exp_view_process import formatSoaks, ceiling_div, chunk_list, split_list, getWellIdx, getSubwellIdx
 from lib.models import Library, Compound
 from ..forms import CreateSrcPlatesMultiForm, ExperimentForm, PlatesSetupMultiForm, \
-    ExpAsMultiForm, SoaksSetupMultiForm, ExpInitDataMultiForm, PicklistMultiForm, PlateForm
+    ExpAsMultiForm, SoaksSetupMultiForm, ExpInitDataMultiForm, PicklistMultiForm, PlateForm, RemovePlatesDropImagesForm
 from forms_custom.multiforms import MultiFormsView
 from django.db.models import Count, F, Value
 from ..decorators import is_users_experiment, is_user_accessible_experiment, is_user_editable_experiment, \
@@ -33,14 +33,15 @@ class MultiFormsExpView(MultiFormsView):
         ('expform', ExpAsMultiForm), #step 0
         ('initform', ExpInitDataMultiForm), #step 1
         ('platelibform', CreateSrcPlatesMultiForm), #step 2
+        ('removedropimagesform', RemovePlatesDropImagesForm), #step 3
         # ('platesform', PlatesSetupMultiForm),
         ('soaksform', SoaksSetupMultiForm), #step 4
         ('picklistform', PicklistMultiForm) #step 5
 
     ])
     form_to_step_map = dict([(k,i) for i,k in enumerate(form_classes.keys())])
-    form_to_step_map['soaksform'] = 4
-    form_to_step_map['picklistform'] = 5
+    # form_to_step_map['soaksform'] = 4
+    # form_to_step_map['picklistform'] = 5
  
     form_arguments = {}
     success_urls = {}
@@ -87,7 +88,7 @@ class MultiFormsExpView(MultiFormsView):
         self.success_urls['expform'] = exp_view_url
         self.success_urls['initform'] = exp_view_url  
         self.success_urls['platelibform'] = exp_view_url
-        # self.success_urls['platesform'] = exp_view_url
+        self.success_urls['removedropimagesform'] = exp_view_url
         self.success_urls['soaksform'] = exp_view_url
         self.success_urls['picklistform'] = exp_view_url
 
@@ -95,38 +96,30 @@ class MultiFormsExpView(MultiFormsView):
 
     def revertExp(self, exp, form_name):
         step = self.form_to_step_map[form_name]
-        print("REVERTED TO STEP " + str(step))
-        print(step)
         revertToStep(exp, step)
 
     def expform_form_valid(self, form):
-        pk = self.kwargs.get('pk_exp', None)
+        # pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-        exp = exp_qs.first()
         fields = [key for key in cleaned_data]
+        exp = self.exp
         update_instance(exp, cleaned_data, fields=fields)
         messages.success(self.request, "Experiment " + exp.name + " updated.")
         return HttpResponseRedirect(reverse_lazy('exp', kwargs={'pk_proj': exp.project.id, 'pk_exp':exp.id}))
     
     def initform_form_valid(self, form):
-        pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-        exp = exp_qs.first()
+        exp = self.exp
         self.revertExp(exp, form_name)
         exp.destPlateType = PlateType.objects.get(name="Swiss MRC-3 96 well microplate") #TODO: ensure destPlateType is set for experiment
         f = cleaned_data['initDataFile']
-        useS3 = False
         try:
             with transaction.atomic():
-                kwargs = {}
-                if useS3:
-                    kwargs = {'owner':exp.owner, 'upload':f}
-                else:
-                    kwargs = {'owner':exp.owner, 'local_upload':f}
+                kwargs = {'owner':exp.owner, 'upload':f}
+                if settings.USE_LOCAL_STORAGE:
+                    kwargs.update({'local_upload':f})
                 initData = PrivateFileJSON(**kwargs)
                 initData.save()
                 exp.initData = initData
@@ -140,23 +133,39 @@ class MultiFormsExpView(MultiFormsView):
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def platelibform_form_valid(self, form):
-        pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-        exp = exp_qs.first()
+        exp = self.exp
         self.revertExp(exp, form_name)
         # try:
         templateSrcPlates = cleaned_data['templateSrcPlates']
-        if templateSrcPlates:
-            exp.importTemplateSourcePlates(templateSrcPlates)
-         
-        else:
-            f = TextIOWrapper(cleaned_data['plateLibDataFile'], self.request.encoding)
-            with transaction.atomic():
+        with transaction.atomic():
+            if templateSrcPlates:
+                exp.importTemplateSourcePlates(templateSrcPlates)
+            
+            else:
+                f = TextIOWrapper(cleaned_data['plateLibDataFile'], self.request.encoding)
                 exp.createSrcPlatesFromLibFile(cleaned_data['numSrcPlates'], f)
-        messages.success(self.request, "Source plates " + ", ".join([str(p.name) for p in exp.plates.filter(isSource=True)]) 
-            + "created.")
+        src_plates = exp.plates.filter(isSource=True)
+        if src_plates:
+            for p in src_plates:
+                p.owner = self.request.user
+                p.save()
+            messages.success(self.request, "Source plates " + ", ".join([str(p.name) for p in src_plates]) 
+                + "created.")
+        return HttpResponseRedirect(self.get_success_url(form_name))
+
+    def removedropimagesform_form_valid(self, form):
+        cleaned_data = form.cleaned_data
+        form_name = cleaned_data.pop('action')
+        exp = self.exp
+        pks = self.request.POST.getlist('checked')
+        with transaction.atomic():
+            plates = [get_object_or_404(Plate, pk=p_pk) for p_pk in pks]
+            for p in plates:
+                p.removeDropImages()
+            messages.success(self.request, "Removed drop images from plates: " + ", ".join([str(p) for p in plates]))
+        self.revertExp(exp, form_name)
         return HttpResponseRedirect(self.get_success_url(form_name))
 
     # def platesform_form_valid(self, form):
@@ -169,11 +178,9 @@ class MultiFormsExpView(MultiFormsView):
     #     return HttpResponseRedirect(self.get_success_url(form_name))
     
     def soaksform_form_valid(self, form):
-        pk = self.kwargs.get('pk_exp', None)
         cleaned_data = form.cleaned_data
         form_name = cleaned_data.pop('action')
-        exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
-        exp = exp_qs.first()
+        exp = self.exp
         self.revertExp(exp, form_name)
         src_wells = [w for w in exp.srcWellsWithCompounds]
         soaks = [s for s in exp.usedSoaks]
@@ -198,10 +205,15 @@ class MultiFormsExpView(MultiFormsView):
         exp_qs = Experiment.objects.filter(id=pk) #should a qs of one and it should exist
         exp = exp_qs.first()
         self.revertExp(exp, form_name)
-        f = PrivateFileCSV(**cleaned_data)
-        f.save()
-        exp.picklist = f
+        f = cleaned_data['upload']
+        kwargs = {'owner':self.request.user, 'upload': f, 'filename': f.name}
+        if settings.USE_LOCAL_STORAGE:
+            kwargs.update({'local_upload': f})
+        picklist = PrivateFileCSV(**kwargs)
+        picklist.save()
+        exp.picklist = picklist
         exp.save()
+        exp.processPicklist()
         return HttpResponseRedirect(self.get_success_url(form_name))
 
     def get_context_data(self, **kwargs):
@@ -242,14 +254,32 @@ class MultiFormsExpView(MultiFormsView):
         if exp.initData:
             local_initData_path = str(exp.initData.local_upload)
             if local_initData_path:
-                lst_path = local_initData_path.split('/')
+                lst = local_initData_path.split('/')
                 context['initData_local_url'] = '/media/' + local_initData_path
-                context['initData_local'] = lst_path[len(lst_path) - 1]
+                context['initData_local'] = lst[len(lst) - 1]
 
             s3_initData_path = str(exp.initData.upload)
             if s3_initData_path:
-                context['init_data_file_url'] = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, 
+                lst = s3_initData_path.split('/')
+                context['initData_s3_url'] = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, 
                     'media/private/' + s3_initData_path, 4000)
+                context['initData_s3'] = lst[len(lst) - 1]
+        local_picklist_path = ''
+        s3_picklist_path = ''
+        if exp.picklist:
+            local_picklist_path = str(exp.picklist.local_upload)
+            if local_picklist_path:
+                lst = local_picklist_path.split('/')
+                context['picklist_local_url'] = '/media/' + local_initData_path
+                context['picklist_local'] = lst[len(lst_path) - 1]
+
+            s3_picklist_path = str(exp.picklist.upload)
+            if s3_picklist_path:
+                context['picklist_s3_url'] = create_presigned_url(settings.AWS_STORAGE_BUCKET_NAME, 
+                    'media/private/' + s3_picklist_path, 4000)
+                lst = s3_picklist_path.split('/')
+                context['picklist_s3'] = lst[len(lst) - 1]
+
         plateDict = dict(zip([p.id for p in plates],[p for p in plates]))
         platePairs = exp.getSoakPlatePairs()
         src_dest_plate_pairs = {}
@@ -451,15 +481,14 @@ def plates(request, pk_exp=None):
 
 @login_required(login_url="/login")
 @user_passes_test(user_base_tests)
-def remove_drop_images_from_plate(request, pk_plate, pk_exp=None):
-    p = get_object_or_404(Plate, pk=pk_plate)
+def remove_drop_images_from_plates(request, pks, pk_exp):
+    
     if request.method == "POST":
-        if p:
-            p.removeDropImages()
-        if pk_exp:
-            return redirect('exp', pk_exp)
-        else:
-            return redirect('plate', pk_plate)
+        for p in [get_object_or_404(Plate, pk=p_pk) for p_pk in pks]:
+            if p:
+                p.removeDropImages()
+        return redirect('exp', pk_exp)
+
 
 
 @is_user_accessible_project

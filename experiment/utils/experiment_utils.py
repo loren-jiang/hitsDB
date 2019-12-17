@@ -20,6 +20,7 @@ Plate = apps.get_model('experiment', 'Plate')
 Well = apps.get_model('experiment', 'Well')
 SubWell = apps.get_model('experiment', 'SubWell')
 Experiment = apps.get_model('experiment', 'Experiment')
+XtalContainer = apps.get_model('experiment', 'XtalContainer')
 
 
 def importTemplateSourcePlates(self, templateSrcPlates):
@@ -412,17 +413,24 @@ def processPicklist(exp, f):
     """
     from my_utils.constants import reverse_subwell_map, subwell_map
     from io import TextIOWrapper
+    from collections import OrderedDict
+
 
     file_reader = csv.reader(TextIOWrapper(f), delimiter=',')
     soaks_qs = exp.soaks.select_related('dest__parentWell__plate')
-    soaks_map = {}
+    soaks_map = OrderedDict()
     for soak in soaks_qs:
         soak_key = "_".join([soak.dest.parentWell.plate.rockMakerId, 
             soak.dest.parentWell.name, 
             subwell_map[soak.dest.idx]])
         soaks_map[soak_key] = soak
-    from collections import OrderedDict
-    rows_dict = {}
+    storage_map = OrderedDict()
+    for container in XtalContainer.objects.all():
+        storage_map[container.name] = container
+        # {
+        #     'container':container,
+        # }
+    rows_dict = OrderedDict()
     for row in file_reader: 
         data = OrderedDict([
             ('plate_type',''),
@@ -446,16 +454,32 @@ def processPicklist(exp, f):
             data[data_keys[i]] = col
         tweaked_col = data['plate_column'] if len(data['plate_column'])==2 else '0' + data['plate_column']
         rows_dict["_".join([data['plate_id'],data['plate_row']+tweaked_col,data['plate_subwell']])] = data
+    soaks = []
     for k,v in rows_dict.items():
         soak = soaks_map.get(k)
         if soak:
+            soaks.append(soak)
+            storage = storage_map.get(v['destination_name'], None)
+            storage_position = int(v['destination_location']) if v['destination_location'] else None
             soak.isMounted = True
-            soak.storage_position = int(v['destination_location']) if v['destination_location'] else None
+            soak.storage_location = v['destination_name']
+            soak.storage_position = storage_position
+            if storage:
+                soak.storage = storage
+                # soak.storage_nth = exp.soaks.filter(storage=storage['container'], storage_position=storage_position).count()
+            
             soak.shifterComment = v['comment']
             soak.shifterCrystalID = v['crystal_id']
             soak.shifterArrivalTime = make_aware(datetime.strptime(v['arrival_time'], '%Y-%m-%d %H:%M:%S.%f')) if v['arrival_time'] else None
             soak.shifterDepartureTime = make_aware(datetime.strptime(v['departure_time'], '%Y-%m-%d %H:%M:%S.%f')) if v['departure_time'] else None
             soak.barcode = v['barcode']
             soak.shifterExternalComment = v['external_comment']
-    Soak.objects.bulk_update([v for k,v in soaks_map.items()], fields=['storage_position',
+    Soak.objects.bulk_update(soaks, fields=['storage_position','storage_location', 'storage',
         'shifterComment','shifterCrystalID','shifterArrivalTime', 'shifterDepartureTime', 'barcode','shifterExternalComment'])
+
+    for soak in soaks:
+        if soak.storage_id and soak.storage_position:
+            soak.storage_nth = exp.soaks.filter(storage_id=soak.storage_id, storage_position=soak.storage_position).count()
+        else:
+            soak.storage_nth = 0
+    Soak.objects.bulk_update(soaks, fields=['storage_nth']) 
