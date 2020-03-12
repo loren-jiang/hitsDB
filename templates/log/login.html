@@ -1,6 +1,6 @@
 {% extends 'base.html' %} 
 {% load crispy_forms_tags %}
-
+{% load static %}
 {% block title %} Login - {{ block.super }} {% endblock %}
 {% block content %} 
 
@@ -43,20 +43,19 @@
                         </table> {% endcomment %}
                         </p>
                         <p class="bs-component">
-                        <center>
                             <input class="btn btn-success" type="submit" value="Login">
-                        </center>
+                            <a href="{% url 'register' %}" class="btn btn-primary"> Register</a>
                         </p>
+
                         <input type="hidden" name="next" value="{{ next }}">
                     </form>
                     <p class="bs-component">
-                    <center>
-                        <a href="{% url 'register' %}" class="btn btn-primary"> Register</a>
-                    </center>
+                    </p>
                     <p class="bs-component">
-                    <center>
                         <a href="{% url 'user_recover' %}" class="btn btn-secondary"> Forgot username / password?</a>
-                    </center>
+                    </p>
+                    <p>
+                        Demo login: username=<code>demo</code> password=<img style="height: 1.5em" src="{% static 'demo_pw.png' %}"/>
                     </p>
                 </div>
             </div>
