@@ -8,7 +8,7 @@ from my_utils.utility_functions import chunk_list, items_at, ceiling_div, gen_ci
         mapUmToPix, mapPixToUm, group_objs_lists_by, interleave, priority_interleave
 from django.utils.timezone import make_aware
 from datetime import datetime
-from ..querysets import plate_soaks
+from ..querysets import plate_soaks, soaks_contained
 
 import json 
 import csv 
@@ -22,6 +22,12 @@ SubWell = apps.get_model('experiment', 'SubWell')
 Experiment = apps.get_model('experiment', 'Experiment')
 XtalContainer = apps.get_model('experiment', 'XtalContainer')
 
+def setSoaksDatasetToDefault(exp):
+    soaks = [s for s in soaks_contained(exp)]
+    for s in soaks:
+        if s.defaultDataset:
+            s.dataset = s.defaultDataset
+    Soak.objects.bulk_update(soaks, fields=['dataset'])
 
 def importTemplateSourcePlates(self, templateSrcPlates):
     """

@@ -12,10 +12,11 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 from decouple import config # used to retrieve sensitive credentials using python-decouple
 import os
+import dj_database_url
+import dotenv
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
@@ -25,9 +26,14 @@ SECRET_KEY = config('SECRET_KEY')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True   
+# DEBUG = True   
+DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
+# DEBUG = False
 
-ALLOWED_HOSTS = ['127.0.0.1',]
+ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'localhost',
+    ]
 
 INTERNAL_IPS = [
     '127.0.0.1',
@@ -60,6 +66,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -73,10 +80,10 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'hitsDB.urls'
 
 """Uncomment to disable django debug toolar for improved perfomance"""
-# DEBUG_TOOLBAR_CONFIG = {
-#     'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
-#     # '...
-# }
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda r: False,  # disables it
+    # '...
+}
 
 GRAPH_MODELS = {
   'all_applications': True,
@@ -111,14 +118,18 @@ WSGI_APPLICATION = 'hitsDB.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': config('DB_NAME'),
+        # 'NAME': config('DB_NAME'),
+        'NAME': 'hitsDB',
         'USER': config('DB_USER'), 
         'PASSWORD': config('DB_PASSWORD'),
         'HOST': config('DB_HOST'),
-        'PORT': '',
+        'PORT': '5432',
     }
 }
 
+if not(config('USE_LOCAL_DB', default=False)):
+    DATABASES = {}
+    DATABASES['default'] = dj_database_url.config(conn_max_age=600)
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
@@ -158,13 +169,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
-STATIC_URL = '/static/'
+STATIC_URL = '/staticfiles/'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'my_static'),
+]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # STATIC_URL = S3_URL + STATIC_DIRECTORY
 
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-    # os.path.join(BASE_DIR, 'node_modules'),
-]
+
 
 LOGIN_REDIRECT_URL = '/' # It means home view
 LOGIN_URL = '/login'
@@ -186,7 +198,7 @@ S3_URL = 'http://%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
 
 MEDIA_DIRECTORY = '/media/'
 MEDIA_URL = S3_URL + MEDIA_DIRECTORY
-USE_LOCAL_STORAGE = True and DEBUG # can only be used when DEBUG=TRUE to be able to retrieve local files from /media folder
+USE_LOCAL_STORAGE = DEBUG # can only be used when DEBUG=TRUE to be able to retrieve local files from /media folder
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
@@ -207,3 +219,6 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 # DJANGO TABLES 2 SETTINGS:
 DJANGO_TABLES2_TEMPLATE = 'django_tables2/bootstrap4.html'
+
+if not(DEBUG):
+    django_heroku.settings(locals()) #this somehow reconfigure STATIC_ROOT to 'staticfiles'....

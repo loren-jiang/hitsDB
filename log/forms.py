@@ -12,12 +12,9 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, HTML, Button
 
 class LoginForm(AuthenticationForm):
- 
     class Meta:
         model = User
         fields = ("username", "password")
-    
-    
 
 class RegistrationForm(UserCreationForm):
     email = forms.EmailField(max_length=200, help_text='Required')
@@ -26,7 +23,6 @@ class RegistrationForm(UserCreationForm):
     class Meta:
         model = User
         fields = ("username","email", "groups","primary_group","password1", "password2")
-
 
 class EditUserForm(forms.ModelForm):
     password1 = forms.CharField(required=False, widget=forms.PasswordInput, label ="New password:")
@@ -53,6 +49,16 @@ class EditUserForm(forms.ModelForm):
         self.helper = FormHelper()
         col_class = 'col col-md-8'
         self.helper.layout = Layout(
+            Row(
+                Column(
+                    HTML("""
+                        <h3>Edit User</h3>
+                        <hr>
+                    """),
+                    css_class=col_class,
+                ),
+                css_class="justify-content-center"
+            ),
             Row(
                 Column(
                     Row(
@@ -108,20 +114,34 @@ class EditUserForm(forms.ModelForm):
 
 
 class RecoverUserForm(forms.ModelForm):
-    username = forms.CharField(label='Username')
 
     def clean(self):
         form_data = self.cleaned_data
-        try:
-            user = User.objects.get(username__exact=form_data['username'])
-        except(User.DoesNotExist):
-            user = None
+        user_qs = User.objects.filter(username__exact=form_data['username'], email=form_data['email'])
 
-        if not user:
-            self._errors["username"] = ["No matching username found."]
-            del form_data['username']
+        if not user_qs:
+            self.add_error(None, "No matching username and email found.")
+            # del form_data['username']
         return form_data
 
     class Meta:
         model = User
-        fields = ("username",)
+        fields = ("username","email")
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout(
+            Row(
+                Field('username', wrapper_class='form-group col'),
+                Field('email', wrapper_class='form-group col'),
+                css_class="form-row"
+            ),
+            Row(
+                Column(
+                    Submit('submit', 'Recover'), 
+                    css_class="col-md-auto"
+                ),
+                css_class='form-row'
+            )
+        )

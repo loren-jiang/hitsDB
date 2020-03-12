@@ -1,6 +1,16 @@
-# common querysets that views will need 
+# common querysets that views will need
 
-from .models import Project, Experiment,Plate, Soak
+from django.apps import apps 
+Soak = apps.get_model('experiment', 'Soak')
+Library = apps.get_model('lib', 'Library')
+Compound = apps.get_model('lib', 'Compound')
+Plate = apps.get_model('experiment', 'Plate')
+Well = apps.get_model('experiment', 'Well')
+SubWell = apps.get_model('experiment', 'SubWell')
+Experiment = apps.get_model('experiment', 'Experiment')
+Project = apps.get_model('experiment', 'Project')
+XtalContainer = apps.get_model('experiment', 'XtalContainer')
+# from .models import Project, Experiment,Plate, Soak
 from lib.models import Library, Compound
 from django.contrib.auth.models import User, Group
 
@@ -101,3 +111,9 @@ def plate_soaks(plate):
         else:
             return Soak.objects.filter(src__plate=plate)
     return Soak.objects.none()
+
+def soaks_contained(exp):
+    """
+    Returns queryset of experiment soaks that have storage and storage_position
+    """
+    return exp.soaks.filter(storage__isnull=False, storage_position__isnull=False)

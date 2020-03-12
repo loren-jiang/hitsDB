@@ -58,7 +58,6 @@ def manage_user(request):
         newEmail = request.POST['email']
         newPassword = request.POST['password1']
         if form.is_valid():
-            print("vlaid form ")
             user.username = newUsername
             user.email = newEmail
             if newPassword:

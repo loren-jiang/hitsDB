@@ -52,11 +52,13 @@ class ModalEditPlatesTable(ModalFormMixin, PlatesTable):
 
 class SoaksTable(tables.Table):
     transferVol = tables.Column(accessor="transferVol")
-    transferCompound = tables.Column(linkify=True, attrs={'a':{'target':'_blank'}})
+    transferCompound = tables.Column(accessor='src.compound', linkify=True)
+    # transferCompound = tables.Column(linkify=True, attrs={'a':{'target':'_blank'}})
     srcWell = tables.Column(accessor='src')
     destSubwell = tables.Column(accessor='dest')
-    selection = tables.CheckBoxColumn(accessor='pk',empty_values=())
-
+    # selection = tables.CheckBoxColumn(accessor='pk',empty_values=())
+    suggestedDataset = tables.Column(accessor='defaultDataset', orderable=False, verbose_name='Suggested dataset name')
+    
     def render_srcWell(self, value):
         return value.id
 
@@ -66,9 +68,9 @@ class SoaksTable(tables.Table):
     class Meta:
         model = Soak 
         template_name = 'django_tables2/bootstrap-responsive.html'
-        fields = ('id','transferVol','transferCompound','srcWell', 'destSubwell','selection')
+        fields = ('id','transferVol','transferCompound','srcWell', 'destSubwell', 'dataset', 'suggestedDataset')
 
-class ModalEditSoaksTable(ModalFormMixin, SoaksTable):
+class ModalEditSoaksTable(SelectionMixin, ModalFormMixin, SoaksTable):
     class Meta(ModalFormMixin.Meta, SoaksTable.Meta):
         exclude = ()
         

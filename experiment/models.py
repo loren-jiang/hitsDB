@@ -204,7 +204,10 @@ class Experiment(models.Model):
         cond3 = self.destPlatesValid
         
         cond4 = self.soaksValid and self.soak_export_date
-        conds = [cond0, cond1, cond2, cond3, cond4] # cond1 corresponds to step 1
+        cond5 = self.soaksContained
+        conds = [cond0, cond1, cond2, cond3, cond4, cond5] # cond1 corresponds to step 1
+        if all(conds[0:6]):
+            return 6
         if all(conds[0:5]):
             return 5
         if all(conds[0:4]): 
@@ -217,6 +220,10 @@ class Experiment(models.Model):
             return 1
         return 0
 
+    def setSoaksDatasetToDefault(self):
+        from .utils.experiment_utils import setSoaksDatasetToDefault as func
+        return func(self)
+        
     def getSoakPlatePairs(self):
         """
         Pairs experiment's soaks source plate and dest plate
@@ -233,6 +240,14 @@ class Experiment(models.Model):
                 if pair not in pairs:
                     pairs.append(pair)
         return pairs
+
+    @property
+    def soaksContained(self):
+        """
+        Returns True if experiment soaks exists and have a 'storage' and 'storage_position', else returns False
+        """
+        from .querysets import soaks_contained
+        return bool(soaks_contained(self))
 
     @property
     def soaksValid(self):
@@ -880,7 +895,9 @@ class Soak(models.Model):
         storage_name = self.storage.name
         storage_position = str(self.storage_position)
         storage_nth = str(self.storage_nth) if self.storage_nth else ''
-        return '_'.join([storage_name, storage_position, storage_nth])
+        lst = [storage_name, storage_position, storage_nth]
+        if all(lst):
+            return '_'.join(lst)
 
     @property
     def transferVol(self):

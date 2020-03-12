@@ -92,13 +92,13 @@ class SoakGUIForm(forms.ModelForm):
                       wrapper_class='form-group col-md-4 mb-0',
                       readonly=True),
                 css_class='form-row'),
-            Div(HTML("""<br>"""), css_class='form-row'),
+            Div(HTML("""<br>""")),
             Div(css_id='soakVolume-slider', css_class='form-row'),
             # Row(
             #     Column('useSoak', css_class='slider round form-group col-md-4 mb-0'),
             #     css_class='switch'
             # ),
-            Div(HTML("""<br>"""), css_class='form-row'),
+            Div(HTML("""<br>""")),
             Row(
                 Column(Submit('submit', 'Save'), css_class='col-md-3 mb-0'),
                 Column(HTML("""
@@ -109,7 +109,7 @@ class SoakGUIForm(forms.ModelForm):
                 """
                             ), css_class='col-md-3 mb-0'),
                 css_class='form-row align-items-start'),
-            Div(HTML("""<br>"""), css_class='form-row'),
+            Div(HTML("""<br>""")),
             Row(
                 Column(HTML("""
                     <span>

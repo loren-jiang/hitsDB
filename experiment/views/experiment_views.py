@@ -192,9 +192,9 @@ class MultiFormsExpView(MultiFormsView):
             for s in soaks:
                 s.soakVolume = cleaned_data['soakVolumeOverride']
             Soak.objects.bulk_update(soaks, fields=('soakVolume',))
-        if cleaned_data['soakDate']:
-            exp.desired_soak_date = cleaned_data['soakDate']
-            exp.save()
+        # if cleaned_data['soakDate']:
+        #     exp.desired_soak_date = cleaned_data['soakDate']
+        #     exp.save()
         return HttpResponseRedirect(self.get_success_url(form_name))
     
     def picklistform_form_valid(self, form):
@@ -228,7 +228,7 @@ class MultiFormsExpView(MultiFormsView):
         exp = request.user.experiments.prefetch_related('plates','soaks','library').get(id=pk)
         plates = exp.plates.all()
         soaks_table = exp.getSoaksTable(exc=[])
-        RequestConfig(request, paginate={'per_page': 5}).configure(soaks_table)
+        RequestConfig(request, paginate={'per_page': 10}).configure(soaks_table)
         src_plates_table = exp.getSrcPlatesTable(exc=[])
         plateModalFormData = build_modal_form_data(Plate)
         src_plates_qs = plates.filter(isSource=True)
@@ -271,7 +271,7 @@ class MultiFormsExpView(MultiFormsView):
             if local_picklist_path:
                 lst = local_picklist_path.split('/')
                 context['picklist_local_url'] = '/media/' + local_initData_path
-                context['picklist_local'] = lst[len(lst_path) - 1]
+                context['picklist_local'] = lst[len(lst) - 1]
 
             s3_picklist_path = str(exp.picklist.upload)
             if s3_picklist_path:

@@ -137,10 +137,13 @@ class ProjectForm(forms.ModelForm):
 class ExperimentForm(forms.ModelForm):
     description = forms.CharField(required=False, widget=forms.Textarea(), max_length=300)
     protein = forms.CharField(max_length=100, required=False)
-    
+    desired_soak_date = forms.DateTimeField(initial=timezone.now().strftime('%m/%d/%Y %H:%M'), 
+        input_formats=['%m/%d/%Y %H:%M'], label="Desired soak date", required=False,
+        help_text="Desired soak date")
+
     class Meta:
         model = Experiment
-        fields = ("name","description", "protein", "srcPlateType", "destPlateType","owner","project")
+        fields = ("name","description", "desired_soak_date", "protein", "srcPlateType", "destPlateType","owner","project")
         
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
@@ -428,14 +431,17 @@ class SoaksSetupMultiForm(FormFieldPopoverMixin, MultiFormMixin):
     soakVolumeOverride = forms.IntegerField(required=False, label="Override Soak Volume (uL)", 
         validators=[MaxValueValidator(250), MinValueValidator(0)],
         help_text="soak volume to set for all soaks")
-    soakDate = forms.DateTimeField(initial=timezone.now().strftime('%m/%d/%Y %H:%M'), 
-        input_formats=['%m/%d/%Y %H:%M'], label="Desired soak date", required=False,
-        help_text="")
+    # soakDate = forms.DateTimeField(initial=timezone.now().strftime('%m/%d/%Y %H:%M'), 
+    #     input_formats=['%m/%d/%Y %H:%M'], label="Desired soak date", required=False,
+    #     help_text="")
 
     def __init__(self, exp, *args, **kwargs):
         super().__init__(*args,**kwargs)
 
 class PicklistMultiForm(MultiFormMixin, PrivateFileCSVForm):
+    local_upload = forms.FileField(label="Local upload file [.csv]", widget=forms.HiddenInput(attrs={'accept': ".csv"}),
+            validators=[FileExtensionValidator(['csv'])],required=False
+            )
     def __init__(self, *args, **kwargs):
         super(PicklistMultiForm, self).__init__(*args, **kwargs)
         exp = kwargs.get('instance', None)

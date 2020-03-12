@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load staticfiles%}
+{% load static %}
 {% load crispy_forms_tags %}
 {% block content %}
 
@@ -11,8 +11,8 @@
     </script>
 
     <link href="{% static 'hitsDB/css/base.css' %}" rel="stylesheet">
-    <link href="{% static 'apps/xtal_img/css/imageGUI.css' %}" rel="stylesheet">
-    <script src="{% static 'apps/xtal_img/js/imageGUI.js'%}"></script>
+    <link href="{% static 'css/imageGUI.css' %}" rel="stylesheet">
+    <script src="{% static 'js/imageGUI.js'%}"></script>
     <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 
@@ -24,7 +24,7 @@
     <br>
 
 
-    <div class="container-fluid">
+    <div class="container-fluid" style="padding-bottom: 100px;">
         <div class="row justify-content-center" > 
             <div id="img-col" class="col col-md-5" >
                 <div id="well-image-container" >

@@ -1,14 +1,16 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
+{% block title %} Edit User - {{ block.super }} {% endblock %}
 {% block content %}
 
 
 <!-- <form method="post" action="{% url 'manage_user'}" class="" /> -->
 <div class="container-fluid">
         <div class="col-lg-8 offset-md-2">
-            <h1>Edit User</h1>
-            <hr>
+            {% comment %} <h1>Edit User</h1>
+            <hr> {% endcomment %}
+            <br>
             <form method="POST" action="">
                 {% csrf_token %}
                 {% crispy form %}

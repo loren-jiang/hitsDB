@@ -1,28 +1,25 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
+
 {% block title %} Recover User - {{ block.super }} {% endblock %}
 {% block content %}
-<!-- {% if messages %}
-    <ul>
-        {% for message in messages %}
-        <li>{{ message }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %} -->
+
 <div class="login">
 
     <div class="container-fluid">
         <div class="col-lg-8 offset-md-2">
             <h1>Recover account</h1>
-            <p> Please enter username to reset password via email. </p>
-            <p> If you have forgotten your username, please contact xray@msg.ucsf.edu for account retrieval. </p>
-            <form method="post" >
+            <p> Please enter username and email to reset password via email. </p>
+            <p> If you have forgotten your username or email, please contact xray@msg.ucsf.edu for account retrieval. </p>
+            <form method="POST" >
                 {% csrf_token %}
-                {% include 'bs4_form.html' with form=form %}
+                {% crispy form %}
+                {% comment %} {% include 'bs4_form.html' with form=form %} {% endcomment %}
                 <!-- <div class="form-group">
 			    	<label for="id_username"> <b> Find username: </b> </label>
 			    	<input type="text" class="form-control" id="id_username" name="username">
 			    </div> -->
-                <button type="submit" class="btn btn-primary">Recover account</button>
+                {% comment %} <button type="submit" class="btn btn-primary">Recover account</button> {% endcomment %}
             </form>
             
         </div>
