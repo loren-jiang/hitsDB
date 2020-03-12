@@ -116,8 +116,12 @@ WSGI_APPLICATION = 'hitsDB.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
+DATABASES = {}
+
+if not(config('USE_LOCAL_DB', default=False)):
+    DATABASES['default'] = dj_database_url.config(conn_max_age=600)
+else:
+    DATABASES['default'] = {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         # 'NAME': config('DB_NAME'),
         'NAME': 'hitsDB',
@@ -126,11 +130,7 @@ DATABASES = {
         'HOST': config('DB_HOST'),
         'PORT': '5432',
     }
-}
 
-if not(config('USE_LOCAL_DB', default=False)):
-    DATABASES = {}
-    DATABASES['default'] = dj_database_url.config(conn_max_age=600)
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
