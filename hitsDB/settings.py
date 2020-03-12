@@ -223,3 +223,4 @@ DJANGO_TABLES2_TEMPLATE = 'django_tables2/bootstrap4.html'
 
 if not(DEBUG):
     django_heroku.settings(locals()) #this somehow reconfigure STATIC_ROOT to 'staticfiles'....
+    del DATABASES['default']['OPTIONS']['sslmode']
