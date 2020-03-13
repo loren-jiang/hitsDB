@@ -54,7 +54,7 @@ class PrivateFileJSON(FileAbstract):
         constraints = [
             models.CheckConstraint(check=~(models.Q(local_upload__in=['',None]) 
                 & models.Q(upload__in=['',None])), name='privatefilejson_has_upload'), 
-            models.CheckConstraint(check=models.Q(local_upload__endswith='.json'), name='endswith_json'),
+            models.CheckConstraint(check=models.Q(local_upload__in=['', None]) | models.Q(local_upload__endswith='.json'), name='endswith_json'),
         ]
 
 class PrivateFileCSV(FileAbstract):

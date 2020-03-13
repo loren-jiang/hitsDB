@@ -63,16 +63,13 @@ class DropImagesUploadView(FormView):
             if form.is_valid():
                 for f in files:
                     file_name = f.name.split('.')[0] #just get the file name, not the extension
-                    kwargs = {'upload':f, 'owner':request.user, 'plate':p, 'file_name':file_name}
-                    if settings.USE_LOCAL_STORAGE:
-                    # if form.cleaned_data['use_local']:
-                        kwargs.update({
-                            'local_upload':f,
-                        })
-                        # new_file = DropImage(local_upload=f, owner=request.user, plate=p, file_name=file_name, useS3=False)
+                    kwargs = {'upload':f, 'owner':request.user, 'plate':p, 'file_name':file_name, 'local_upload':f}
+                    # if settings.USE_LOCAL_STORAGE:
+                    #     kwargs.update({
+                    #         'local_upload':f,
+                    #     })
                     new_file = DropImage(**kwargs)
                     drop_images.append(new_file)
-                    # new_file.save()
                 DropImage.objects.bulk_create(drop_images)
                 return self.form_valid(form)
             else:

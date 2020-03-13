@@ -200,8 +200,8 @@ S3_URL = 'http://%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
 
 MEDIA_DIRECTORY = '/media/'
 MEDIA_URL = S3_URL + MEDIA_DIRECTORY
-USE_LOCAL_STORAGE = DEBUG # can only be used when DEBUG=TRUE to be able to retrieve local files from /media folder
-
+# USE_LOCAL_STORAGE = DEBUG # can only be used when DEBUG=TRUE to be able to retrieve local files from /media folder
+USE_LOCAL_STORAGE=False
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 AWS_S3_OBJECT_PARAMETERS = {

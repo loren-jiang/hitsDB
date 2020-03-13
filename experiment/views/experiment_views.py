@@ -117,9 +117,9 @@ class MultiFormsExpView(MultiFormsView):
         f = cleaned_data['initDataFile']
         try:
             with transaction.atomic():
-                kwargs = {'owner':exp.owner, 'upload':f}
-                if settings.USE_LOCAL_STORAGE:
-                    kwargs.update({'local_upload':f})
+                kwargs = {'owner':exp.owner, 'upload':f, 'local_upload': f}
+                # if settings.USE_LOCAL_STORAGE:
+                #     kwargs.update({'local_upload':f})
                 initData = PrivateFileJSON(**kwargs)
                 initData.save()
                 exp.initData = initData
@@ -128,7 +128,7 @@ class MultiFormsExpView(MultiFormsView):
             messages.success(self.request, "Experiment " + exp.name + " initialized with plates: " +
             ", ".join(dest_plates_ids))
         except Exception as e:
-            pass
+            print(e)
 
         return HttpResponseRedirect(self.get_success_url(form_name))
     
@@ -206,9 +206,9 @@ class MultiFormsExpView(MultiFormsView):
         exp = exp_qs.first()
         self.revertExp(exp, form_name)
         f = cleaned_data['upload']
-        kwargs = {'owner':self.request.user, 'upload': f, 'filename': f.name}
-        if settings.USE_LOCAL_STORAGE:
-            kwargs.update({'local_upload': f})
+        kwargs = {'owner':self.request.user, 'upload': f, 'filename': f.name, 'local_upload': f}
+        # if settings.USE_LOCAL_STORAGE:
+        #     kwargs.update({'local_upload': f})
         picklist = PrivateFileCSV(**kwargs)
         picklist.save()
         exp.picklist = picklist
