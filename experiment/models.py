@@ -23,6 +23,7 @@ import csv
 from django.db import transaction, IntegrityError
 from django.urls import reverse, reverse_lazy
 from functools import reduce 
+from django.core.exceptions import ObjectDoesNotExist
 
 class Project(models.Model):
     name = models.CharField(max_length=30)
@@ -983,7 +984,7 @@ def process_experiment_post_save(sender, instance, created, **kwargs):
         if instance.prev_initData_id != instance.initData_id and not(created):
             instance.prev_initData_id = instance.initData_id
 
-    def create_plates_and_soaks_init_data(instance, created):
+    def create_plates_and_soaks_init_data(instance, created):    
         if instance.initData_id and (instance.prev_initData_id != instance.initData_id or created):
             # try:
                 # read file and save to JSON field initDataJSON
@@ -996,11 +997,12 @@ def process_experiment_post_save(sender, instance, created, **kwargs):
                 instance.initDataJSON = json.loads(data_json)
             except(TypeError, OverflowError, ValueError):
                 instance.initData = None
-                instance.initDataJSON = None
+                instance.initDataJSON = dict
             instance.save()
 
             instance.createPlatesSoaksFromInitDataJSON()
             post_save.connect(process_experiment_post_save, sender=Experiment)
+   
 
     create_plates_and_soaks_init_data(instance, created)
     experiment_update_state(instance, created)
@@ -1008,10 +1010,13 @@ def process_experiment_post_save(sender, instance, created, **kwargs):
 
 @receiver(post_init, sender=Experiment)
 def remember_experiment_state(sender, instance, **kwargs):
-    if instance.library:    
-        instance.prev_library_id = instance.library.id
-    if instance.initData:
-        instance.prev_initData_id = instance.initData.id
+    try:
+        if instance.library:    
+            instance.prev_library_id = instance.library.id
+        if instance.initData:
+            instance.prev_initData_id = instance.initData.id
+    except ObjectDoesNotExist:
+        pass
 
 @receiver(pre_delete, sender=Experiment)
 def process_experiment_pre_delete(sender, instance, **kwargs):

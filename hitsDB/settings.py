@@ -34,6 +34,7 @@ DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
+    '0.0.0.0',
     ]
 
 INTERNAL_IPS = [
