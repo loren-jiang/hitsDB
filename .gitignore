@@ -1,6 +1,9 @@
 # local media files
 media/
 
+# coverage
+htmlcov/
+.coverage
 
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
