@@ -407,7 +407,6 @@ def plate(request, pk_plate, pk_proj=None):
         ### Handle PlateForm()
         if request.method=="POST":
             if request.is_ajax():
-                print("sfdsf")
                 pass
             else:
                 plateForm = PlateForm(request.POST, instance=p)

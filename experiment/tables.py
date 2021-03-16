@@ -88,14 +88,6 @@ class ExperimentsTable(tables.Table):
     project = tables.Column(linkify=('proj',[A('project.pk')]))
     step = tables.Column(accessor='getCurrentStep', empty_values=(), orderable=False)
 
-    # def order_step(self, queryset, is_descending):
-        # print(queryset)
-        # # queryset = queryset.annotate(
-        # #     step=
-        # #     # step=F("getCurrentStep")
-        # # ).order_by(("-" if is_descending else "") + "step")
-        # return (queryset, True)
-
     def render_date_created(self, value):
         return formatDateTime(value)
 
@@ -199,7 +191,6 @@ def get_user_recent_exps(request, exc=[], num_per_page=5, num_exps=3):
     # recent_exps =[e.pk for e in  request.user.experiments.order_by('-modified_date')][:num_exps]
     qs = request.user.experiments.order_by('-modified_date')[:num_exps]
     # qs = Experiment.objects.filter(id__in=recent_exps)
-    #print(qs)
     table = ExperimentsTable(data=qs, exclude=exc,orderable=False)
     # RequestConfig(request,paginate={'per_page': num_per_page}).coorderable=Falsenfigure(table)
     return table

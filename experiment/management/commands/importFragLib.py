@@ -1,9 +1,9 @@
 from django.core.management.base import BaseCommand
+import pandas as pd
 
 class Command(BaseCommand):
     def handle(self, **options):
         # now do the things that you want with your models here
-        import pandas as pd
         # os.system('export DJANGO_SETTINGS_MODULE=hitsDB.settings')
 
         # import the relevant model
@@ -16,8 +16,6 @@ class Command(BaseCommand):
         df = pd.read_csv(file, index_col=0)
         df['nameInternal'] = df.index
         df.index = (range(0,len(df.index)))
-        #print(df.head())
-        #print("\n")
         for index, row in df.iterrows():
             try:
                 obj, created = Compound.objects.get_or_create(
@@ -31,4 +29,4 @@ class Command(BaseCommand):
                 )
                 lib.compounds.add(obj)
             except: # need to write more exception cases...
-                #print('PROB with', index)
+                pass

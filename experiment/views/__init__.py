@@ -10,7 +10,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from my_utils.my_views import ModalCreateView, ModalEditView, ModifyFromTableView
 from django.utils.decorators import method_decorator
 from django.contrib import messages
+from django.shortcuts import render
 from ..querysets import user_editable_experiments 
+from django.template import RequestContext
 
 # Create your views here.
 @login_required(login_url="/login")
@@ -26,6 +28,17 @@ def home(request):
         'recentExpsTable':recentExpsTable,
     }
     return render(request,"experiment/home_templates/home.html", data)    
+
+
+def handler404(request, exception, template_name="404.html"):
+    response = render(request,template_name)
+    response.status_code = 404
+    return response
+
+def handler500(request, *args, **argv):
+    response = render(request,'500.html')
+    response.status_code = 500
+    return response
 
 @method_decorator([login_required(login_url="/login"), ], name='dispatch')
 class SecureProjectModifyFromTable(ModifyFromTableView):

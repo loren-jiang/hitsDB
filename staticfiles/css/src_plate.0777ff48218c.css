@@ -1,0 +1,23 @@
+
+
+.edit_well_priority {
+    min-width: 50px;
+    max-width: 60px;
+}
+
+.col.well, .col.x-axis, .col.y-axis {
+    font-size: .8rem;
+    padding:1px;
+}
+
+.well_box {
+    min-width:20px; 
+    max-width: 25px;
+    min-height:20px; 
+    max-width: 25px;
+    background-color:palegreen;
+}
+
+.priority_indicator {
+    font-size:0.6rem;
+}

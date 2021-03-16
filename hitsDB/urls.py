@@ -18,8 +18,10 @@ from django.conf import settings
 from django.conf.urls import include, url
 from django.urls import path, re_path
 from django.contrib import admin
-# Add this import
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+
+
+handler404 = 'experiment.views.handler404'
+handler500 = 'experiment.views.handler500'
 
 urlpatterns = [
     path('admin/', admin.site.urls),

@@ -65,7 +65,6 @@ class Tests(TestCase):
             integrity_error = 0 
         except IntegrityError:
             integrity_error = 1
-        #print(test_json_file_.local_upload)
         self.assertEquals(integrity_error, 0)
         
 

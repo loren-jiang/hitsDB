@@ -68,7 +68,6 @@ def manage_user(request):
             return HttpResponseRedirect(request.path_info)
         else:
             print(form.errors)
-            print('invlaidform')
 
     context = {
         "form": form,

@@ -1,4 +1,4 @@
-$(function() {
+$(window).on("load", function () {
     const ArrSubtract = (arr1, arr2) => arr1.map((v, i) => arr1[i] - arr2[i]);
 
     //DATA which is needed by gui

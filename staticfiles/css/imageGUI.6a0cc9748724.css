@@ -1,0 +1,129 @@
+.ui-resizable-handle.ui-resizable-se.ui-icon.ui-icon-gripsmall-diagonal-se {
+    background-color: grey;
+}
+
+.jumbotron {
+    padding: 2rem 2rem;
+}
+
+.plate-row {
+    padding-top: 1%;
+}
+
+#img-col {
+    max-width: 100%;
+}
+
+.soak-progress-bar a {
+    border: 1px solid #6c757d!important;
+}
+
+.subwell {
+    padding-right: 5px;
+    padding-left: 5px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    border: 1px solid #6c757d!important;
+    background-color: lightskyblue;
+}
+
+.subwell.soak-used:not(.soak-saved),
+.soak-progress-bar a:not(.soak-saved) {
+    background-color: coral;
+}
+
+.subwell.soak-used.soak-saved,
+.soak-progress-bar .soak-saved {
+    background-color: lightgreen;
+}
+
+.subwell.empty-block {
+    background-color: lightgrey;
+}
+
+#well-image {
+    /* z-index:-1; */
+    /* border-width: 0px !important; */
+    max-width: 700px;
+    /* height: auto; */
+    position: relative;
+    /* cursor: crosshair; */
+    margin: auto;
+}
+
+
+/* .svg-circle {
+    cursor: crosshair;
+}
+
+.marker {
+    cursor: crosshair;
+} */
+
+.soak-hidden {
+    display: none !important;
+}
+
+.ui-resizable,
+.ui-draggable {
+    position: absolute !important;
+    display: flex;
+}
+
+#scale-bar {
+    position: absolute !important;
+    display: flex;
+}
+
+#soakVolume-slider {
+    width: 95%;
+    opacity: 1 !important;
+    margin: auto;
+    /* transform: translateY(10px); */
+}
+
+#soakVolume-slider span {
+    /* background-color: teal !important; */
+}
+
+#well-image-container {
+    border-radius: .3rem;
+    position: relative;
+    /* height: 700px;
+    width: 700px; */
+    background-color: #e9ecef;
+    display: flex;
+}
+
+form .row {
+    margin: 0;
+}
+
+
+/* .button {
+    background-color: #1c87c9;
+    border: none;
+    color: white;
+    padding: 10px 10px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    margin: 2px 2px;
+    cursor: pointer;
+} */
+
+#mainDiv {
+    width: 400px;
+    height: 200px;
+    border: 1px dashed #eee;
+}
+
+.soak-circle {
+    z-index: 100;
+}
+
+#circle {
+    max-width: 100%;
+    display: block;
+}

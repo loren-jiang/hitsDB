@@ -47,7 +47,6 @@ class ExperimentMultiFormsTests(TestCase):
         form_file.update({'plateLibDataFile' : wrong_file})
         form = CreateSrcPlatesMultiForm(exp=ExperimentFactory(), data=form_data, files=form_file)
         self.assertFalse(form.is_valid())
-        print(form.errors)
         f.close()
         
         # ### Case: Too big file ###
@@ -56,7 +55,6 @@ class ExperimentMultiFormsTests(TestCase):
         #     f.read().encode('utf-8'), content_type="text/csv")
         # form_file.update({'plateLibDataFile' : big_file})
         # form = CreateSrcPlatesMultiForm(exp=ExperimentFactory(), data=form_data, files=form_file)
-        # print(form.errors)
         # self.assertFalse(form.is_valid())
         # f.close()
         

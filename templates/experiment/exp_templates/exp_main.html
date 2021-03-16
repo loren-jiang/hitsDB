@@ -593,7 +593,6 @@
 <script>
     $(document).ready(function () {
         getCurrentStep("{{current_step}}").addClass('current-step');
-        console.log("{{current_step}}")
         setUpModalForm("drop_images_upload", "drop_images_upload_modal")
         $('#remove_drop_images_submit').on('click', function (e) {
             btn = $(this)['0'];
@@ -607,7 +606,7 @@
                 msg = "Are you sure?"
             }
             let $form = $("#remove_drop_images_form");
-            if (getFormInputData("remove_drop_images_form").length > 0) {
+            if ($form.length > 0) {
                 if (confirm(msg)) {
                     $("<input />").attr("type", "hidden")
                         .attr("name", "btn")

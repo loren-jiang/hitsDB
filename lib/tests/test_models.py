@@ -12,8 +12,6 @@ class Tests(TestCase):
         self.client = Client()
 
     def testBulkGetOrCreateCompounds(self):
-        # compounds = make_n_compounds(1000)
-        # print(compounds)
         compounds = make_n_compounds(1000) #saved to DB
         self.assertEquals(1000, Compound.objects.all().count()) #checking saved to DB
 

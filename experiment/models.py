@@ -505,7 +505,6 @@ class Experiment(models.Model):
                 p.createPlateWells() # bulk_create doesn't send signals so need to call explicitly
             return True
         except Exception as e:
-            #print(e)
             return False
     
     def makeSrcPlates(self, num_plates):

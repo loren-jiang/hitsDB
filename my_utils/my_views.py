@@ -41,7 +41,6 @@ class MultiFormMixin(ContextMixin):
         form_arguments = self.get_form_arguments(form_name)
         if form_arguments:
             kwargs.update(form_arguments)
-        print(kwargs)
         return kwargs
     
     def forms_valid(self, forms, form_name):
@@ -80,8 +79,6 @@ class ProcessMultipleFormsView(ProcessFormView):
         return self.render_to_response(self.get_context_data(forms=forms))
      
     def post(self, request, *args, **kwargs):
-        print("IN POST")
-        print(request.POST)
         form_classes = self.get_form_classes()
         form_name = request.POST.get('action')
         return self._process_individual_form(form_name, form_classes)

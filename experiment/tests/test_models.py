@@ -100,7 +100,6 @@ class ExperimentTests(TestCase):
         self.assertEquals(exp.usedSoaks.count() , exp.srcWells.filter(soak__isnull=False).count())
         self.assertTrue(exp.soaksValid)
         exp_soaks = exp.soaks.select_related('src', 'dest__parentWell').order_by('src__name')
-        # print([(s.src.priority, s.src.name, s.dest.parentWell.name) for s in exp_soaks])
 
     def testGetSoakPlatePairs(self):
         exp = experiment_with_matched_soaks()
