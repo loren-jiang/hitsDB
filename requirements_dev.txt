@@ -4,7 +4,7 @@ billiard==3.6.0.0
 boto3==1.9.197
 botocore==1.12.197
 celery==4.3.0
-Django==2.2.13
+Django==2.2.27
 django-crispy-forms==1.7.2
 django-debug-toolbar==2.0
 django-filter==2.2.0
